@@ -460,7 +460,7 @@ async function handlePlaceOrder(): Promise<void> {
                     />
                   </div>
                 </div>
-              </label>
+              </label></div>
 
               <!-- Automated Daraja STK Push -->
               <label
