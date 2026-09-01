@@ -415,53 +415,67 @@ async function handlePlaceOrder(): Promise<void> {
                 </div>
 
                 <!-- Digital M-Pesa Pass -->
-                <div v-if="paymentMethod === 'mpesa_manual'" class="pt-3 border-t border-paper-border/80 space-y-3 pl-0 sm:pl-12">
-                  
-                  <!-- Till Number Chip with 1-Click Copy -->
-                  <div class="bg-white rounded-xl p-3.5 border border-paper-border flex flex-wrap items-center justify-between gap-3 shadow-xs">
-                    <div class="space-y-0.5">
-                      <span class="text-[10px] uppercase font-mono font-bold text-ink-subtle tracking-widest block">Lipa Na M-Pesa • Buy Goods Till</span>
-                      <div class="flex items-baseline gap-2">
-                        <span class="font-mono text-lg font-bold text-forest-950 tracking-wider">{{ STORE_TILL_NUMBER }}</span>
-                        <span class="text-xs font-semibold text-ink-muted">(Flemela Bookstore)</span>
-                      </div>
-                    </div>
-<div class="bg-white rounded-xl p-3.5 border border-paper-border flex flex-wrap items-center justify-between gap-3 shadow-xs">
-                    <div class="space-y-0.5">
-                      <span class="text-[10px] uppercase font-mono font-bold text-ink-subtle tracking-widest block">Lipa Na M-Pesa â€¢ Buy Goods Till</span>
-                      <div class="flex items-baseline gap-2">
-                        <span class="font-mono text-lg font-bold text-forest-950 tracking-wider">{{ STORE_TILL_NUMBER }}</span>
-                        <span class="text-xs font-semibold text-ink-muted">(Flemela Bookstore)</span>
-                      </div>
-                    </div>
+                <div
+  v-if="paymentMethod === 'mpesa_manual'"
+  class="pt-3 border-t border-paper-border/80 space-y-3 pl-0 sm:pl-12"
+>
+  <!-- Till Number Chip with 1-Click Copy -->
+  <div
+    class="bg-white rounded-xl p-3.5 border border-paper-border flex flex-wrap items-center justify-between gap-3 shadow-xs"
+  >
+    <div class="space-y-0.5">
+      <span
+        class="text-[10px] uppercase font-mono font-bold text-ink-subtle tracking-widest block"
+      >
+        Lipa Na M-Pesa • Buy Goods Till
+      </span>
 
-                    <button
-                      type="button"
-                      class="px-3 py-1.5 bg-paper-cream hover:bg-forest-950 hover:text-white rounded-lg text-xs font-bold font-sans transition-colors flex items-center gap-1.5 border border-paper-border cursor-pointer shadow-2xs"
-                      @click="copyTillNumber"
-                    >
-                      <component :is="isTillCopied ? Check : Copy" :size="13" :class="isTillCopied ? 'text-emerald-600' : 'text-forest-950'" />
-                      <span>{{ isTillCopied ? 'Copied!' : 'Copy Till' }}</span>
-                    </button>
-                  </div>
+      <div class="flex items-baseline gap-2">
+        <span class="font-mono text-lg font-bold text-forest-950 tracking-wider">
+          {{ STORE_TILL_NUMBER }}
+        </span>
 
-                  <!-- Reference Code Input -->
-                  <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-forest-950 flex items-center justify-between">
-                      <span>M-Pesa Transaction Code *</span>
-                      <span class="text-[10px] text-ink-muted font-normal">Found in your Safaricom SMS</span>
-                    </label>
-                    <input
-                      v-model="mpesaCode"
-                      type="text"
-                      placeholder="e.g. SH12AB34CD"
-                      class="w-full px-3.5 py-2.5 bg-white border border-paper-border rounded-xl text-sm font-mono font-bold uppercase tracking-widest outline-none focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 transition-all text-forest-950 placeholder:text-ink-subtle"
-                      required
-                    />
-                  </div>
-                </div>
-              </label></div>
+        <span class="text-xs font-semibold text-ink-muted">
+          (Flemela Bookstore)
+        </span>
+      </div>
+    </div>
 
+    <button
+      type="button"
+      class="px-3 py-1.5 bg-paper-cream hover:bg-forest-950 hover:text-white rounded-lg text-xs font-bold font-sans transition-colors flex items-center gap-1.5 border border-paper-border cursor-pointer shadow-2xs"
+      @click="copyTillNumber"
+    >
+      <component
+        :is="isTillCopied ? Check : Copy"
+        :size="13"
+        :class="isTillCopied ? 'text-emerald-600' : 'text-forest-950'"
+      />
+
+      <span>
+        {{ isTillCopied ? 'Copied!' : 'Copy Till' }}
+      </span>
+    </button>
+  </div>
+
+  <!-- Reference Code Input -->
+  <div class="space-y-1.5">
+    <label class="text-xs font-bold text-forest-950 flex items-center justify-between">
+      <span>M-Pesa Transaction Code *</span>
+      <span class="text-[10px] text-ink-muted font-normal">
+        Found in your Safaricom SMS
+      </span>
+    </label>
+
+    <input
+      v-model="mpesaCode"
+      type="text"
+      placeholder="e.g. SH12AB34CD"
+      class="w-full px-3.5 py-2.5 bg-white border border-paper-border rounded-xl text-sm font-mono font-bold uppercase tracking-widest outline-none focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 transition-all text-forest-950 placeholder:text-ink-subtle"
+      required
+    />
+  </div>
+</div>
               <!-- Automated Daraja STK Push -->
               <label
                 class="border rounded-2xl p-4 sm:p-4.5 flex items-start gap-3.5 cursor-pointer transition-all"
