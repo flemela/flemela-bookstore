@@ -1,4 +1,4 @@
-<!-- components/storefront/HeroReference.vue -->
+<!-- flemela/components/storefront/HeroReference.vue -->
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Search, ChevronDown } from 'lucide-vue-next';
@@ -35,54 +35,53 @@ function handleSelectCat(cat: string): void {
 </script>
 
 <template>
-  <section class="relative bg-[#04261B] text-white pt-6 pb-24 sm:pb-32 px-4 overflow-visible">
+  <section class="relative bg-[#052219] text-white pt-6 pb-28 sm:pb-36 overflow-visible select-none">
     
-    <!-- Left 4-Book Column Mosaic (Straight, Staggered, Faded at Top with Gradient Mask) -->
-    <div class="absolute left-2 lg:left-8 top-0 bottom-10 hidden md:flex gap-3 lg:gap-4.5 pointer-events-none [mask-image:linear-gradient(to_bottom,transparent_0%,black_35%,black_100%)]">
+    <!-- LEFT 4-BOOK STACK (2 Staggered Straight Columns, Faded at Top with Gradient Mask) -->
+    <div class="absolute left-2 sm:left-4 lg:left-8 top-0 bottom-0 hidden md:flex gap-2.5 lg:gap-3 pointer-events-none hero-faded-stack">
       
       <!-- Column 1 (Starts Higher) -->
-      <div class="flex flex-col gap-3.5 -translate-y-6">
+      <div class="flex flex-col gap-2.5 -translate-y-6">
         <img
-          src="https://covers.openlibrary.org/b/isbn/9780140283334-M.jpg"
-          alt=""
-          class="w-18 lg:w-22 h-26 lg:h-32 object-cover rounded shadow-2xl border border-white/10"
+          src="https://covers.openlibrary.org/b/isbn/9781538724736-M.jpg"
+          alt="Lost and Lassoed"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
           referrerpolicy="no-referrer"
         />
         <img
           src="https://covers.openlibrary.org/b/isbn/9780062316097-M.jpg"
-          alt=""
-          class="w-18 lg:w-22 h-26 lg:h-32 object-cover rounded shadow-2xl border border-white/10"
+          alt="Path of Progress"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
           referrerpolicy="no-referrer"
         />
       </div>
 
       <!-- Column 2 (Starts Lower) -->
-      <div class="flex flex-col gap-3.5 translate-y-6">
+      <div class="flex flex-col gap-2.5 translate-y-5">
         <img
-          src="https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg"
-          alt=""
-          class="w-18 lg:w-22 h-26 lg:h-32 object-cover rounded shadow-2xl border border-white/10"
+          src="https://covers.openlibrary.org/b/isbn/9781250268822-M.jpg"
+          alt="Each of Us a Desert"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
           referrerpolicy="no-referrer"
         />
         <img
-          src="https://covers.openlibrary.org/b/isbn/9780857197689-M.jpg"
-          alt=""
-          class="w-18 lg:w-22 h-26 lg:h-32 object-cover rounded shadow-2xl border border-white/10"
+          src="https://covers.openlibrary.org/b/isbn/9781501171345-M.jpg"
+          alt="The Last Thing He Told Me"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
           referrerpolicy="no-referrer"
         />
       </div>
 
     </div>
 
-    <!-- Center Headline & Content -->
-    <div class="relative z-10 max-w-3xl mx-auto text-center space-y-4 pt-4 sm:pt-6">
+    <!-- CENTER HERO POSTER TYPOGRAPHY & DOODLES -->
+    <div class="relative z-10 max-w-4xl mx-auto text-center px-4 pt-2">
       
-      <!-- Headline with Vector Doodles -->
-      <div class="relative inline-block select-none">
+      <div class="relative inline-block">
         
-        <!-- Top Flame SVG on 'C' -->
+        <!-- Top Left Flame Doodle on "C" -->
         <svg
-          class="absolute -top-6 sm:-top-8 left-8 sm:left-14 w-6 h-8 text-[#F05A36] pointer-events-none"
+          class="absolute -top-7 sm:-top-9 left-12 sm:left-18 w-6 sm:w-7 h-8 text-[#FF5722] pointer-events-none"
           viewBox="0 0 24 32"
           fill="currentColor"
           aria-hidden="true"
@@ -90,9 +89,9 @@ function handleSelectCat(cat: string): void {
           <path d="M12 0C12 0 16 6 16 11C16 13.5 14.5 15.5 12 16C9.5 15.5 8 13.5 8 11C8 6 12 0 12 0ZM12 18C16.5 18 20 21.5 20 26C20 29.5 16.5 32 12 32C7.5 32 4 29.5 4 26C4 21.5 7.5 18 12 18Z" />
         </svg>
 
-        <!-- Top Asterisk SVG over 'NEXT' -->
+        <!-- Top Right Asterisk Doodle on "NEXT" -->
         <svg
-          class="absolute -top-2 right-12 sm:right-20 w-5 h-5 text-[#FFB800] pointer-events-none"
+          class="absolute -top-3 right-10 sm:right-16 w-5 sm:w-6 h-5 sm:h-6 text-[#FFB300] pointer-events-none"
           viewBox="0 0 24 24"
           fill="currentColor"
           aria-hidden="true"
@@ -100,16 +99,18 @@ function handleSelectCat(cat: string): void {
           <path d="M12 0L14 8L22 6L16 12L22 18L14 16L12 24L10 16L2 18L8 12L2 6L10 8L12 0Z" />
         </svg>
 
-        <!-- Main Condensed Headline Text -->
-        <h1 class="font-sans font-black text-4xl sm:text-6xl lg:text-7xl tracking-tight leading-[1.04] uppercase text-white drop-shadow-md">
+        <!-- Main Poster Headline (Bebas Neue) -->
+        <h1 class="font-poster text-5xl sm:text-7xl lg:text-[88px] leading-[0.93] tracking-wide uppercase text-white drop-shadow-sm">
           THE NEXT <br />
-          <span class="text-[#26D48C]">CHAPTER</span> IN <span class="text-[#F05A36]">YOUR</span> <br />
-          READING <ReaderHeroIllustration /> JOURNEY
+          <span class="text-[#2EE59D]">CHAPTER</span> IN <span class="text-[#FF8A00]">YOUR</span> <br />
+          READING 
+          <ReaderHeroIllustration />
+          JOURNEY
         </h1>
 
-        <!-- Bottom Sparkle Star SVG under 'R' -->
+        <!-- Bottom Left Star Doodle under "R" -->
         <svg
-          class="absolute -bottom-3 left-16 sm:left-24 w-5 h-5 text-[#FFB800] pointer-events-none"
+          class="absolute -bottom-2 left-6 sm:left-12 w-5 sm:w-6 h-5 sm:h-6 text-[#FFB300] pointer-events-none"
           viewBox="0 0 24 24"
           fill="currentColor"
           aria-hidden="true"
@@ -117,9 +118,9 @@ function handleSelectCat(cat: string): void {
           <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
         </svg>
 
-        <!-- Turquoise Sparkle on 'JOURNEY' -->
+        <!-- Turquoise Sparkle on "JOURNEY" -->
         <svg
-          class="absolute top-1/2 -right-4 sm:-right-6 w-5 h-5 text-[#26D48C] pointer-events-none"
+          class="absolute top-1/2 -right-4 sm:-right-8 w-5 sm:w-6 h-5 sm:h-6 text-[#2EE59D] pointer-events-none"
           viewBox="0 0 24 24"
           fill="currentColor"
           aria-hidden="true"
@@ -129,53 +130,53 @@ function handleSelectCat(cat: string): void {
       </div>
 
       <!-- Muted Sage Subtitle -->
-      <p class="text-xs sm:text-sm text-[#8EA499] max-w-md sm:max-w-lg mx-auto leading-relaxed font-sans pt-1">
+      <p class="text-xs sm:text-sm text-[#8FA89B] max-w-lg mx-auto leading-relaxed font-sans pt-3">
         Browse a curated collection of page-turners, slow burns, and life-changing reads crafted to match your unique taste.
       </p>
     </div>
 
-    <!-- Right 4-Book Column Mosaic (Straight, Staggered, Faded at Top with Gradient Mask) -->
-    <div class="absolute right-2 lg:right-8 top-0 bottom-10 hidden md:flex gap-3 lg:gap-4.5 pointer-events-none [mask-image:linear-gradient(to_bottom,transparent_0%,black_35%,black_100%)]">
+    <!-- RIGHT 4-BOOK STACK (2 Staggered Straight Columns, Faded at Top with Gradient Mask) -->
+    <div class="absolute right-2 sm:right-4 lg:right-8 top-0 bottom-0 hidden md:flex gap-2.5 lg:gap-3 pointer-events-none hero-faded-stack">
       
       <!-- Column 3 (Starts Lower) -->
-      <div class="flex flex-col gap-3.5 translate-y-6">
+      <div class="flex flex-col gap-2.5 translate-y-5">
         <img
-          src="https://covers.openlibrary.org/b/isbn/9781501110368-M.jpg"
-          alt=""
-          class="w-18 lg:w-22 h-26 lg:h-32 object-cover rounded shadow-2xl border border-white/10"
+          src="https://covers.openlibrary.org/b/isbn/9780525536963-M.jpg"
+          alt="A Burning"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
           referrerpolicy="no-referrer"
         />
         <img
-          src="https://covers.openlibrary.org/b/isbn/9780451524935-M.jpg"
-          alt=""
-          class="w-18 lg:w-22 h-26 lg:h-32 object-cover rounded shadow-2xl border border-white/10"
+          src="https://covers.openlibrary.org/b/isbn/9780593300237-M.jpg"
+          alt="Unicorn Irma"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
           referrerpolicy="no-referrer"
         />
       </div>
 
       <!-- Column 4 (Starts Higher) -->
-      <div class="flex flex-col gap-3.5 -translate-y-6">
+      <div class="flex flex-col gap-2.5 -translate-y-6">
         <img
-          src="https://covers.openlibrary.org/b/isbn/9780062315007-M.jpg"
-          alt=""
-          class="w-18 lg:w-22 h-26 lg:h-32 object-cover rounded shadow-2xl border border-white/10"
+          src="https://covers.openlibrary.org/b/isbn/9781646220601-M.jpg"
+          alt="The Disaster Tourist"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
           referrerpolicy="no-referrer"
         />
         <img
-          src="https://covers.openlibrary.org/b/isbn/9780140280197-M.jpg"
-          alt=""
-          class="w-18 lg:w-22 h-26 lg:h-32 object-cover rounded shadow-2xl border border-white/10"
+          src="https://covers.openlibrary.org/b/isbn/9780593135204-M.jpg"
+          alt="Kanslo Smart"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
           referrerpolicy="no-referrer"
         />
       </div>
 
     </div>
 
-    <!-- THE 50/50 OVERLAPPING FLOATING SEARCH PILL -->
+    <!-- 50/50 OVERLAPPING FLOATING SEARCH PILL -->
     <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-full max-w-2xl px-4 z-30">
-      <div class="bg-white rounded-full p-2 shadow-2xl border border-black/5 flex items-center gap-1 sm:gap-2">
+      <div class="bg-white rounded-full p-2 shadow-search-pill border border-black/5 flex items-center gap-1 sm:gap-2">
         
-        <!-- Category Dropdown -->
+        <!-- Category Dropdown Selector -->
         <div class="relative flex-shrink-0">
           <button
             type="button"
@@ -183,10 +184,10 @@ function handleSelectCat(cat: string): void {
             @click="isDropdownOpen = !isDropdownOpen"
           >
             <span class="max-w-[110px] sm:max-w-[130px] truncate">{{ selectedCategory }}</span>
-            <ChevronDown :size="13" class="text-slate-500" />
+            <ChevronDown :size="13" class="text-slate-500 transition-transform" :class="{ 'rotate-180': isDropdownOpen }" />
           </button>
 
-          <!-- Dropdown List -->
+          <!-- Dropdown List Menu -->
           <div
             v-if="isDropdownOpen"
             class="absolute top-full left-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-2xl py-2 z-50 text-left text-xs font-medium text-slate-800"
@@ -209,11 +210,11 @@ function handleSelectCat(cat: string): void {
           v-model="searchQuery"
           type="text"
           placeholder="Search 1 million books by title, author or ISBN"
-          class="flex-1 bg-transparent px-3 text-xs sm:text-sm text-slate-800 outline-none placeholder:text-slate-400"
+          class="flex-1 bg-transparent px-3 text-xs sm:text-sm text-slate-800 outline-none placeholder:text-slate-400 font-sans"
           @keyup.enter="handleSearch"
         />
 
-        <!-- Coral Action Button with Search SVG -->
+        <!-- Coral Pill Button with Search SVG -->
         <button
           type="button"
           class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase tracking-wider px-5 sm:px-7 py-2.5 sm:py-3 rounded-full transition-all flex items-center gap-1.5 shadow-md cursor-pointer flex-shrink-0 active:scale-95"

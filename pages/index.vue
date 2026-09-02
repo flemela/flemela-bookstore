@@ -26,7 +26,7 @@ const showRequestModal = ref(false);
 const modalInitialTitle = ref('');
 const modalInitialAuthor = ref('');
 
-// Dynamic search & category filter engine
+// Dynamic filter engine
 const filteredBooks = computed(() => {
   const books = realBooks.value || [];
   let result = [...books];
@@ -85,15 +85,15 @@ function handleRequestSeed(title: string, author?: string): void {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased font-sans">
+  <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased">
     
-    <!-- 1. Dark Pine Navbar (No Search Bar) -->
+    <!-- 1. Exact Navbar (#052219, Logo, Centered Links, Right Badges) -->
     <StoreNavbar />
 
-    <!-- 2. Pine Hero with Straight Faded Books & 50/50 Overlapping Search Pill -->
+    <!-- 2. Exact Hero (#052219, Poster Bebas Neue Headline, Faded Straight Stacks, 50% Overlapping Search Bar) -->
     <HeroReference @search="handleSearch" @select-category="handleCategorySelect" />
 
-    <!-- Active Search / Filter Catalog Results (Scroll Target) -->
+    <!-- Search / Filter Results (Visible when search is active) -->
     <section id="catalog-results" v-if="hasActiveFilter" class="pt-16 sm:pt-20 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6">
       <div class="flex items-center justify-between bg-[#F7F2E7] p-4 rounded-2xl border border-black/5 shadow-sm">
         <div class="space-y-0.5">
@@ -132,18 +132,18 @@ function handleRequestSeed(title: string, author?: string): void {
       </div>
     </section>
 
-    <!-- 3. Section 1: #1 Book of the Month (Includes pt-16 to receive 50% overlapping search bar) -->
-    <div :class="hasActiveFilter ? 'pt-6' : 'pt-14 sm:pt-20'">
+    <!-- 3. Section 1: #1 Book of the Month (pt-16 receives the bottom 50% of the search bar) -->
+    <div :class="hasActiveFilter ? 'pt-6' : 'pt-16 sm:pt-20'">
       <FeaturedMonth :books="realBooks || []" @request-seed="handleRequestSeed" />
     </div>
 
-    <!-- 4. Section 2: Bento Category Grid -->
+    <!-- 4. Section 2: Bento Categories Grid -->
     <BentoCategories @select="handleCategorySelect" />
 
-    <!-- 5. Section 3: Deals of the Week (Warm Sand + Ripple BG + Live Countdown) -->
+    <!-- 5. Section 3: Deals of the Week -->
     <DealsWeek :books="realBooks || []" @request-seed="handleRequestSeed" />
 
-    <!-- 6. Section 4: Best Sellers of the Month (3x2 Grid + Vertical Promo Card) -->
+    <!-- 6. Section 4: Best Sellers of the Month + Promo Card -->
     <BestsellersSection :books="realBooks || []" @request-seed="handleRequestSeed" @see-more="scrollToResults" />
 
     <!-- 7. Section 5: Trust & Delivery Strip -->

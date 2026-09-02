@@ -1,37 +1,61 @@
-/* flemela/assets/css/main.css */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+/* =============================================================================
+   flemela/assets/css/main.css
+   Full-Stack Editorial Design System & Theme Styles
+   ============================================================================= */
 
+/* 1. Typography Imports */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,600&display=swap');
+
+/* 2. Tailwind Directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* 3. Global CSS Custom Properties (Theme Design Tokens) */
 :root {
-  /* Dynamic Theme Variables (Modify here to re-theme in the future) */
-  --theme-dark: #08251B;        /* Deep Pine */
-  --theme-forest: #0D382B;      /* Secondary Dark Green */
-  --theme-coral: #FF6347;       /* Primary Action Coral */
-  --theme-coral-hover: #E85338; /* Coral Hover State */
-  --theme-turquoise: #20B2AA;   /* Vibrant Teal Accent */
-  --theme-sand: #F7F2E7;        /* Warm Deals Section */
-  --theme-canvas: #FCFAF6;      /* Background Paper Canvas */
-  --theme-surface: #FFFFFF;     /* Card Surface */
-  --theme-cream: #F4EFE6;       /* Neutral Accent / Badges */
-  --theme-border: rgba(8, 37, 27, 0.09);
+  /* Brand Chromatic Palette (Matching Reference Design) */
+  --theme-dark: #052219;          /* Deep Pine Hero & Navbar (#052219 / #04261B) */
+  --theme-forest: #0C3A2B;        /* Dark Pine Accent */
+  --theme-mint: #2EE59D;          /* Vibrant Mint/Cyan headline word "CHAPTER" */
+  --theme-turquoise: #2CD4BF;     /* Secondary Teal/Cyan Highlight */
+  --theme-orange: #FF8A00;        /* Vibrant Marigold headline word "YOUR" */
+  --theme-coral: #F05A36;         /* Primary Action Coral (Search button, -40% badge) */
+  --theme-coral-hover: #D84315;   /* Coral Hover State */
+  --theme-sage: #8FA89B;          /* Soft Muted Sage for Hero Subtitles */
+
+  /* Neutral & Canvas Layers */
+  --theme-sand: #F7F2E7;          /* Warm Sand for Deals Section & Newsletter Card */
+  --theme-canvas: #FFFFFF;        /* Pure Clean Page Canvas */
+  --theme-surface: #FFFFFF;       /* Card Surface Elevation */
+  --theme-cream: #F4EFE6;         /* Linen Tag / Pill Background */
+
+  /* Typography Ink Tones */
+  --theme-ink: #141E1A;           /* Primary Dark Charcoal/Black */
+  --theme-ink-muted: #5F6964;     /* Secondary Subtitles & Authors */
+  --theme-ink-subtle: #929B96;    /* Placeholders & Meta */
+
+  /* Border Tints */
+  --theme-border: rgba(8, 37, 27, 0.08);
   --theme-border-strong: rgba(8, 37, 27, 0.16);
 
-  --theme-ink: #141E1A;         /* Primary Dark Typography */
-  --theme-ink-muted: #5F6964;   /* Secondary Text */
-  --theme-ink-subtle: #929B96;  /* Placeholder / Muted */
+  /* Bento Box Genre Colors */
+  --bento-fiction: #387A5B;
+  --bento-thriller: #DE9F3F;
+  --bento-fantasy: #207F8B;
+  --bento-nonfiction: #E75837;
+  --bento-romance: #7C67B6;
 }
 
+/* 4. Base Element Rules */
 @layer base {
   html {
     background-color: var(--theme-canvas);
     color: var(--theme-ink);
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
   }
 
   body {
@@ -41,18 +65,34 @@
     overflow-x: hidden;
   }
 
-  h1, h2, h3, h4, .font-display {
+  /* Font Utilities */
+  .font-poster {
+    font-family: 'Bebas Neue', 'Oswald', sans-serif;
+    letter-spacing: 0.015em;
+  }
+
+  .font-display {
     font-family: 'Fraunces', Georgia, serif;
     letter-spacing: -0.02em;
+  }
+
+  .font-sans {
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
   }
 
   .font-mono {
     font-family: 'IBM Plex Mono', monospace;
     font-variant-numeric: tabular-nums;
   }
+
+  /* Selection Highlight */
+  ::selection {
+    background-color: rgba(240, 90, 54, 0.2);
+    color: var(--theme-dark);
+  }
 }
 
-/* 3D Realistic Book Treatment */
+/* 5. Custom 3D Book Cover Treatment */
 .book-cover-3d {
   position: relative;
   border-radius: 2px 8px 8px 2px;
@@ -67,7 +107,7 @@
   bottom: 0;
   left: 0;
   width: 4px;
-  background: linear-gradient(to right, rgba(0,0,0,0.15) 0%, rgba(255,255,255,0.15) 50%, rgba(0,0,0,0.05) 100%);
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.16) 0%, rgba(255, 255, 255, 0.14) 50%, rgba(0, 0, 0, 0.05) 100%);
   pointer-events: none;
 }
 
@@ -80,11 +120,35 @@
   box-shadow: -3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 16px 30px -3px rgba(8, 37, 27, 0.14);
 }
 
-/* Custom Scrollbar Utility */
+/* 6. Hero Staggered Book Stack Top-Gradient Fade Mask */
+.hero-faded-stack {
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 15%, black 35%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 15%, black 35%, black 100%);
+}
+
+/* 7. Deep 50/50 Overlapping Pill Drop Shadow */
+.shadow-search-pill {
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+/* 8. Cross-Browser Invisible Scrollbar Utility */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* 9. Prevent Ugly Form Autofill Color Shifts */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--theme-ink);
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+  transition: background-color 5000s ease-in-out 0s;
 }
