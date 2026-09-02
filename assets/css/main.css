@@ -1,33 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+/* flemela/assets/css/main.css */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --paper-canvas: #FBF9F5;
-  --paper-surface: #FFFFFF;
-  --paper-cream: #F4EFE6;
+  /* Dynamic Theme Variables (Modify here to re-theme in the future) */
+  --theme-dark: #08251B;        /* Deep Pine */
+  --theme-forest: #0D382B;      /* Secondary Dark Green */
+  --theme-coral: #FF6347;       /* Primary Action Coral */
+  --theme-coral-hover: #E85338; /* Coral Hover State */
+  --theme-turquoise: #20B2AA;   /* Vibrant Teal Accent */
+  --theme-sand: #F7F2E7;        /* Warm Deals Section */
+  --theme-canvas: #FCFAF6;      /* Background Paper Canvas */
+  --theme-surface: #FFFFFF;     /* Card Surface */
+  --theme-cream: #F4EFE6;       /* Neutral Accent / Badges */
+  --theme-border: rgba(8, 37, 27, 0.09);
+  --theme-border-strong: rgba(8, 37, 27, 0.16);
 
-  --forest-950: #062319;
-  --forest-900: #08281E;
-  --forest-800: #0D382B;
-  --forest-700: #145240;
-
-  --gold-600: #A37222;
-  --gold-500: #C18B2F;
-  --gold-300: #DFC58E;
-  --gold-100: #F8F1E3;
-
-  --ink: #141E1A;
-  --ink-muted: #5F6964;
-  --ink-subtle: #929B96;
+  --theme-ink: #141E1A;         /* Primary Dark Typography */
+  --theme-ink-muted: #5F6964;   /* Secondary Text */
+  --theme-ink-subtle: #929B96;  /* Placeholder / Muted */
 }
 
 @layer base {
   html {
-    background-color: var(--paper-canvas);
-    color: var(--ink);
+    background-color: var(--theme-canvas);
+    color: var(--theme-ink);
     font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -36,12 +36,12 @@
 
   body {
     min-height: 100vh;
-    background-color: var(--paper-canvas);
-    color: var(--ink);
+    background-color: var(--theme-canvas);
+    color: var(--theme-ink);
     overflow-x: hidden;
   }
 
-  h1, h2, h3, .font-display {
+  h1, h2, h3, h4, .font-display {
     font-family: 'Fraunces', Georgia, serif;
     letter-spacing: -0.02em;
   }
@@ -56,7 +56,7 @@
 .book-cover-3d {
   position: relative;
   border-radius: 2px 8px 8px 2px;
-  box-shadow: -2px 0 6px -1px rgba(0, 0, 0, 0.08), 3px 6px 18px -2px rgba(8, 40, 30, 0.10);
+  box-shadow: -2px 0 6px -1px rgba(0, 0, 0, 0.08), 3px 6px 18px -2px rgba(8, 37, 27, 0.10);
   transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -68,7 +68,7 @@
   left: 0;
   width: 4px;
   background: linear-gradient(to right, rgba(0,0,0,0.15) 0%, rgba(255,255,255,0.15) 50%, rgba(0,0,0,0.05) 100%);
-  pointer-events:none;
+  pointer-events: none;
 }
 
 .book-hover-lift {
@@ -77,10 +77,10 @@
 
 .book-hover-lift:hover {
   transform: translateY(-4px);
-  box-shadow: -3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 16px 30px -3px rgba(8, 40, 30, 0.14);
+  box-shadow: -3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 16px 30px -3px rgba(8, 37, 27, 0.14);
 }
 
-/* Smooth hidden scrollbar utility */
+/* Custom Scrollbar Utility */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

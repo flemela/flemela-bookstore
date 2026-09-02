@@ -41,6 +41,9 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+.github/
+  workflows/
+    ci.yml
 assets/
   css/
     main.css
@@ -139,6 +142,7 @@ server/
         [token].get.ts
     orders/
       [id]/
+        payment-status.patch.ts
         status.get.ts
     products/
       [slug].get.ts
@@ -170,67 +174,41 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="assets/css/main.css">
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+<file path=".github/workflows/ci.yml">
+name: CI
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
-:root {
-  --forest-950: #062B20;
-  --forest-900: #08382A;
-  --forest-800: #0D4A37;
-  --forest-700: #146044;
+jobs:
+  build:
+    name: Typecheck & Build
+    runs-on: ubuntu-latest
 
-  --gold-600: #A87520;
-  --gold-500: #C18B2F;
-  --gold-300: #DFC58E;
-  --gold-100: #F5EBD4;
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  --paper: #FAF8F3;
-  --cream: #F3EFE6;
-  --surface: #FFFDF8;
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
-  --ink: #17221E;
-  --ink-muted: #68716B;
-  --ink-subtle: #949B96;
-}
+      - name: Install dependencies
+        run: npm ci
 
-@layer base {
-  html {
-    background-color: var(--paper);
-    color: var(--ink);
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+      - name: Type check
+        run: npm run typecheck
 
-  body {
-    min-height: 100vh;
-    background-color: var(--paper);
-    color: var(--ink);
-    overflow-x: hidden;
-  }
-
-  h1, h2, h3, .font-display {
-    font-family: 'Fraunces', Georgia, serif;
-    letter-spacing: -0.02em;
-  }
-
-  .font-mono {
-    font-family: 'IBM Plex Mono', monospace;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.book-hover-lift {
-  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.book-hover-lift:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(13, 9, 7, 0.08);
-}
+      - name: Build
+        run: npm run build
+        env:
+          SOKO_API_BASE_URL: ${{ secrets.SOKO_API_BASE_URL }}
+          SOKO_ORG_API_KEY: ${{ secrets.SOKO_ORG_API_KEY }}
 </file>
 
 <file path="components/admin/AdminLayout.vue">
@@ -253,37 +231,38 @@ const route = useRoute();
 </script>
 
 <template>
-  <div class="min-h-screen bg-paper-cream text-ink flex flex-col antialiased">
+  <div class="min-h-screen bg-paper-canvas text-ink flex flex-col antialiased">
     <!-- Top Admin Header -->
-    <header class="bg-forest-950 text-white py-2.5 px-4 sm:px-6 shadow-md sticky top-0 z-40 border-b border-forest-900">
+    <header class="bg-forest-950 text-paper py-2.5 px-4 sm:px-6 shadow-medium sticky top-0 z-40 border-b border-forest-900/80 backdrop-blur-md">
       <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        
         <!-- Brand Identity -->
-        <NuxtLink to="/admin" class="flex items-center gap-2">
+        <NuxtLink to="/admin" class="flex items-center gap-2.5 group">
           <img
             src="/images/logo.png"
             alt="Flemela Logo"
-            class="h-8 sm:h-9 w-auto object-contain brightness-0 invert"
+            class="h-8 sm:h-9 w-auto object-contain brightness-0 invert transition-transform duration-300 group-hover:scale-105"
           />
-          <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold hidden sm:inline pl-1 border-l border-white/20">
-            Control Portal
+          <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold hidden sm:inline-block pl-2 border-l border-white/15">
+            Admin Portal
           </span>
         </NuxtLink>
 
         <!-- Navigation Links -->
-        <nav class="flex items-center gap-1 sm:gap-3 text-xs font-semibold">
+        <nav aria-label="Admin Navigation" class="flex items-center gap-1 sm:gap-1.5 text-xs font-semibold">
           <NuxtLink
             to="/admin"
-            class="px-2.5 py-1.5 rounded transition-colors"
-            :class="route.path === '/admin' ? 'bg-white/15 text-white font-bold' : 'text-slate-300 hover:text-white'"
+            class="px-2.5 py-1.5 rounded-lg transition-all"
+            :class="route.path === '/admin' ? 'bg-white/15 text-paper font-bold shadow-2xs' : 'text-paper/70 hover:text-paper hover:bg-white/5'"
           >
-            <span class="hidden sm:inline">Dashboard</span>
+            <span class="hidden sm:inline">Overview</span>
             <LayoutDashboard :size="15" class="sm:hidden" />
           </NuxtLink>
 
           <NuxtLink
             to="/admin/books"
-            class="px-2.5 py-1.5 rounded transition-colors"
-            :class="route.path.startsWith('/admin/books') && !route.path.includes('import') && !route.path.includes('new') ? 'bg-white/15 text-white font-bold' : 'text-slate-300 hover:text-white'"
+            class="px-2.5 py-1.5 rounded-lg transition-all"
+            :class="route.path.startsWith('/admin/books') && !route.path.includes('import') && !route.path.includes('new') ? 'bg-white/15 text-paper font-bold shadow-2xs' : 'text-paper/70 hover:text-paper hover:bg-white/5'"
           >
             <span class="hidden sm:inline">Catalog</span>
             <BookOpen :size="15" class="sm:hidden" />
@@ -291,58 +270,65 @@ const route = useRoute();
 
           <NuxtLink
             to="/admin/location"
-            class="px-2.5 py-1.5 rounded transition-colors flex items-center gap-1"
-            :class="route.path.includes('location') ? 'bg-white/15 text-white font-bold' : 'text-slate-300 hover:text-white'"
+            class="px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1"
+            :class="route.path.includes('location') ? 'bg-white/15 text-paper font-bold shadow-2xs' : 'text-paper/70 hover:text-paper hover:bg-white/5'"
           >
-            <MapPin :size="14" class="text-gold-300" />
+            <MapPin :size="13" class="text-gold-300" />
             <span class="hidden sm:inline">Hub &amp; Delivery</span>
           </NuxtLink>
 
           <NuxtLink
             to="/admin/mpesa"
-            class="px-2.5 py-1.5 rounded transition-colors flex items-center gap-1"
-            :class="route.path.includes('mpesa') ? 'bg-white/15 text-white font-bold' : 'text-slate-300 hover:text-white'"
+            class="px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1"
+            :class="route.path.includes('mpesa') ? 'bg-white/15 text-paper font-bold shadow-2xs' : 'text-paper/70 hover:text-paper hover:bg-white/5'"
           >
-            <Zap :size="14" class="text-emerald-400" />
+            <Zap :size="13" class="text-emerald-400" />
             <span class="hidden sm:inline">M-Pesa</span>
           </NuxtLink>
 
           <NuxtLink
             to="/admin/books/import"
-            class="px-2.5 py-1.5 rounded transition-colors flex items-center gap-1"
-            :class="route.path.includes('import') ? 'bg-white/15 text-white font-bold' : 'text-slate-300 hover:text-white'"
+            class="px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1"
+            :class="route.path.includes('import') ? 'bg-white/15 text-paper font-bold shadow-2xs' : 'text-paper/70 hover:text-paper hover:bg-white/5'"
           >
-            <FileSpreadsheet :size="14" class="text-gold-500" />
+            <FileSpreadsheet :size="13" class="text-gold-400" />
             <span class="hidden sm:inline">Excel Import</span>
           </NuxtLink>
 
           <NuxtLink
             to="/admin/books/new"
-            class="px-2.5 py-1.5 rounded transition-colors flex items-center gap-1"
-            :class="route.path.includes('new') ? 'bg-white/15 text-white font-bold' : 'text-slate-300 hover:text-white'"
+            class="px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1"
+            :class="route.path.includes('new') ? 'bg-white/15 text-paper font-bold shadow-2xs' : 'text-paper/70 hover:text-paper hover:bg-white/5'"
           >
-            <PlusCircle :size="14" />
+            <PlusCircle :size="13" class="text-gold-300" />
             <span class="hidden sm:inline">Add Book</span>
           </NuxtLink>
 
-          <div class="h-4 w-px bg-white/20 mx-1 hidden sm:block" />
+          <div class="h-4 w-px bg-white/15 mx-1 hidden md:block" />
 
-          <NuxtLink to="/" target="_blank" class="text-slate-300 hover:text-white hidden md:flex items-center gap-1">
-            Storefront <ExternalLink :size="12" />
+          <NuxtLink
+            to="/"
+            target="_blank"
+            class="text-paper/70 hover:text-paper hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-white/5 transition-colors"
+          >
+            <span>Store</span>
+            <ExternalLink :size="11" />
           </NuxtLink>
 
           <button
             type="button"
-            class="text-red-300 hover:text-white flex items-center gap-1 transition-colors cursor-pointer px-2 py-1"
+            class="text-red-300 hover:text-white hover:bg-red-950/40 px-2 py-1 rounded-md flex items-center gap-1 transition-colors cursor-pointer ml-1"
+            title="Sign out of portal"
             @click="logout"
           >
-            <LogOut :size="13" /> <span class="hidden sm:inline">Logout</span>
+            <LogOut :size="13" />
+            <span class="hidden sm:inline">Logout</span>
           </button>
         </nav>
       </div>
     </header>
 
-    <!-- Main Workspace -->
+    <!-- Main Workspace Canvas -->
     <main class="max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 flex-1">
       <slot />
     </main>
@@ -367,7 +353,7 @@ const props = defineProps<Props>();
 const { addItem, openDrawer } = useCart();
 const { push: pushToast } = useToast();
 
-// Bulletproof cover image resolver supporting string array, object array, and fallbacks
+// Cover image resolver supporting string array, object array, and fallbacks
 const coverImage = computed(() => {
   if (!props.book) return '/images/book-placeholder.svg';
   const rawImg = props.book.images?.[0];
@@ -443,30 +429,32 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <div class="bg-paper-surface rounded-lg border-2 border-ink-border hover:border-forest-900 p-3.5 sm:p-4 flex flex-col justify-between book-hover-lift group shadow-subtle transition-all duration-200">
+  <div class="bg-paper-surface rounded-xl border border-paper-border hover:border-forest-800/30 p-3 sm:p-4 flex flex-col justify-between book-hover-lift group shadow-soft hover:shadow-card transition-all duration-300">
     <div class="space-y-3">
-      <!-- Book Cover Image -->
-      <NuxtLink :to="`/book/${book.slug}`" class="block relative aspect-[3/4] bg-paper-cream rounded overflow-hidden">
+      <!-- 3D Book Cover Frame -->
+      <NuxtLink :to="`/book/${book.slug}`" class="block relative aspect-[3/4] bg-paper-cream rounded-book overflow-hidden book-cover-3d">
         <img
           :src="coverImage"
           :alt="`Cover for ${book.name}`"
-          class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           loading="lazy"
+          referrerpolicy="no-referrer"
           width="260"
           height="346"
           @error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'"
         />
 
-        <div v-if="book.badge" class="absolute top-2 left-2 z-10">
-          <span class="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-forest-950 text-white shadow-sm">
+        <!-- Optional Curated Badge -->
+        <div v-if="book.badge" class="absolute top-2.5 left-2.5 z-10">
+          <span class="text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-forest-950/90 backdrop-blur-xs text-gold-300 shadow-sm border border-gold-500/30">
             ★ {{ book.badge }}
           </span>
         </div>
       </NuxtLink>
 
-      <!-- Details -->
-      <div class="space-y-1.5 text-left">
-        <span class="text-[10px] uppercase font-mono font-bold tracking-wider text-forest-900 block">
+      <!-- Book Typography Details -->
+      <div class="space-y-1 text-left pt-0.5">
+        <span class="text-[9px] sm:text-[10px] uppercase font-mono font-bold tracking-widest text-gold-600 block truncate">
           {{ book.category_name || 'General' }}
         </span>
 
@@ -476,51 +464,51 @@ function handleAddToCart(event: Event): void {
           </h3>
         </NuxtLink>
 
-        <p class="text-xs font-semibold text-ink leading-tight truncate">
+        <p class="text-xs italic text-ink-muted leading-tight truncate">
           {{ book.author ? `By ${book.author}` : 'Original Edition' }}
         </p>
 
-        <!-- Format Selection Buttons -->
-        <div class="space-y-1 pt-1.5">
-          <span class="text-[9px] font-bold text-ink-muted uppercase block font-mono">Select Format:</span>
-          <div class="flex flex-wrap gap-1.5">
+        <!-- Segmented Mini-Pill Format Switcher -->
+        <div v-if="book.formats && book.formats.length > 1" class="pt-2">
+          <div class="inline-flex bg-paper-cream/80 p-0.5 rounded-lg border border-paper-border w-full justify-between gap-1">
             <button
               v-for="fmt in book.formats"
               :key="fmt.id"
               type="button"
-              class="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded border transition-all cursor-pointer"
+              class="flex-1 py-1 px-1.5 text-[9px] font-mono font-bold rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer select-none truncate"
               :class="[
                 selectedFormatId === fmt.id
-                  ? 'bg-forest-950 text-white border-forest-950 shadow-xs'
-                  : 'bg-white text-forest-950 border-ink-border hover:border-forest-900'
+                  ? 'bg-forest-950 text-white shadow-xs'
+                  : 'text-ink-muted hover:text-forest-950 hover:bg-white/60'
               ]"
               @click="(e) => handleSelectFormat(fmt.id, e)"
             >
-              <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="11" />
-              <span>{{ fmt.format.toUpperCase() }}</span>
-              <span class="text-[9px] opacity-80 font-normal">({{ formatCurrency(fmt.price) }})</span>
+              <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="10" />
+              <span>{{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}</span>
             </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Pricing & Action Button -->
-    <div class="pt-3.5 mt-3 border-t-2 border-ink-border space-y-2.5">
+    <!-- Pricing & Tactile Action Button -->
+    <div class="pt-3 mt-3 border-t border-paper-border/80 space-y-2">
       <div class="flex items-baseline justify-between">
-        <span class="text-xs text-forest-950 font-bold uppercase font-mono">Price:</span>
-        <span class="text-base sm:text-lg font-extrabold font-mono text-forest-950 tabular-figure">
+        <span class="text-[11px] text-ink-muted font-medium font-sans">
+          {{ activeFormat?.format === 'hardcopy' ? 'Physical Copy' : 'Instant eBook' }}
+        </span>
+        <span class="text-sm sm:text-base font-bold font-mono text-forest-950 tabular-figure">
           {{ formatCurrency(currentPrice) }}
         </span>
       </div>
 
       <button
         type="button"
-        class="w-full bg-forest-950 hover:bg-forest-800 text-white font-sans font-bold text-xs uppercase py-3 px-4 rounded shadow-subtle transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+        class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-950 text-paper font-sans font-bold text-[11px] uppercase tracking-wider py-2.5 px-3 rounded-lg shadow-subtle transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
         @click="handleAddToCart"
       >
-        <ShoppingBag :size="15" />
-        <span>Add to Cart • {{ activeFormat ? activeFormat.format.toUpperCase() : '' }}</span>
+        <ShoppingBag :size="13" class="text-gold-300" />
+        <span>Add to Cart</span>
       </button>
     </div>
   </div>
@@ -530,6 +518,7 @@ function handleAddToCart(event: Event): void {
 <file path="components/storefront/BookstoreHeader.vue">
 <!-- components/storefront/BookstoreHeader.vue -->
 <script setup lang="ts">
+import { ref } from 'vue';
 import { Search, ShoppingBag, Menu, X, ChevronDown } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 
@@ -548,9 +537,9 @@ const categories = [
   'All Categories',
   'Fiction & Literature',
   'Psychology & Self-Help',
-  'Business & Wealth',
-  'Education & Textbooks',
+  'Business & Finance',
   'Christian Books',
+  'Education & Textbooks',
   'Biographies & Memoir',
 ];
 
@@ -564,70 +553,65 @@ function handleCategoryClick(cat: string): void {
   isCategoryDropdownOpen.value = false;
   emit('selectCategory', cat === 'All Categories' ? 'ALL' : cat);
 }
+
+function clearSearch(): void {
+  searchInput.value = '';
+  emit('search', '', selectedCategory.value);
+}
 </script>
 
 <template>
-  <header class="bg-paper-surface border-b border-ink-border sticky top-0 z-40">
-    <!-- Top Announcement Strip -->
-    <div class="bg-forest-950 text-white px-4 py-1.5 text-xs font-sans border-b border-forest-900">
-      <div class="max-w-7xl mx-auto flex justify-between items-center tracking-wide">
-        <span class="text-gold-300 font-semibold truncate">
-          Free delivery across Nairobi on orders above KSh 2,500
-        </span>
-        <div class="hidden sm:flex items-center gap-4 text-white text-xs font-medium">
-          <span>Lipa Na M-Pesa Direct</span>
-          <span>•</span>
-          <span>Instant Cloudflare R2 eBooks</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Header Bar -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
-      <!-- Left: Mobile Menu Toggle & Brand Logo -->
-      <div class="flex items-center gap-3">
+  <header class="bg-paper-surface/95 backdrop-blur-md border-b border-paper-border sticky top-0 z-40 transition-all">
+    <!-- Main Navigation Bar -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3 sm:gap-6">
+      
+      <!-- Left: Mobile Menu Trigger & Brand Logo -->
+      <div class="flex items-center gap-3 flex-shrink-0">
         <button
           type="button"
-          class="md:hidden p-1.5 text-forest-950 hover:bg-paper-cream rounded transition-colors"
+          class="md:hidden p-1.5 text-forest-950 hover:bg-paper-cream rounded-lg transition-colors cursor-pointer"
           aria-label="Toggle navigation menu"
           @click="isMobileMenuOpen = !isMobileMenuOpen"
         >
-          <component :is="isMobileMenuOpen ? X : Menu" :size="22" />
+          <component :is="isMobileMenuOpen ? X : Menu" :size="20" />
         </button>
 
-        <NuxtLink to="/" class="flex items-center gap-2">
+        <NuxtLink to="/" class="flex items-center gap-2 group">
           <img
             src="/images/logo.png"
             alt="Flemela Bookstore Logo"
-            class="h-10 sm:h-12 w-auto object-contain"
+            class="h-9 sm:h-11 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
             width="120"
-            height="48"
+            height="44"
           />
         </NuxtLink>
       </div>
 
-      <!-- Center: Active Search Bar & Dropdown (Desktop) -->
-      <div class="hidden md:flex items-center flex-1 max-w-xl mx-4 bg-white rounded border border-ink-border focus-within:border-forest-900 focus-within:ring-1 focus-within:ring-forest-900">
-        <div class="relative">
+      <!-- Center: Floating Search Pill (Desktop) -->
+      <div class="hidden md:flex items-center flex-1 max-w-xl mx-2 bg-paper-canvas rounded-full border border-paper-border focus-within:border-forest-800/40 focus-within:bg-white focus-within:ring-2 focus-within:ring-forest-900/5 transition-all shadow-subtle">
+        
+        <!-- Category Dropdown Trigger -->
+        <div class="relative flex-shrink-0">
           <button
             type="button"
-            class="px-3.5 py-2 text-xs font-bold text-forest-950 hover:bg-slate-50 flex items-center gap-1 border-r border-ink-border cursor-pointer select-none"
+            class="px-3.5 py-2 text-[11px] font-sans font-semibold text-forest-950 hover:text-gold-600 flex items-center gap-1 border-r border-paper-border cursor-pointer select-none"
             @click="isCategoryDropdownOpen = !isCategoryDropdownOpen"
           >
-            <span>{{ selectedCategory }}</span>
-            <ChevronDown :size="12" class="text-forest-950" />
+            <span class="max-w-[110px] truncate">{{ selectedCategory }}</span>
+            <ChevronDown :size="12" class="text-ink-muted transition-transform" :class="{ 'rotate-180': isCategoryDropdownOpen }" />
           </button>
 
+          <!-- Dropdown Menu -->
           <div
             v-if="isCategoryDropdownOpen"
-            class="absolute top-full left-0 mt-1 w-52 bg-white border border-ink-border rounded-md shadow-lg py-1 z-50 text-xs font-medium text-forest-950"
+            class="absolute top-full left-0 mt-1.5 w-52 bg-white border border-paper-border rounded-xl shadow-medium py-1.5 z-50 text-xs font-medium text-forest-950"
           >
             <button
               v-for="cat in categories"
               :key="cat"
               type="button"
-              class="w-full text-left px-3 py-2 hover:bg-paper-cream transition-colors text-xs font-semibold cursor-pointer"
-              :class="{ 'text-forest-950 font-extrabold bg-paper-cream': selectedCategory === cat }"
+              class="w-full text-left px-3.5 py-2 hover:bg-paper-cream transition-colors text-xs font-semibold cursor-pointer"
+              :class="{ 'text-forest-950 font-bold bg-paper-cream/80': selectedCategory === cat }"
               @click="handleCategoryClick(cat)"
             >
               {{ cat }}
@@ -635,83 +619,110 @@ function handleCategoryClick(cat: string): void {
           </div>
         </div>
 
+        <!-- Text Input -->
         <input
           v-model="searchInput"
           type="text"
           placeholder="Search by title, author, or keyword..."
-          class="flex-1 bg-transparent px-3 py-2 text-xs text-forest-950 font-medium outline-none placeholder:text-slate-400"
+          class="flex-1 bg-transparent px-3.5 py-2 text-xs text-forest-950 font-medium outline-none placeholder:text-ink-subtle"
           @keyup.enter="handleSearch"
         />
 
+        <!-- Clear Button -->
+        <button
+          v-if="searchInput"
+          type="button"
+          class="p-1 text-ink-subtle hover:text-forest-950 mr-1 cursor-pointer"
+          aria-label="Clear search query"
+          @click="clearSearch"
+        >
+          <X :size="13" />
+        </button>
+
+        <!-- Search Action Button -->
         <button
           type="button"
-          class="px-4 py-2 text-forest-950 hover:bg-paper-cream transition-colors cursor-pointer"
+          class="px-3.5 py-2 text-forest-950 hover:text-gold-600 transition-colors cursor-pointer"
           aria-label="Search"
           @click="handleSearch"
         >
-          <Search :size="15" />
+          <Search :size="14" />
         </button>
       </div>
 
-      <!-- Right: Portal & Functional Cart Action Trigger -->
-      <div class="flex items-center gap-3">
+      <!-- Right: Portal & Cart Actions -->
+      <div class="flex items-center gap-2.5 sm:gap-3 flex-shrink-0">
         <NuxtLink
           to="/admin/login"
-          class="hidden sm:inline-block text-xs font-bold text-forest-950 hover:text-gold-600 transition-colors px-2 py-1"
+          class="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-ink-muted hover:text-forest-950 transition-colors px-2.5 py-1.5 rounded-md hover:bg-paper-cream"
         >
-          Admin Portal
+          <span>Portal</span>
         </NuxtLink>
 
-        <!-- Functional Cart Button -->
+        <!-- Cart Bag Button -->
         <button
           type="button"
-          class="flex items-center gap-2 bg-forest-950 text-white hover:bg-forest-800 px-3.5 py-2 rounded transition-all text-xs font-bold cursor-pointer shadow-subtle"
+          class="relative flex items-center gap-2 bg-forest-950 text-paper hover:bg-forest-900 active:bg-forest-950 px-3.5 py-2 rounded-lg transition-all text-xs font-bold cursor-pointer shadow-subtle active:scale-[0.98]"
           @click="openDrawer"
         >
           <div class="relative flex items-center justify-center">
-            <ShoppingBag :size="16" />
+            <ShoppingBag :size="15" class="text-gold-300" />
             <span
               v-if="totalItems > 0"
-              class="absolute -top-2 -right-2.5 bg-gold-500 text-forest-950 font-bold text-[9px] px-1.5 py-0.2 rounded-full font-mono shadow-sm"
+              class="absolute -top-2 -right-2.5 bg-gold-500 text-forest-950 font-extrabold text-[9px] px-1.5 py-0.2 rounded-full font-mono shadow-xs"
             >
               {{ totalItems }}
             </span>
           </div>
-          <span class="font-sans text-xs">Cart</span>
+          <span class="font-sans text-xs font-bold hidden sm:inline">Cart</span>
         </button>
       </div>
     </div>
 
-    <!-- Mobile Search Sub-Bar -->
-    <div class="md:hidden px-4 pb-3">
-      <div class="flex items-center bg-white rounded border border-ink-border px-3 py-2">
-        <Search :size="15" class="text-forest-950 mr-2 flex-shrink-0" />
+    <!-- Mobile Search Bar (Sticky Sub-Bar) -->
+    <div class="md:hidden px-4 pb-2.5">
+      <div class="flex items-center bg-paper-canvas rounded-full border border-paper-border px-3 py-1.5 shadow-subtle">
+        <Search :size="13" class="text-ink-muted mr-2 flex-shrink-0" />
         <input
           v-model="searchInput"
           type="text"
           placeholder="Search books, authors..."
-          class="w-full bg-transparent text-xs text-forest-950 font-medium outline-none"
+          class="w-full bg-transparent text-xs text-forest-950 font-medium outline-none placeholder:text-ink-subtle"
           @keyup.enter="handleSearch"
         />
+        <button
+          v-if="searchInput"
+          type="button"
+          class="p-0.5 text-ink-subtle hover:text-forest-950"
+          @click="clearSearch"
+        >
+          <X :size="12" />
+        </button>
       </div>
     </div>
 
     <!-- Mobile Navigation Drawer -->
-    <div v-if="isMobileMenuOpen" class="md:hidden bg-paper-surface border-t border-ink-border px-4 py-4 space-y-3">
-      <p class="text-xs uppercase font-extrabold tracking-wider text-forest-950">Browse Categories</p>
+    <div v-if="isMobileMenuOpen" class="md:hidden bg-paper-surface border-t border-paper-border px-4 py-4 space-y-3.5 shadow-medium">
+      <div class="flex items-center justify-between">
+        <p class="text-[10px] uppercase font-mono font-bold tracking-widest text-gold-600">Browse Catalog</p>
+        <button type="button" class="text-xs text-ink-muted" @click="isMobileMenuOpen = false">Close</button>
+      </div>
+
       <div class="grid grid-cols-2 gap-2 text-xs">
         <button
           v-for="cat in categories"
           :key="cat"
           type="button"
-          class="text-left py-2 px-2.5 rounded bg-white border border-ink-border hover:bg-paper-cream font-semibold text-forest-950 truncate cursor-pointer"
+          class="text-left py-2 px-2.5 rounded-lg bg-paper-canvas border border-paper-border hover:bg-paper-cream font-medium text-forest-950 truncate cursor-pointer text-[11px]"
           @click="handleCategoryClick(cat); isMobileMenuOpen = false;"
         >
           {{ cat }}
         </button>
       </div>
-      <div class="pt-3 border-t border-ink-border flex justify-between items-center text-xs">
+
+      <div class="pt-3 border-t border-paper-border flex justify-between items-center text-xs">
         <NuxtLink to="/admin/login" class="text-forest-950 font-bold hover:underline">Merchant Portal</NuxtLink>
+        <span class="text-[10px] text-ink-muted font-mono">Flemela Books</span>
       </div>
     </div>
   </header>
@@ -719,7 +730,9 @@ function handleCategoryClick(cat: string): void {
 </file>
 
 <file path="components/storefront/BookstoreNav.vue">
+<!-- components/storefront/BookstoreNav.vue -->
 <script setup lang="ts">
+import { ref } from 'vue';
 import { Sparkles } from 'lucide-vue-next';
 
 const emit = defineEmits<{
@@ -729,9 +742,9 @@ const emit = defineEmits<{
 const navItems = [
   'ALL',
   'Business & Finance',
-  'Psychology / Self-Help',
+  'Psychology & Self-Help',
   'Self-Help',
-  'Fiction',
+  'Fiction & Literature',
   'Christian Books',
   'Education & Textbooks',
 ];
@@ -745,40 +758,31 @@ function handleSelect(category: string): void {
 </script>
 
 <template>
-  <nav class="bg-brand-green text-white text-xs font-semibold px-4 shadow-md sticky top-[73px] z-30 overflow-x-auto no-scrollbar">
-    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4 py-2.5 min-w-max md:min-w-0">
-      <!-- Category Pills -->
-      <div class="flex items-center gap-1 sm:gap-2">
+  <nav aria-label="Book categories" class="bg-forest-950 text-paper text-xs font-semibold px-4 shadow-subtle sticky top-[61px] sm:top-[65px] z-30 overflow-x-auto no-scrollbar border-b border-forest-900/60">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4 py-2 min-w-max md:min-w-0">
+      
+      <!-- Category Pills Carousel -->
+      <div class="flex items-center gap-1 sm:gap-1.5">
         <button
           v-for="item in navItems"
           :key="item"
           type="button"
-          class="px-3 py-1.5 rounded-full transition-all text-xs font-bold whitespace-nowrap cursor-pointer"
-          :class="activeItem === item ? 'bg-brand-gold text-brand-green-dark shadow-sm' : 'text-slate-200 hover:text-white hover:bg-white/10'"
+          class="px-3 py-1 rounded-full transition-all text-[11px] font-sans font-medium whitespace-nowrap cursor-pointer select-none"
+          :class="activeItem === item ? 'bg-gold-500 text-forest-950 font-bold shadow-xs' : 'text-paper/80 hover:text-paper hover:bg-white/10'"
           @click="handleSelect(item)"
         >
-          {{ item === 'ALL' ? 'All Books' : item }}
+          {{ item === 'ALL' ? 'All Editions' : item }}
         </button>
       </div>
 
-      <!-- Right Highlight -->
-      <div class="hidden lg:flex items-center gap-2 text-brand-gold font-bold text-[11px] whitespace-nowrap">
-        <Sparkles :size="14" />
-        <span>Instant PDF &amp; EPUB eBooks Available</span>
+      <!-- Right Feature Badge -->
+      <div class="hidden lg:flex items-center gap-1.5 text-gold-300 font-sans font-medium text-[11px] whitespace-nowrap">
+        <Sparkles :size="12" class="text-gold-400" />
+        <span>Instant Cloudflare R2 Downloads Available</span>
       </div>
     </div>
   </nav>
 </template>
-
-<style scoped>
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-</style>
 </file>
 
 <file path="components/storefront/CartDrawer.vue">
@@ -1341,7 +1345,7 @@ import { Truck, MessageCircle, Search } from 'lucide-vue-next';
 const router = useRouter();
 
 function handleTrackOrderClick(): void {
-  const orderRef = prompt('Enter your 8-character Order Reference # (e.g. 7K9M or Order UUID):');
+  const orderRef = prompt('Enter your Order Reference or UUID (e.g. 7K9M or full order ID):');
   if (orderRef && orderRef.trim()) {
     router.push({
       path: '/checkout/confirm',
@@ -1352,28 +1356,32 @@ function handleTrackOrderClick(): void {
 
 const whatsappHelpUrl =
   'https://wa.me/254700000000?text=' +
-  encodeURIComponent('Hello Flemela Bookstore Support, I need help with my book order.');
+  encodeURIComponent('Hello Flemela Bookstore Concierge, I need assistance with my book order.');
 </script>
 
 <template>
-  <div class="bg-forest-950 text-white text-xs py-2 px-4 border-b border-forest-900">
-    <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
-      <div class="flex items-center gap-2">
-        <Truck :size="15" class="text-gold-500" />
-        <span class="font-semibold text-gold-300">FREE DELIVERY on orders over KSh 2,500 in Nairobi</span>
+  <aside aria-label="Store utility notice" class="bg-forest-950 text-paper text-[11px] py-1.5 px-4 border-b border-forest-900/60 select-none">
+    <div class="max-w-7xl mx-auto flex justify-between items-center gap-2">
+      <!-- Left: Free Delivery Accent -->
+      <div class="flex items-center gap-1.5 truncate">
+        <Truck :size="13" class="text-gold-400 flex-shrink-0" />
+        <span class="font-medium text-paper/90 truncate">
+          <strong class="text-gold-300 font-semibold">FREE DELIVERY</strong> across Nairobi on orders above KSh 2,500
+        </span>
       </div>
 
-      <!-- Functional Actions -->
-      <div class="flex items-center gap-4 text-white font-medium text-xs">
+      <!-- Right: Reader Concierge & Order Tracking -->
+      <div class="flex items-center gap-3.5 text-paper/80 font-sans flex-shrink-0 text-[11px]">
         <button
           type="button"
           class="hover:text-gold-300 transition-colors flex items-center gap-1 cursor-pointer"
           @click="handleTrackOrderClick"
         >
-          <Search :size="12" /> Track Order
+          <Search :size="11" />
+          <span class="hidden sm:inline">Track Order</span>
         </button>
 
-        <span>•</span>
+        <span class="opacity-30">•</span>
 
         <a
           :href="whatsappHelpUrl"
@@ -1381,15 +1389,18 @@ const whatsappHelpUrl =
           rel="noopener"
           class="hover:text-gold-300 transition-colors flex items-center gap-1"
         >
-          <MessageCircle :size="12" /> Help Center
+          <MessageCircle :size="11" class="text-emerald-400" />
+          <span>Concierge</span>
         </a>
 
-        <span>•</span>
+        <span class="hidden md:inline opacity-30">•</span>
 
-        <span class="text-gold-300 font-bold hidden sm:inline">Welcome to Flemela</span>
+        <span class="text-gold-300 font-mono font-medium hidden md:inline text-[10px] tracking-wider uppercase">
+          Nairobi, Kenya
+        </span>
       </div>
     </div>
-  </div>
+  </aside>
 </template>
 </file>
 
@@ -2312,22 +2323,25 @@ export function useToast() {
 <file path="middleware/admin-auth.ts">
 // =============================================================================
 // middleware/admin-auth.ts
-// Nuxt page route middleware guarding /admin/* views.
+// Nuxt route middleware guarding single-tenant /admin views.
 // =============================================================================
 
 export default defineNuxtRouteMiddleware((to) => {
-  const publicAuthRoutes = ['/admin/login', '/admin/register'];
   const sessionCookie = useCookie<string | null>('flemela_admin_session');
 
-  // If visiting login or register while already authenticated, forward to admin
-  if (publicAuthRoutes.includes(to.path)) {
+  // If visiting login while already authenticated, redirect directly to admin workspace
+  if (to.path === '/admin/login' || to.path === '/admin/register') {
     if (sessionCookie.value) {
       return navigateTo('/admin', { replace: true });
+    }
+    // Block /admin/register completely
+    if (to.path === '/admin/register') {
+      return navigateTo('/admin/login', { replace: true });
     }
     return;
   }
 
-  // If accessing protected /admin/* routes without a session, redirect to login
+  // Guard all /admin/* routes
   if (!sessionCookie.value) {
     return navigateTo({
       path: '/admin/login',
@@ -3070,13 +3084,15 @@ function onFileSelect(e: Event): void {
 import { ref, computed } from 'vue';
 import { Plus, Search, Trash2, Edit2, BookOpen, Download, Truck, ExternalLink } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
+import { useToast } from '~/composables/useToast';
 import type { Book } from '~/types';
 
 definePageMeta({
   middleware: 'admin-auth',
 });
 
-const { data: books, refresh } = await useFetch<Book[]>('/api/admin/books');
+const { push: pushToast } = useToast();
+const { data: books, refresh, status: fetchStatus } = await useFetch<Book[]>('/api/admin/books');
 
 const searchQuery = ref('');
 const selectedCategory = ref('');
@@ -3099,19 +3115,22 @@ const filteredBooks = computed(() => {
 
 function resolveCoverUrl(book: Book): string {
   const firstImg = book.images?.[0];
-  if (!firstImg) return '';
+  if (!firstImg) return (book as any).cover_image_url || '';
   if (typeof firstImg === 'string') return firstImg;
-  return firstImg.image_url || '';
+  return firstImg.image_url || (book as any).cover_image_url || '';
 }
 
 async function handleDeleteBook(id: string, name: string): Promise<void> {
-  if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) return;
+  if (!confirm(`Are you sure you want to permanently delete "${name}"? All formats, covers, and stock will be deleted cleanly.`)) {
+    return;
+  }
 
   try {
     await $fetch(`/api/admin/books/${id}`, { method: 'DELETE' });
-    refresh();
+    pushToast({ message: `"${name}" removed from catalog`, variant: 'success' });
+    await refresh();
   } catch (err: any) {
-    alert(err.statusMessage || 'Failed to delete book');
+    pushToast({ message: err.statusMessage || 'Failed to delete book', variant: 'error' });
   }
 }
 </script>
@@ -3164,9 +3183,15 @@ async function handleDeleteBook(id: string, name: string): Promise<void> {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-if="filteredBooks.length === 0">
+            <tr v-if="fetchStatus === 'pending'">
               <td colspan="6" class="py-12 text-center text-ink-muted">
-                No books found matching your search.
+                Loading catalog...
+              </td>
+            </tr>
+
+            <tr v-else-if="filteredBooks.length === 0">
+              <td colspan="6" class="py-12 text-center text-ink-muted">
+                No books found in catalog. Add your first book or run an Excel import.
               </td>
             </tr>
 
@@ -3179,6 +3204,7 @@ async function handleDeleteBook(id: string, name: string): Promise<void> {
                     :src="resolveCoverUrl(book)"
                     :alt="`Cover for ${book.name}`"
                     class="w-full h-full object-cover"
+                    referrerpolicy="no-referrer"
                     @error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'"
                   />
                   <BookOpen v-else :size="16" class="text-ink-muted opacity-40" />
@@ -3740,6 +3766,7 @@ async function handleSubmit(): Promise<void> {
 <file path="pages/admin/index.vue">
 <!-- pages/admin/index.vue -->
 <script setup lang="ts">
+import { ref } from 'vue';
 import {
   BookOpen,
   Database,
@@ -3749,15 +3776,20 @@ import {
   FileSpreadsheet,
   ExternalLink,
   RefreshCw,
+  CheckCircle,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
+import { useToast } from '~/composables/useToast';
 import type { AdminDashboardData } from '~/server/api/admin/dashboard.get';
 
 definePageMeta({
   middleware: 'admin-auth',
 });
 
+const { push: pushToast } = useToast();
 const { data: stats, refresh, status } = await useFetch<AdminDashboardData>('/api/admin/dashboard');
+
+const confirmingOrderId = ref<string | null>(null);
 
 function formatCurrency(val: number): string {
   return `KSh ${val.toLocaleString('en-KE')}`;
@@ -3766,26 +3798,44 @@ function formatCurrency(val: number): string {
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' });
 }
+
+async function handleConfirmPayment(orderId: string): Promise<void> {
+  confirmingOrderId.value = orderId;
+  try {
+    await $fetch(`/api/admin/orders/${orderId}/payment-status`, {
+      method: 'PATCH',
+      body: { payment_status: 'paid' },
+    });
+
+    pushToast({ message: 'Payment confirmed! eBook downloads released.', variant: 'success' });
+    await refresh();
+  } catch (err: any) {
+    pushToast({ message: err.data?.message || 'Failed to approve payment', variant: 'error' });
+  } finally {
+    confirmingOrderId.value = null;
+  }
+}
 </script>
 
 <template>
   <AdminLayout>
-    <div class="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
-      <!-- Header -->
-      <div class="flex flex-wrap items-baseline justify-between gap-4 pb-4 border-b border-ink-border">
+    <div class="space-y-7 max-w-6xl mx-auto">
+      
+      <!-- Top Title Bar -->
+      <div class="flex flex-wrap items-baseline justify-between gap-4 pb-4 border-b border-paper-border">
         <div>
           <span class="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-gold-600 font-bold block">
             Operations &amp; Control
           </span>
-          <h1 class="font-display text-xl sm:text-2xl font-bold text-forest-950">
+          <h1 class="font-display text-2xl sm:text-3xl font-bold text-forest-950">
             Bookstore Overview
           </h1>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2.5">
           <button
             type="button"
-            class="px-2.5 py-1.5 bg-paper-surface border border-ink-border hover:border-forest-800/40 rounded text-ink text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-subtle"
+            class="px-3 py-1.5 bg-paper-surface border border-paper-border hover:border-forest-800/40 rounded-xl text-forest-950 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-soft active:scale-[0.98]"
             @click="() => refresh()"
           >
             <RefreshCw :size="12" :class="{ 'animate-spin': status === 'pending' }" />
@@ -3794,126 +3844,146 @@ function formatDate(iso: string): string {
 
           <NuxtLink
             to="/admin/books/new"
-            class="bg-forest-900 text-paper hover:bg-forest-800 text-xs font-bold uppercase px-3.5 py-1.5 rounded transition-all flex items-center gap-1.5 shadow-subtle"
+            class="bg-forest-950 text-paper hover:bg-forest-900 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-medium active:scale-[0.98]"
           >
-            <PlusCircle :size="13" />
+            <PlusCircle :size="14" class="text-gold-300" />
             <span>Add Book</span>
           </NuxtLink>
         </div>
       </div>
 
-      <!-- KPI Metrics Grid (Mobile 2-col, Desktop 4-col) -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <!-- Metric 1: Total Catalog Titles -->
-        <div class="bg-paper-surface p-4 sm:p-5 rounded border border-ink-border shadow-subtle space-y-1.5">
+      <!-- KPI Metrics Grid (4 Elevated Cards) -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Metric 1: Total Titles in Catalog -->
+        <div class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border shadow-soft space-y-2 hover:shadow-card transition-shadow">
           <div class="flex justify-between items-center text-ink-subtle">
-            <span class="text-[9px] font-mono uppercase font-bold tracking-wider">Total Titles</span>
-            <BookOpen :size="15" class="text-forest-800" />
+            <span class="text-[10px] font-mono uppercase font-bold tracking-wider">Total Catalog</span>
+            <div class="w-8 h-8 rounded-xl bg-forest-950/5 text-forest-900 flex items-center justify-center">
+              <BookOpen :size="16" />
+            </div>
           </div>
-          <p class="text-xl sm:text-2xl lg:text-3xl font-mono font-bold text-forest-950 tabular-figure">
+          <p class="text-2xl sm:text-3xl font-mono font-extrabold text-forest-950 tabular-figure">
             {{ stats?.totalBooks ?? 0 }}
           </p>
-          <span class="text-[10px] text-ink-muted block leading-none">Active in catalog</span>
+          <span class="text-[11px] text-ink-muted block">Active catalog editions</span>
         </div>
 
-        <!-- Metric 2: Cloudflare R2 Storage (MB) -->
-        <div class="bg-paper-surface p-4 sm:p-5 rounded border border-ink-border shadow-subtle space-y-1.5">
+        <!-- Metric 2: eBook Cloudflare R2 Storage (MB) -->
+        <div class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border shadow-soft space-y-2 hover:shadow-card transition-shadow">
           <div class="flex justify-between items-center text-ink-subtle">
-            <span class="text-[9px] font-mono uppercase font-bold tracking-wider">eBook Storage</span>
-            <Database :size="15" class="text-gold-600" />
+            <span class="text-[10px] font-mono uppercase font-bold tracking-wider">eBook Storage</span>
+            <div class="w-8 h-8 rounded-xl bg-gold-500/10 text-gold-600 flex items-center justify-center">
+              <Database :size="16" />
+            </div>
           </div>
-          <p class="text-xl sm:text-2xl lg:text-3xl font-mono font-bold text-gold-600 tabular-figure">
+          <p class="text-2xl sm:text-3xl font-mono font-extrabold text-gold-600 tabular-figure">
             {{ stats?.storageUsedMb ? `${stats.storageUsedMb} MB` : '0 MB' }}
           </p>
-          <span class="text-[10px] text-ink-muted block leading-none">Cloudflare R2 assets</span>
+          <span class="text-[11px] text-ink-muted block">Cloudflare R2 assets</span>
         </div>
 
-        <!-- Metric 3: Pending Order Fulfillment -->
-        <div class="bg-paper-surface p-4 sm:p-5 rounded border border-ink-border shadow-subtle space-y-1.5">
+        <!-- Metric 3: Pending Order Verification Queue -->
+        <div class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border shadow-soft space-y-2 hover:shadow-card transition-shadow">
           <div class="flex justify-between items-center text-ink-subtle">
-            <span class="text-[9px] font-mono uppercase font-bold tracking-wider">Pending Orders</span>
-            <Inbox :size="15" class="text-forest-700" />
+            <span class="text-[10px] font-mono uppercase font-bold tracking-wider">Pending Orders</span>
+            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-800 flex items-center justify-center">
+              <Inbox :size="16" />
+            </div>
           </div>
-          <p class="text-xl sm:text-2xl lg:text-3xl font-mono font-bold text-forest-900 tabular-figure">
+          <p class="text-2xl sm:text-3xl font-mono font-extrabold text-forest-950 tabular-figure">
             {{ stats?.pendingOrders ?? 0 }}
           </p>
-          <span class="text-[10px] text-ink-muted block leading-none">Awaiting dispatch</span>
+          <span class="text-[11px] text-ink-muted block">Awaiting approval</span>
         </div>
 
-        <!-- Metric 4: Revenue Today -->
-        <div class="bg-paper-surface p-4 sm:p-5 rounded border border-ink-border shadow-subtle space-y-1.5">
+        <!-- Metric 4: Settled Revenue Today -->
+        <div class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border shadow-soft space-y-2 hover:shadow-card transition-shadow">
           <div class="flex justify-between items-center text-ink-subtle">
-            <span class="text-[9px] font-mono uppercase font-bold tracking-wider">Today's Sales</span>
-            <TrendingUp :size="15" class="text-forest-800" />
+            <span class="text-[10px] font-mono uppercase font-bold tracking-wider">Today's Sales</span>
+            <div class="w-8 h-8 rounded-xl bg-forest-950/5 text-forest-900 flex items-center justify-center">
+              <TrendingUp :size="16" />
+            </div>
           </div>
-          <p class="text-lg sm:text-2xl lg:text-3xl font-mono font-bold text-forest-950 tabular-figure truncate">
+          <p class="text-xl sm:text-2xl lg:text-3xl font-mono font-extrabold text-forest-950 tabular-figure truncate">
             {{ stats ? formatCurrency(stats.todayRevenue) : 'KSh 0' }}
           </p>
-          <span class="text-[10px] text-ink-muted block leading-none">Settled M-Pesa total</span>
+          <span class="text-[11px] text-ink-muted block">Settled M-Pesa total</span>
         </div>
       </div>
 
       <!-- Quick Action Navigation Tiles -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        
+        <!-- Tile A: Bulk Excel / CSV Ingestion -->
         <NuxtLink
           to="/admin/books/import"
-          class="bg-forest-950 text-paper p-4 sm:p-5 rounded shadow-subtle flex items-center justify-between hover:bg-forest-900 transition-colors group"
+          class="bg-forest-950 text-paper p-5 sm:p-6 rounded-2xl shadow-soft hover:shadow-medium hover:-translate-y-0.5 transition-all flex items-center justify-between group"
         >
           <div class="space-y-1 text-left">
-            <span class="text-[9px] font-mono uppercase font-bold tracking-wider text-gold-300">Bulk Ingestion</span>
-            <h3 class="font-display font-bold text-sm text-paper">Excel / CSV Importer</h3>
-            <p class="text-[10px] text-paper/70">Upload catalogs with direct R2 PDF links</p>
+            <span class="text-[9px] font-mono uppercase font-bold tracking-wider text-gold-300">Catalog Pipeline</span>
+            <h3 class="font-display font-bold text-sm sm:text-base text-paper">Bulk Excel Importer</h3>
+            <p class="text-[11px] text-paper/70 leading-normal">Ingest titles, covers, and R2 eBooks</p>
           </div>
-          <FileSpreadsheet :size="24" class="text-gold-300 flex-shrink-0 ml-3 group-hover:scale-105 transition-transform" />
+          <div class="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-gold-300 flex-shrink-0 ml-3 group-hover:scale-105 transition-transform">
+            <FileSpreadsheet :size="20" />
+          </div>
         </NuxtLink>
 
+        <!-- Tile B: Manage Books Catalog -->
         <NuxtLink
           to="/admin/books"
-          class="bg-paper-surface p-4 sm:p-5 rounded border border-ink-border hover:border-forest-800/40 shadow-subtle flex items-center justify-between transition-colors group"
+          class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border hover:border-forest-800/30 shadow-soft hover:shadow-medium hover:-translate-y-0.5 transition-all flex items-center justify-between group"
         >
           <div class="space-y-1 text-left">
             <span class="text-[9px] font-mono uppercase font-bold tracking-wider text-ink-subtle">Inventory</span>
-            <h3 class="font-display font-bold text-sm text-forest-950">Manage Books Catalog</h3>
-            <p class="text-[10px] text-ink-muted">Set prices, formats, and physical stock</p>
+            <h3 class="font-display font-bold text-sm sm:text-base text-forest-950">Manage Catalog</h3>
+            <p class="text-[11px] text-ink-muted leading-normal">Set formats, prices, and physical stock</p>
           </div>
-          <BookOpen :size="22" class="text-forest-800 flex-shrink-0 ml-3 group-hover:scale-105 transition-transform" />
+          <div class="w-11 h-11 rounded-xl bg-paper-cream flex items-center justify-center text-forest-900 flex-shrink-0 ml-3 group-hover:scale-105 transition-transform">
+            <BookOpen :size="20" />
+          </div>
         </NuxtLink>
 
+        <!-- Tile C: Live Storefront Preview -->
         <NuxtLink
           to="/"
           target="_blank"
-          class="bg-paper-surface p-4 sm:p-5 rounded border border-ink-border hover:border-forest-800/40 shadow-subtle flex items-center justify-between transition-colors group"
+          class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border hover:border-forest-800/30 shadow-soft hover:shadow-medium hover:-translate-y-0.5 transition-all flex items-center justify-between group"
         >
           <div class="space-y-1 text-left">
-            <span class="text-[9px] font-mono uppercase font-bold tracking-wider text-gold-600">Storefront</span>
-            <h3 class="font-display font-bold text-sm text-forest-950">Live Bookstore</h3>
-            <p class="text-[10px] text-ink-muted">View customer storefront &amp; cart</p>
+            <span class="text-[9px] font-mono uppercase font-bold tracking-wider text-gold-600">Reader Experience</span>
+            <h3 class="font-display font-bold text-sm sm:text-base text-forest-950">Live Bookstore</h3>
+            <p class="text-[11px] text-ink-muted leading-normal">Preview public catalog and checkout</p>
           </div>
-          <ExternalLink :size="20" class="text-gold-600 flex-shrink-0 ml-3 group-hover:scale-105 transition-transform" />
+          <div class="w-11 h-11 rounded-xl bg-paper-cream flex items-center justify-center text-gold-600 flex-shrink-0 ml-3 group-hover:scale-105 transition-transform">
+            <ExternalLink :size="18" />
+          </div>
         </NuxtLink>
       </div>
 
-      <!-- Recent Orders Queue -->
-      <div class="bg-paper-surface rounded border border-ink-border shadow-subtle overflow-hidden">
-        <div class="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-ink-border flex justify-between items-center bg-paper-cream/40">
-          <h3 class="font-display font-bold text-xs sm:text-sm text-forest-950">Recent Orders</h3>
-          <span class="text-[10px] font-mono uppercase tracking-wider text-ink-muted">Live Queue</span>
+      <!-- Recent Orders Table & 1-Click Approval Action -->
+      <div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft overflow-hidden">
+        <div class="px-5 py-4 border-b border-paper-border flex justify-between items-center bg-paper-cream/30">
+          <h3 class="font-display font-bold text-sm sm:text-base text-forest-950">Recent Orders</h3>
+          <span class="text-[10px] font-mono uppercase tracking-wider text-ink-muted">Live Orders Stream</span>
         </div>
 
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs border-collapse">
             <thead>
-              <tr class="border-b border-ink-border text-ink-subtle uppercase tracking-wider font-mono text-[9px]">
-                <th class="py-2.5 px-4 font-semibold">Customer</th>
-                <th class="py-2.5 px-4 font-semibold">Phone</th>
-                <th class="py-2.5 px-4 font-semibold text-right">Total</th>
-                <th class="py-2.5 px-4 font-semibold">Status</th>
-                <th class="py-2.5 px-4 font-semibold">Date</th>
+              <tr class="border-b border-paper-border text-ink-subtle uppercase tracking-wider font-mono text-[9px]">
+                <th class="py-3 px-5 font-semibold">Customer</th>
+                <th class="py-3 px-5 font-semibold">Phone</th>
+                <th class="py-3 px-5 font-semibold text-right">Total</th>
+                <th class="py-3 px-5 font-semibold">Status</th>
+                <th class="py-3 px-5 font-semibold">Date</th>
+                <th class="py-3 px-5 font-semibold text-right">Action</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-ink-border/60">
+            <tbody class="divide-y divide-paper-border/60">
               <tr v-if="!stats?.recentOrders?.length">
-                <td colspan="5" class="py-8 text-center text-ink-muted text-[11px]">
+                <td colspan="6" class="py-10 text-center text-ink-muted text-xs">
                   No orders recorded yet. Incoming storefront orders will display here automatically.
                 </td>
               </tr>
@@ -3923,29 +3993,50 @@ function formatDate(iso: string): string {
                 :key="order.id"
                 class="hover:bg-paper-cream/30 transition-colors"
               >
-                <td class="py-2.5 px-4 font-medium text-forest-950 text-xs truncate max-w-[140px]">
+                <td class="py-3.5 px-5 font-semibold text-forest-950 text-xs truncate max-w-[150px]">
                   {{ order.customerName }}
                 </td>
-                <td class="py-2.5 px-4 font-mono text-[11px] text-ink-muted">
+                <td class="py-3.5 px-5 font-mono text-[11px] text-ink-muted">
                   {{ order.customerPhone }}
                 </td>
-                <td class="py-2.5 px-4 text-right font-mono font-bold text-forest-950 text-xs tabular-figure">
+                <td class="py-3.5 px-5 text-right font-mono font-bold text-forest-950 text-xs tabular-figure">
                   {{ formatCurrency(order.total) }}
                 </td>
-                <td class="py-2.5 px-4">
+                <td class="py-3.5 px-5">
                   <span
-                    class="inline-block text-[8px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border"
+                    class="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border"
                     :class="{
                       'bg-amber-50 text-amber-900 border-amber-200': order.status === 'pending',
                       'bg-emerald-50 text-emerald-900 border-emerald-200': order.status === 'confirmed' || order.status === 'delivered',
                       'bg-red-50 text-red-900 border-red-200': order.status === 'cancelled',
                     }"
                   >
+                    <span
+                      class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      :class="{
+                        'bg-amber-600': order.status === 'pending',
+                        'bg-emerald-600': order.status === 'confirmed' || order.status === 'delivered',
+                        'bg-red-600': order.status === 'cancelled',
+                      }"
+                    />
                     {{ order.status }}
                   </span>
                 </td>
-                <td class="py-2.5 px-4 text-ink-subtle text-[11px] font-mono">
+                <td class="py-3.5 px-5 text-ink-subtle text-[11px] font-mono">
                   {{ formatDate(order.createdAt) }}
+                </td>
+                <td class="py-3.5 px-5 text-right">
+                  <button
+                    v-if="order.status === 'pending'"
+                    type="button"
+                    class="bg-forest-950 hover:bg-forest-900 text-paper text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition-all inline-flex items-center gap-1.5 shadow-subtle cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+                    :disabled="confirmingOrderId === order.id"
+                    @click="handleConfirmPayment(order.id)"
+                  >
+                    <CheckCircle :size="12" class="text-gold-300" />
+                    <span>{{ confirmingOrderId === order.id ? 'Releasing...' : 'Approve & Release' }}</span>
+                  </button>
+                  <span v-else class="text-[11px] font-medium text-emerald-800">Fulfilled ✓</span>
                 </td>
               </tr>
             </tbody>
@@ -4329,7 +4420,7 @@ async function handleSubmit(): Promise<void> {
     const redirectPath = (route.query.redirect as string) || '/admin';
     await navigateTo(redirectPath, { replace: true });
   } catch (err: any) {
-    errorMessage.value = err.data?.statusMessage || err.statusMessage || err.message || 'Invalid email or password';
+    errorMessage.value = err.data?.statusMessage || err.statusMessage || err.message || 'Invalid admin credentials';
   } finally {
     isLoading.value = false;
   }
@@ -4344,12 +4435,12 @@ async function handleSubmit(): Promise<void> {
           <BookOpen :size="24" />
         </div>
         <h1 class="font-display text-2xl font-bold text-forest-950">Flemela Portal</h1>
-        <p class="text-xs text-ink-muted">Sign in to manage catalog, formats, and orders</p>
+        <p class="text-xs text-ink-muted">Single Administrator Control Portal</p>
       </div>
 
       <form class="space-y-4" @submit.prevent="handleSubmit">
         <div class="space-y-1">
-          <label class="text-xs font-semibold text-forest-950">Email Address</label>
+          <label class="text-xs font-semibold text-forest-950">Admin Email</label>
           <input
             v-model="email"
             type="email"
@@ -4361,7 +4452,7 @@ async function handleSubmit(): Promise<void> {
         </div>
 
         <div class="space-y-1">
-          <label class="text-xs font-semibold text-forest-950">Password</label>
+          <label class="text-xs font-semibold text-forest-950">Master Password</label>
           <input
             v-model="password"
             type="password"
@@ -4389,13 +4480,8 @@ async function handleSubmit(): Promise<void> {
         </button>
       </form>
 
-      <div class="text-center pt-2 border-t border-ink-border">
-        <p class="text-xs text-ink-muted">
-          Don't have a bookstore account?
-          <NuxtLink to="/admin/register" class="text-forest-900 font-bold hover:underline">
-            Register here
-          </NuxtLink>
-        </p>
+      <div class="text-center pt-2 border-t border-ink-border text-[11px] text-ink-muted">
+        <span>Flemela Bookstore • Production Control Node</span>
       </div>
     </div>
   </div>
@@ -4821,148 +4907,14 @@ function stopPolling(): void {
 <file path="pages/admin/register.vue">
 <!-- pages/admin/register.vue -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { Lock, BookOpen, User, Mail, Store, AlertCircle, ArrowRight } from 'lucide-vue-next';
-import { useAdminAuth } from '~/composables/useAdminAuth';
-
-const { register, isAuthenticated } = useAdminAuth();
-
-const name = ref('');
-const email = ref('');
-const password = ref('');
-const orgName = ref('');
-const isLoading = ref(false);
-const errorMessage = ref<string | null>(null);
-
 onMounted(() => {
-  if (isAuthenticated.value) {
-    navigateTo('/admin', { replace: true });
-  }
+  navigateTo('/admin/login', { replace: true });
 });
-
-async function handleSubmit(): Promise<void> {
-  if (!name.value.trim() || !email.value.trim() || !password.value || !orgName.value.trim()) {
-    return;
-  }
-
-  isLoading.value = true;
-  errorMessage.value = null;
-
-  try {
-    await register({
-      name: name.value.trim(),
-      email: email.value.trim(),
-      password: password.value,
-      orgName: orgName.value.trim(),
-    });
-    await navigateTo('/admin', { replace: true });
-  } catch (err: any) {
-    errorMessage.value = err.data?.statusMessage || err.statusMessage || err.message || 'Registration failed';
-  } finally {
-    isLoading.value = false;
-  }
-}
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-paper-cream p-4 text-ink antialiased">
-    <div class="w-full max-w-md bg-white rounded-xl shadow-subtle border border-ink-border p-8 space-y-6">
-      <div class="text-center space-y-2">
-        <div class="w-12 h-12 bg-forest-900 text-gold-300 rounded-lg mx-auto flex items-center justify-center shadow">
-          <BookOpen :size="24" />
-        </div>
-        <h1 class="font-display text-2xl font-bold text-forest-950">Create Bookstore</h1>
-        <p class="text-xs text-ink-muted">Set up your account to start selling books &amp; eBooks</p>
-      </div>
-
-      <form class="space-y-4" @submit.prevent="handleSubmit">
-        <div class="space-y-1">
-          <label class="text-xs font-semibold text-forest-950">Your Full Name *</label>
-          <div class="relative flex items-center">
-            <User :size="16" class="absolute left-3 text-ink-muted pointer-events-none" />
-            <input
-              v-model="name"
-              type="text"
-              placeholder="e.g. Samuel Musioki"
-              class="w-full pl-9 pr-3 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900"
-              required
-              :disabled="isLoading"
-            />
-          </div>
-        </div>
-
-        <div class="space-y-1">
-          <label class="text-xs font-semibold text-forest-950">Bookstore / Business Name *</label>
-          <div class="relative flex items-center">
-            <Store :size="16" class="absolute left-3 text-ink-muted pointer-events-none" />
-            <input
-              v-model="orgName"
-              type="text"
-              placeholder="e.g. Flemela Bookstore"
-              class="w-full pl-9 pr-3 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900"
-              required
-              :disabled="isLoading"
-            />
-          </div>
-        </div>
-
-        <div class="space-y-1">
-          <label class="text-xs font-semibold text-forest-950">Email Address *</label>
-          <div class="relative flex items-center">
-            <Mail :size="16" class="absolute left-3 text-ink-muted pointer-events-none" />
-            <input
-              v-model="email"
-              type="email"
-              placeholder="admin@flemela.co.ke"
-              class="w-full pl-9 pr-3 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900"
-              required
-              :disabled="isLoading"
-            />
-          </div>
-        </div>
-
-        <div class="space-y-1">
-          <label class="text-xs font-semibold text-forest-950">Password (Min. 8 characters) *</label>
-          <div class="relative flex items-center">
-            <Lock :size="16" class="absolute left-3 text-ink-muted pointer-events-none" />
-            <input
-              v-model="password"
-              type="password"
-              placeholder="••••••••"
-              class="w-full pl-9 pr-3 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900"
-              required
-              minlength="8"
-              :disabled="isLoading"
-            />
-          </div>
-        </div>
-
-        <div v-if="errorMessage" class="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-center gap-2">
-          <AlertCircle :size="14" class="flex-shrink-0" />
-          <span>{{ errorMessage }}</span>
-        </div>
-
-        <button
-          type="submit"
-          class="w-full bg-forest-900 text-white font-bold text-xs uppercase py-3 rounded hover:bg-forest-800 transition-colors flex items-center justify-center gap-2 shadow cursor-pointer disabled:opacity-50"
-          :disabled="isLoading"
-        >
-          <span v-if="isLoading" class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-          <span v-else class="flex items-center gap-1.5">
-            Register Bookstore <ArrowRight :size="14" />
-          </span>
-        </button>
-      </form>
-
-      <div class="text-center pt-2 border-t border-ink-border">
-        <p class="text-xs text-ink-muted">
-          Already have an account?
-          <NuxtLink to="/admin/login" class="text-forest-900 font-bold hover:underline">
-            Sign In here
-          </NuxtLink>
-        </p>
-      </div>
-    </div>
+  <div class="min-h-screen flex items-center justify-center bg-paper-cream p-4">
+    <p class="text-xs text-ink-muted">Redirecting to administrator login...</p>
   </div>
 </template>
 </file>
@@ -5177,8 +5129,9 @@ function handleAddToCart(): void {
 </file>
 
 <file path="pages/checkout/confirm.vue">
-<!-- pages/checkout/confirm.vue -->
+<!-- flemela/pages/checkout/confirm.vue -->
 <script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -5189,10 +5142,9 @@ import {
   Share2,
   ShoppingBag,
   ArrowRight,
-  ShieldCheck,
   KeyRound,
   RefreshCw,
-  Lock,
+  Clock
 } from 'lucide-vue-next';
 import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
 import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
@@ -5210,26 +5162,15 @@ const phoneParam = computed(() => (route.query.phone as string) || '');
 const verifyPhoneInput = ref(phoneParam.value);
 const orderData = ref<OrderStatusResponse | null>(null);
 
-// 60-Second Real-Time M-Pesa PIN Countdown Timer & Bounded Polling
 const countdownSeconds = ref(60);
 const timerExpired = ref(false);
 const isManualChecking = ref(false);
 let timerInterval: ReturnType<typeof setInterval> | undefined;
 let pollInterval: ReturnType<typeof setInterval> | undefined;
 
-// Polling ceiling: 25 attempts * 3 seconds = 75 seconds total
 const pollAttempts = ref(0);
-const MAX_POLL_ATTEMPTS = 25;
-
-// Clipboard helper
+const MAX_POLL_ATTEMPTS = 40;
 const isCodeCopied = ref(false);
-
-// SVG Circular Timer Dashoffset Math (r=20, Circumference ≈ 125.66)
-const circleDashOffset = computed(() => {
-  const circumference = 2 * Math.PI * 20;
-  const progress = countdownSeconds.value / 60;
-  return circumference * (1 - progress);
-});
 
 function formatCurrency(val: number): string {
   return `KSh ${val.toLocaleString('en-KE')}`;
@@ -5237,6 +5178,7 @@ function formatCurrency(val: number): string {
 
 const isPaymentPaid = computed(() => orderData.value?.paymentStatus === 'paid');
 const isPaymentFailed = computed(() => orderData.value?.paymentStatus === 'failed');
+const isManualPending = computed(() => orderData.value?.paymentMethod === 'mpesa_manual' && orderData.value?.paymentStatus === 'pending');
 
 const hasDigitalDownloads = computed(() => {
   return orderData.value && orderData.value.downloads && orderData.value.downloads.length > 0;
@@ -5267,34 +5209,16 @@ async function fetchStatus(phoneToUse = verifyPhoneInput.value): Promise<void> {
   }
 }
 
-async function handleUnlockDownloads(): Promise<void> {
-  if (!verifyPhoneInput.value.trim()) return;
-  isManualChecking.value = true;
-
-  try {
-    await fetchStatus(verifyPhoneInput.value.trim());
-    if (orderData.value?.isVerifiedCustomer) {
-      pushToast({ message: 'Phone verified! Digital eBook downloads unlocked.', variant: 'success' });
-    } else {
-      pushToast({ message: 'Phone number does not match this order.', variant: 'error' });
-    }
-  } finally {
-    isManualChecking.value = false;
-  }
-}
-
 async function handleManualCheckStatus(): Promise<void> {
   isManualChecking.value = true;
   try {
     await fetchStatus();
     if (orderData.value?.paymentStatus === 'paid') {
-      pushToast({ message: 'Payment confirmed! Digital items unlocked.', variant: 'success' });
+      pushToast({ message: 'Payment approved! Digital eBook links unlocked.', variant: 'success' });
       stopTimers();
     } else {
-      pushToast({ message: 'Payment still pending. Please enter your PIN on your phone.', variant: 'info' });
+      pushToast({ message: 'Payment verification in progress. Please wait a moment.', variant: 'info' });
     }
-  } catch {
-    pushToast({ message: 'Unable to refresh status. Please try again in a moment.', variant: 'error' });
   } finally {
     isManualChecking.value = false;
   }
@@ -5315,7 +5239,7 @@ function startTimers(): void {
     }
   }, 1000);
 
-  // Poll order status every 3 seconds
+  // Poll status every 3 seconds
   pollInterval = setInterval(() => fetchStatus(), 3000);
 }
 
@@ -5343,8 +5267,8 @@ function copyConfirmationCode(): void {
 
   navigator.clipboard.writeText(code);
   isCodeCopied.value = true;
-  pushToast({ message: 'Delivery code copied to clipboard', variant: 'success' });
-  setTimeout(() => (isCodeCopied.value = false), 2000);
+  pushToast({ message: 'Delivery code copied to clipboard!', variant: 'success' });
+  setTimeout(() => (isCodeCopied.value = false), 2200);
 }
 
 const whatsappShareUrl = computed(() => {
@@ -5363,734 +5287,208 @@ const whatsappShareUrl = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col bg-brand-cream text-ink">
+  <div class="min-h-screen flex flex-col bg-paper-canvas text-ink antialiased">
     <TopUtilityBar />
     <BookstoreHeader />
 
-    <main class="max-w-3xl mx-auto w-full py-10 px-4 flex-1">
-      <div class="bg-white rounded-xl shadow-card border border-ink-border p-6 sm:p-8 space-y-6">
-        <!-- 1. WAITING FOR M-PESA PIN PROMPT -->
-        <div v-if="!isPaymentPaid && !isPaymentFailed" class="space-y-6">
-          <div class="bg-amber-50 border border-brand-gold/40 rounded-xl p-5 flex items-start gap-4">
-            <!-- Circular SVG Countdown Timer -->
-            <div class="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
-              <svg class="transform -rotate-90" width="48" height="48" viewBox="0 0 48 48">
-                <circle cx="24" cy="24" r="20" class="fill-none stroke-amber-200 stroke-[3.5]" />
-                <circle
-                  cx="24"
-                  cy="24"
-                  r="20"
-                  class="fill-none stroke-brand-gold stroke-[3.5] transition-all duration-1000"
-                  stroke-linecap="round"
-                  stroke-dasharray="125.66"
-                  :style="{ strokeDashoffset: circleDashOffset }"
-                />
-              </svg>
-              <span class="absolute font-mono text-xs font-extrabold text-ink tabular-figure">
-                {{ countdownSeconds }}
-              </span>
-            </div>
-
-            <div class="space-y-1 flex-1">
-              <h2 class="font-display font-bold text-sm sm:text-base text-ink">
-                M-Pesa PIN Prompt Sent to {{ phoneParam || 'your phone' }}
-              </h2>
-              <p class="text-xs text-ink-muted leading-relaxed">
-                Please check your phone screen and enter your <strong>M-Pesa PIN</strong> to complete payment of
-                <strong class="text-brand-green font-mono">{{ orderData ? formatCurrency(orderData.total) : 'your order' }}</strong>.
-              </p>
-
-              <div v-if="!timerExpired" class="flex items-center gap-2 text-[11px] font-bold text-brand-gold pt-2">
-                <span class="w-2 h-2 rounded-full bg-brand-gold animate-pulse" />
-                <span>Awaiting Safaricom confirmation...</span>
+    <main class="max-w-3xl mx-auto w-full py-10 sm:py-14 px-4 sm:px-6 flex-1">
+      <div class="bg-paper-surface rounded-2xl shadow-card border border-paper-border p-6 sm:p-10 space-y-7">
+        
+        <!-- 1. MANUAL M-PESA PENDING VERIFICATION STATE (BREATHING RADAR PULSE) -->
+        <div v-if="isManualPending" class="space-y-5">
+          <div class="bg-paper-cream/70 border border-gold-400/50 rounded-2xl p-6 sm:p-7 space-y-4 shadow-soft">
+            <div class="flex items-start gap-4">
+              <!-- Radar Pulse Animation -->
+              <div class="relative w-10 h-10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="absolute w-full h-full rounded-full bg-gold-400/30 animate-ping" />
+                <div class="w-9 h-9 rounded-full bg-gold-500 text-forest-950 flex items-center justify-center shadow-xs">
+                  <Clock :size="18" />
+                </div>
               </div>
 
-              <!-- Timeout Fallback -->
-              <div v-else class="pt-3 space-y-2 border-t border-amber-200 mt-2">
-                <span class="text-xs font-bold text-amber-800 block">Prompt expired or taking longer than expected?</span>
-                <p class="text-[11px] text-ink-muted">
-                  Your order is saved. If you already entered your PIN, click below to refresh the verification status.
+              <div class="space-y-1.5 flex-1">
+                <h2 class="font-display font-bold text-base sm:text-lg text-forest-950">
+                  Payment Reference Received &amp; Verifying
+                </h2>
+                <p class="text-xs sm:text-sm text-ink-muted leading-relaxed">
+                  Thank you, <strong>{{ orderData?.customerName }}</strong>! Your payment reference has been recorded. Our administrator is verifying receipt.
                 </p>
-                <div class="flex flex-wrap gap-2 pt-1">
-                  <button
-                    type="button"
-                    class="bg-brand-green text-white text-xs font-bold px-3 py-1.5 rounded hover:bg-brand-green-hover flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
-                    :disabled="isManualChecking"
-                    @click="handleManualCheckStatus"
-                  >
-                    <RefreshCw :size="13" :class="{ 'animate-spin': isManualChecking }" />
-                    <span>Check Status Again</span>
-                  </button>
+              </div>
+            </div>
 
-                  <NuxtLink to="/checkout" class="px-3 py-1.5 text-xs font-bold text-ink hover:underline inline-flex items-center gap-1">
-                    <RotateCcw :size="13" /> Retry Checkout
-                  </NuxtLink>
-                </div>
+            <!-- Order Badge Overview -->
+            <div class="bg-white rounded-xl p-4 border border-paper-border text-xs text-forest-950 space-y-1.5 shadow-2xs">
+              <div class="flex justify-between items-center text-ink-muted">
+                <span>Order Reference:</span>
+                <span class="font-mono font-bold text-forest-950">#{{ orderData?.orderId.slice(0, 8).toUpperCase() }}</span>
+              </div>
+              <div class="flex justify-between items-center text-ink-muted">
+                <span>Amount to Settle:</span>
+                <span class="font-mono font-bold text-forest-950 tabular-figure">{{ orderData ? formatCurrency(orderData.total) : '' }}</span>
+              </div>
+            </div>
+
+            <!-- Polling Indicator -->
+            <div class="flex items-center justify-between pt-1">
+              <div class="flex items-center gap-2 text-[11px] font-semibold text-gold-600">
+                <span class="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
+                <span>Live status connected — downloads unlock automatically...</span>
+              </div>
+
+              <button
+                type="button"
+                class="px-3.5 py-1.5 bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-subtle cursor-pointer transition-all disabled:opacity-50 active:scale-[0.98]"
+                :disabled="isManualChecking"
+                @click="handleManualCheckStatus"
+              >
+                <RefreshCw :size="12" :class="{ 'animate-spin': isManualChecking }" />
+                <span>Check Status</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. AUTOMATED STK PENDING PROMPT -->
+        <div v-else-if="!isPaymentPaid && !isPaymentFailed" class="space-y-6">
+          <div class="bg-paper-cream/60 border border-gold-400/40 rounded-2xl p-6 sm:p-7 flex items-start gap-4 shadow-soft">
+            <div class="space-y-1.5 flex-1">
+              <h2 class="font-display font-bold text-base sm:text-lg text-forest-950">
+                M-Pesa Prompt Sent to {{ phoneParam || 'your phone' }}
+              </h2>
+              <p class="text-xs sm:text-sm text-ink-muted leading-relaxed">
+                Please enter your <strong>M-Pesa PIN</strong> on your mobile screen to approve payment of
+                <strong class="text-forest-900 font-mono">{{ orderData ? formatCurrency(orderData.total) : 'your order' }}</strong>.
+              </p>
+              <div class="flex items-center gap-2 text-[11px] font-bold text-gold-600 pt-2">
+                <span class="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
+                <span>Awaiting Safaricom confirmation...</span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 2. PAYMENT FAILED STATE -->
-        <div v-else-if="isPaymentFailed" class="bg-red-50 border border-red-200 rounded-xl p-5 flex items-start gap-4">
-          <AlertTriangle :size="24" class="text-red-600 flex-shrink-0" />
+        <!-- 3. PAYMENT FAILED -->
+        <div v-else-if="isPaymentFailed" class="bg-red-50 border border-red-200 rounded-2xl p-6 sm:p-7 flex items-start gap-4 shadow-soft">
+          <AlertTriangle :size="24" class="text-red-600 flex-shrink-0 mt-0.5" />
           <div class="space-y-2 flex-1">
-            <h2 class="font-display font-bold text-base text-red-800">Payment Incomplete</h2>
-            <p class="text-xs text-red-700">
-              The M-Pesa prompt was cancelled or timed out. You can retry checking out.
+            <h2 class="font-display font-bold text-base sm:text-lg text-red-900">Payment Incomplete</h2>
+            <p class="text-xs sm:text-sm text-red-800">
+              The payment prompt was cancelled or timed out. You can return to checkout to retry.
             </p>
-            <NuxtLink to="/checkout" class="inline-flex items-center gap-1.5 text-xs font-bold text-brand-green hover:underline">
+            <NuxtLink to="/checkout" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline pt-1">
               <RotateCcw :size="13" /> Return to Checkout
             </NuxtLink>
           </div>
         </div>
 
-        <!-- 3. PAYMENT SUCCESSFUL / ORDER CONFIRMED -->
-        <div v-if="isPaymentPaid || orderData?.status === 'confirmed' || orderData?.status === 'delivered'" class="space-y-6">
-          <div class="text-center space-y-2 pb-6 border-b border-ink-border">
-            <div class="w-14 h-14 bg-emerald-100 text-brand-green rounded-full flex items-center justify-center mx-auto shadow-sm">
-              <CheckCircle2 :size="32" />
+        <!-- 4. PAYMENT CONFIRMED / DOWNLOADS RELEASED -->
+        <div v-if="isPaymentPaid || orderData?.status === 'confirmed' || orderData?.status === 'delivered'" class="space-y-7">
+          
+          <!-- Celebration Header -->
+          <div class="text-center space-y-2 pb-6 border-b border-paper-border">
+            <div class="w-14 h-14 bg-emerald-100 text-forest-950 rounded-full flex items-center justify-center mx-auto shadow-sm">
+              <CheckCircle2 :size="32" class="text-emerald-800" />
             </div>
-            <h1 class="font-display text-2xl sm:text-3xl font-extrabold text-brand-green">
-              Thank You, {{ orderData?.customerName }}!
+            <h1 class="font-display text-2xl sm:text-3xl font-extrabold text-forest-950">
+              Order Confirmed &amp; Fulfilled!
             </h1>
             <p class="text-xs sm:text-sm text-ink-muted">
-              Your payment is verified and your order has been received.
+              Thank you, {{ orderData?.customerName }}. Your order has been approved.
             </p>
-            <div v-if="orderData?.mpesaReceiptNumber" class="inline-flex items-center gap-1.5 bg-emerald-50 px-3 py-1 rounded-full text-xs font-mono font-bold text-brand-green border border-emerald-200">
-              <ShieldCheck :size="14" /> Receipt: {{ orderData.mpesaReceiptNumber }}
-            </div>
           </div>
 
-          <!-- DIGITAL EBOOK DOWNLOAD CARDS (CLOUDFLARE R2 SIGNED ACCESS) -->
-          <div v-if="hasDigitalDownloads" class="space-y-3">
-            <h3 class="font-display font-bold text-sm text-ink uppercase tracking-wider flex items-center gap-2">
-              <Download :size="16" class="text-brand-green" /> Your Digital eBooks (Cloudflare R2)
+          <!-- DIGITAL EBOOK DOWNLOAD CARDS -->
+          <div v-if="hasDigitalDownloads" class="space-y-3.5">
+            <h3 class="font-display font-bold text-sm text-forest-950 uppercase tracking-wider flex items-center gap-2">
+              <Download :size="16" class="text-gold-600" /> Your Digital Editions (Cloudflare R2)
             </h3>
 
-            <div class="grid sm:grid-cols-2 gap-3">
+            <div class="grid sm:grid-cols-2 gap-3.5">
               <div
                 v-for="dl in orderData!.downloads"
                 :key="dl.token"
-                class="p-4 bg-emerald-50/60 border border-emerald-200 rounded-lg space-y-3 flex flex-col justify-between"
+                class="p-4 sm:p-5 bg-paper-cream/60 border border-emerald-300/80 rounded-2xl space-y-3.5 flex flex-col justify-between shadow-soft hover:shadow-medium transition-shadow"
               >
-                <div>
-                  <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-brand-green text-white">
+                <div class="space-y-1">
+                  <span class="text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded-md bg-forest-950 text-gold-300">
                     {{ dl.format.toUpperCase() }} EBOOK
                   </span>
-                  <h4 class="text-xs font-bold text-ink mt-1.5 line-clamp-1">{{ dl.bookTitle }}</h4>
-                  <p class="text-[10px] text-ink-muted">Downloads remaining: {{ dl.maxDownloads - dl.downloadCount }}</p>
+                  <h4 class="text-xs sm:text-sm font-bold text-forest-950 mt-1 line-clamp-1">{{ dl.bookTitle }}</h4>
+                  <p class="text-[11px] text-ink-muted">Access valid for 7 days • Remaining: {{ dl.maxDownloads - dl.downloadCount }}</p>
                 </div>
 
                 <a
                   :href="`/api/books/download/${dl.token}?redirect=true`"
                   target="_blank"
-                  class="bg-brand-green text-white text-xs font-bold uppercase py-2 px-3 rounded hover:bg-brand-green-hover transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                  class="bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer active:scale-[0.98]"
                 >
-                  <Download :size="13" /> Download {{ dl.format.toUpperCase() }}
+                  <Download :size="14" class="text-gold-300" />
+                  <span>Download {{ dl.format.toUpperCase() }}</span>
                 </a>
               </div>
             </div>
           </div>
 
-          <!-- PHONE VERIFICATION UNLOCK CARD (If opened without phone in URL) -->
-          <div
-            v-else-if="!orderData?.isVerifiedCustomer && isPaymentPaid"
-            class="p-5 bg-amber-50 border border-amber-300 rounded-xl space-y-3"
-          >
-            <div class="flex items-center gap-2 text-amber-900 font-bold text-xs">
-              <Lock :size="16" />
-              <span>Unlock Digital Downloads &amp; Delivery Code</span>
-            </div>
-            <p class="text-xs text-ink-muted leading-relaxed">
-              To access your purchased eBook files, please confirm the phone number used at checkout:
-            </p>
-            <div class="flex gap-2">
-              <input
-                v-model="verifyPhoneInput"
-                type="tel"
-                placeholder="07XXXXXXXX"
-                class="flex-1 px-3 py-2 bg-white border border-ink-border rounded text-xs font-mono outline-none"
-              />
-              <button
-                type="button"
-                class="bg-brand-green text-white text-xs font-bold px-4 py-2 rounded hover:bg-brand-green-hover"
-                :disabled="isManualChecking"
-                @click="handleUnlockDownloads"
-              >
-                Unlock
-              </button>
-            </div>
-          </div>
-
-          <!-- PHYSICAL DELIVERY 4-DIGIT VERIFICATION CODE -->
+          <!-- PHYSICAL DELIVERY HANDOVER CODE -->
           <div
             v-if="orderData?.deliveryConfirmationCode"
-            class="p-5 bg-brand-cream border-2 border-dashed border-brand-gold rounded-xl text-center space-y-2"
+            class="p-6 bg-paper-cream/50 border-2 border-dashed border-gold-500/60 rounded-2xl text-center space-y-2.5 shadow-soft"
           >
-            <span class="text-xs font-bold uppercase text-ink flex items-center justify-center gap-1.5">
-              <KeyRound :size="15" class="text-brand-gold" /> Delivery Handover Code
+            <span class="text-xs font-bold uppercase text-forest-950 flex items-center justify-center gap-1.5 tracking-wider font-mono">
+              <KeyRound :size="15" class="text-gold-600" /> Delivery Handover Code
             </span>
             <div class="flex items-center justify-center gap-3">
-              <span class="font-mono text-2xl sm:text-3xl font-extrabold text-brand-gold tracking-widest bg-white px-5 py-1.5 rounded-lg border border-ink-border shadow-sm">
+              <span class="font-mono text-2xl sm:text-3xl font-extrabold text-forest-950 tracking-widest bg-white px-6 py-2 rounded-xl border border-paper-border shadow-xs">
                 {{ orderData.deliveryConfirmationCode.split('').join('  •  ') }}
               </span>
               <button
                 type="button"
-                class="p-2 bg-white rounded-lg border border-ink-border hover:bg-slate-50 transition-colors cursor-pointer"
-                title="Copy code"
+                class="p-2.5 bg-white rounded-xl border border-paper-border hover:bg-paper-cream transition-colors cursor-pointer shadow-xs"
+                title="Copy verification code"
                 @click="copyConfirmationCode"
               >
-                <component :is="isCodeCopied ? Check : Copy" :size="16" class="text-brand-green" />
+                <component :is="isCodeCopied ? Check : Copy" :size="16" :class="isCodeCopied ? 'text-emerald-700' : 'text-forest-950'" />
               </button>
             </div>
             <p class="text-[11px] text-ink-muted max-w-sm mx-auto">
-              Please share this 4-digit code with your delivery rider upon package arrival to confirm handover.
+              Please share this 4-digit code with your courier upon arrival to confirm safe delivery handover.
             </p>
           </div>
 
           <!-- Order Summary Details -->
-          <div class="border-t border-ink-border pt-4 space-y-3 text-xs">
+          <div class="border-t border-paper-border pt-4 space-y-2.5 text-xs">
             <div class="flex justify-between items-center text-ink-muted">
               <span>Order Reference</span>
-              <span class="font-mono font-bold text-ink">#{{ orderData?.orderId.slice(0, 8).toUpperCase() }}</span>
+              <span class="font-mono font-bold text-forest-950">#{{ orderData?.orderId.slice(0, 8).toUpperCase() }}</span>
             </div>
             <div class="flex justify-between items-center text-ink-muted">
-              <span>Fulfillment Destination</span>
-              <span class="font-medium text-ink truncate max-w-xs">{{ orderData?.deliveryLocation }}</span>
+              <span>Destination</span>
+              <span class="font-medium text-forest-950 truncate max-w-xs">{{ orderData?.deliveryLocation }}</span>
             </div>
-            <div class="flex justify-between items-center pt-2 border-t border-ink-border text-sm font-bold text-ink">
+            <div class="flex justify-between items-center pt-2.5 border-t border-paper-border text-sm font-bold text-forest-950">
               <span>Total Paid</span>
-              <span class="font-display font-extrabold text-brand-green font-mono tabular-figure">
+              <span class="font-display font-extrabold text-forest-900 font-mono tabular-figure text-base sm:text-lg">
                 {{ orderData ? formatCurrency(orderData.total) : '' }}
               </span>
             </div>
           </div>
 
-          <!-- Action Buttons -->
-          <div class="pt-4 flex flex-wrap gap-3">
+          <!-- Navigation & WhatsApp Sharing -->
+          <div class="pt-2 flex flex-wrap gap-3.5">
             <a
               :href="whatsappShareUrl"
               target="_blank"
-              class="flex-1 min-w-[200px] border border-emerald-600 bg-emerald-50 text-brand-green text-xs font-bold uppercase py-3 px-4 rounded hover:bg-emerald-100 transition-colors flex items-center justify-center gap-2"
+              class="flex-1 min-w-[200px] border border-emerald-600/40 bg-emerald-50 hover:bg-emerald-100 text-forest-950 text-xs font-bold uppercase py-3.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-2xs"
             >
-              <Share2 :size="15" /> Save to WhatsApp
+              <Share2 :size="15" class="text-emerald-800" /> Share Order on WhatsApp
             </a>
 
             <NuxtLink
               to="/"
-              class="flex-1 min-w-[200px] bg-brand-green text-white text-xs font-bold uppercase py-3 px-4 rounded hover:bg-brand-green-hover transition-colors flex items-center justify-center gap-2 shadow"
+              class="flex-1 min-w-[200px] bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold uppercase py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-medium cursor-pointer"
             >
-              <ShoppingBag :size="15" /> Continue Shopping <ArrowRight :size="14" />
+              <ShoppingBag :size="15" class="text-gold-300" /> Return to Catalog <ArrowRight :size="14" />
             </NuxtLink>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <ToastContainer />
-  </div>
-</template>
-</file>
-
-<file path="pages/checkout.vue">
-<!-- pages/checkout.vue -->
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import {
-  ArrowLeft,
-  ShoppingBag,
-  Download,
-  User,
-  Phone,
-  Mail,
-  FileText,
-  Zap,
-  CreditCard,
-  ShieldCheck,
-  AlertCircle,
-  MapPin,
-  Building,
-  Home,
-} from 'lucide-vue-next';
-import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
-import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
-import BookstoreNav from '~/components/storefront/BookstoreNav.vue';
-import DeliveryTypeStep, { type DeliveryType } from '~/components/storefront/DeliveryTypeStep.vue';
-import LeafletPinPicker from '~/components/storefront/LeafletPinPicker.vue';
-import ToastContainer from '~/components/ui/ToastContainer.vue';
-import { useCart } from '~/composables/useCart';
-import { useToast } from '~/composables/useToast';
-import { normalizeKenyanPhone, isValidKenyanPhone, detectKenyanCarrier } from '~/utils/phone';
-
-const router = useRouter();
-const { items, totalItems, subtotal, hasPhysicalItems, hasDigitalItems, clearCart } = useCart();
-const { push: pushToast } = useToast();
-
-onMounted(() => {
-  if (items.value.length === 0) {
-    router.replace('/');
-  }
-});
-
-// Customer Form State
-const customerName = ref('');
-const customerPhone = ref('');
-const customerEmail = ref('');
-const deliveryType = ref<DeliveryType>('delivery');
-const estate = ref('');
-const landmark = ref('');
-const houseNumber = ref('');
-const notes = ref('');
-const paymentMethod = ref<'mpesa' | 'mpesa_cash'>('mpesa');
-
-// GPS Pin & Location Coordinates
-const customerLat = ref<number | null>(null);
-const customerLng = ref<number | null>(null);
-
-// Delivery fee calculation state (Default base threshold matching Sarit Centre Hub)
-const HUB_COORDS = { lat: -1.2683, lng: 36.8111, baseKm: 2.0, baseFee: 100, feePerKm: 25, maxRadiusKm: 15 };
-const deliveryFee = ref<number>(100);
-const deliveryFeeStatus = ref<'known' | 'needs_merchant_confirmation'>('known');
-
-const isSubmitting = ref(false);
-const formError = ref<string | null>(null);
-
-const detectedCarrier = computed(() => detectKenyanCarrier(customerPhone.value));
-
-function formatCurrency(val: number): string {
-  return `KSh ${val.toLocaleString('en-KE')}`;
-}
-
-function computeHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c * 10) / 10;
-}
-
-const fullDeliveryAddress = computed(() => {
-  if (!hasPhysicalItems.value) return 'Digital Delivery (eBooks via Cloudflare R2)';
-  if (deliveryType.value === 'pickup') return 'Store Pickup — Sarit Centre Hub, Westlands';
-
-  const parts = [
-    estate.value.trim(),
-    landmark.value.trim() ? `Near ${landmark.value.trim()}` : '',
-    houseNumber.value.trim() ? `House/Door: ${houseNumber.value.trim()}` : '',
-  ].filter(Boolean);
-
-  return parts.join(' • ') || 'Nairobi Delivery';
-});
-
-const isFormValid = computed(() => {
-  const hasName = customerName.value.trim().length > 0;
-  const hasValidPhone = isValidKenyanPhone(customerPhone.value);
-
-  if (!hasName || !hasValidPhone) return false;
-
-  if (hasPhysicalItems.value && deliveryType.value === 'delivery') {
-    return estate.value.trim().length > 0;
-  }
-
-  return true;
-});
-
-// Dynamic Checkout Total that strictly includes delivery fee when applicable
-const totalToPay = computed(() => {
-  if (!hasPhysicalItems.value || deliveryType.value === 'pickup') {
-    return subtotal.value;
-  }
-  const feeToAdd = deliveryFeeStatus.value === 'known' ? deliveryFee.value : 0;
-  return Math.round((subtotal.value + feeToAdd) * 100) / 100;
-});
-
-function handleMapPinUpdate(coords: { lat: number; lng: number }): void {
-  customerLat.value = coords.lat;
-  customerLng.value = coords.lng;
-  if (!estate.value) {
-    estate.value = 'Pinned Map Location';
-  }
-
-  // Calculate distance from bookstore hub (Sarit Centre)
-  const distance = computeHaversineDistanceKm(HUB_COORDS.lat, HUB_COORDS.lng, coords.lat, coords.lng);
-  if (distance > HUB_COORDS.maxRadiusKm) {
-    deliveryFeeStatus.value = 'needs_merchant_confirmation';
-    deliveryFee.value = 0;
-  } else {
-    deliveryFeeStatus.value = 'known';
-    const billableKm = Math.max(0, distance - HUB_COORDS.baseKm);
-    deliveryFee.value = Math.round(HUB_COORDS.baseFee + billableKm * HUB_COORDS.feePerKm);
-  }
-}
-
-async function handlePlaceOrder(): Promise<void> {
-  if (!isFormValid.value || isSubmitting.value) return;
-
-  isSubmitting.value = true;
-  formError.value = null;
-
-  try {
-    const cleanPhone = normalizeKenyanPhone(customerPhone.value);
-
-    const payload = {
-      customerName: customerName.value.trim(),
-      customerPhone: cleanPhone,
-      customerEmail: customerEmail.value.trim() || null,
-      deliveryType: hasPhysicalItems.value ? deliveryType.value : 'delivery',
-      deliveryLocation: fullDeliveryAddress.value,
-      paymentMethod: paymentMethod.value,
-      notes: notes.value.trim() || null,
-      customerLat: hasPhysicalItems.value && deliveryType.value === 'delivery' ? customerLat.value : null,
-      customerLng: hasPhysicalItems.value && deliveryType.value === 'delivery' ? customerLng.value : null,
-      items: items.value.map((i) => ({
-        product_id: i.productId,
-        format_id: i.formatId,
-        quantity: i.quantity,
-        delivery_method: i.deliveryMethod,
-      })),
-    };
-
-    const response = await $fetch<{
-      success: boolean;
-      orderId: string;
-      checkoutRequestId?: string;
-      phone: string;
-    }>('/api/checkout', {
-      method: 'POST',
-      body: payload,
-    });
-
-    clearCart();
-
-    router.push({
-      path: '/checkout/confirm',
-      query: {
-        orderId: response.orderId,
-        checkoutRequestId: response.checkoutRequestId || undefined,
-        phone: response.phone,
-      },
-    });
-  } catch (err: any) {
-    formError.value = err.data?.message || err.statusMessage || 'Checkout failed. Please try again.';
-    pushToast({ message: formError.value || 'Checkout failed', variant: 'error' });
-  } finally {
-    isSubmitting.value = false;
-  }
-}
-</script>
-
-<template>
-  <div class="min-h-screen flex flex-col bg-paper text-ink antialiased">
-    <TopUtilityBar />
-    <BookstoreHeader />
-    <BookstoreNav />
-
-    <main class="max-w-6xl mx-auto w-full py-8 px-4 flex-1 space-y-6">
-      <NuxtLink to="/" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline">
-        <ArrowLeft :size="14" /> Back to Store
-      </NuxtLink>
-
-      <div class="grid lg:grid-cols-12 gap-8 items-start">
-        <!-- LEFT: Adaptive Checkout Form (7 cols) -->
-        <div class="lg:col-span-7 space-y-5">
-          <div
-            v-if="hasDigitalItems && !hasPhysicalItems"
-            class="bg-emerald-50 border border-emerald-300 rounded-xl p-4 flex items-center gap-3 text-xs text-emerald-950 shadow-subtle"
-          >
-            <Download :size="20" class="text-emerald-700 flex-shrink-0" />
-            <span>
-              <strong>Pure Digital Order:</strong> Your eBooks will be unlocked for instant Cloudflare R2 download immediately upon M-Pesa PIN confirmation.
-            </span>
-          </div>
-
-          <!-- STEP 1: Contact Information -->
-          <div class="bg-white rounded-xl shadow-subtle border border-ink-border p-6 space-y-4">
-            <div class="flex items-center gap-2.5 pb-3 border-b border-ink-border">
-              <span class="w-6 h-6 rounded-full bg-forest-900 text-white text-xs font-mono font-bold flex items-center justify-center">1</span>
-              <h2 class="font-display text-base font-bold text-forest-950">Contact Details</h2>
-            </div>
-
-            <div class="space-y-3">
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Full Name *</label>
-                <div class="relative flex items-center">
-                  <User :size="16" class="absolute left-3 text-ink-muted pointer-events-none" />
-                  <input
-                    v-model="customerName"
-                    type="text"
-                    placeholder="e.g. Joy Wanjiku"
-                    class="w-full pl-9 pr-3 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div class="grid sm:grid-cols-2 gap-3">
-                <div class="space-y-1">
-                  <label class="text-xs font-semibold text-forest-950">M-Pesa Phone Number *</label>
-                  <div class="relative flex items-center">
-                    <Phone :size="16" class="absolute left-3 text-ink-muted pointer-events-none" />
-                    <input
-                      v-model="customerPhone"
-                      type="tel"
-                      placeholder="07XXXXXXXX or 01XXXXXXXX"
-                      class="w-full pl-9 pr-20 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900 font-mono"
-                      required
-                    />
-                    <span
-                      v-if="detectedCarrier"
-                      class="absolute right-2 text-[9px] font-mono font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wide"
-                      :class="{
-                        'bg-emerald-100 text-emerald-950': detectedCarrier === 'safaricom',
-                        'bg-red-100 text-red-950': detectedCarrier === 'airtel',
-                        'bg-amber-100 text-amber-950': detectedCarrier === 'telkom',
-                      }"
-                    >
-                      {{ detectedCarrier }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="space-y-1">
-                  <label class="text-xs font-semibold text-forest-950">Email (For receipt &amp; eBook backup)</label>
-                  <div class="relative flex items-center">
-                    <Mail :size="16" class="absolute left-3 text-ink-muted pointer-events-none" />
-                    <input
-                      v-model="customerEmail"
-                      type="email"
-                      placeholder="name@email.com"
-                      class="w-full pl-9 pr-3 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- STEP 2: Physical Delivery & GPS Pin Picker -->
-          <div v-if="hasPhysicalItems" class="bg-white rounded-xl shadow-subtle border border-ink-border p-6 space-y-4">
-            <div class="flex items-center gap-2.5 pb-3 border-b border-ink-border">
-              <span class="w-6 h-6 rounded-full bg-forest-900 text-white text-xs font-mono font-bold flex items-center justify-center">2</span>
-              <h2 class="font-display text-base font-bold text-forest-950">Fulfillment &amp; Delivery Option</h2>
-            </div>
-
-            <DeliveryTypeStep v-model="deliveryType" />
-
-            <div v-if="deliveryType === 'delivery'" class="space-y-4 pt-2">
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Estate / Area Name *</label>
-                <div class="relative flex items-center">
-                  <MapPin :size="16" class="absolute left-3 text-ink-muted pointer-events-none" />
-                  <input
-                    v-model="estate"
-                    type="text"
-                    placeholder="e.g. Kilimani, South C, Westlands"
-                    class="w-full pl-9 pr-3 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-semibold text-ink-muted block">
-                  Drop GPS Pin for Accurate Rider Dispatch:
-                </label>
-                <LeafletPinPicker
-                  :lat="customerLat"
-                  :lng="customerLng"
-                  @update:location="handleMapPinUpdate"
-                />
-              </div>
-
-              <div class="grid sm:grid-cols-2 gap-3">
-                <div class="space-y-1">
-                  <label class="text-xs font-semibold text-forest-950">Building / Landmark</label>
-                  <div class="relative flex items-center">
-                    <Building :size="16" class="absolute left-3 text-ink-muted pointer-events-none" />
-                    <input
-                      v-model="landmark"
-                      type="text"
-                      placeholder="e.g. Chaka Place, Near Yaya"
-                      class="w-full pl-9 pr-3 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900"
-                    />
-                  </div>
-                </div>
-
-                <div class="space-y-1">
-                  <label class="text-xs font-semibold text-forest-950">House / Apartment #</label>
-                  <div class="relative flex items-center">
-                    <Home :size="16" class="absolute left-3 text-ink-muted pointer-events-none" />
-                    <input
-                      v-model="houseNumber"
-                      type="text"
-                      placeholder="e.g. Apt 4B, 2nd Floor"
-                      class="w-full pl-9 pr-3 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else class="p-3.5 bg-paper-cream rounded-lg border border-ink-border text-xs text-ink-muted space-y-1">
-              <span class="font-bold text-forest-950 block">Collection Address:</span>
-              <span>Flemela Bookstore Main Hub, Sarit Centre Lower Level, Westlands, Nairobi.</span>
-              <p class="text-[11px] text-forest-900 font-semibold pt-1">✓ Ready for pickup within 2 hours of payment confirmation.</p>
-            </div>
-          </div>
-
-          <!-- STEP 3: Payment Method -->
-          <div class="bg-white rounded-xl shadow-subtle border border-ink-border p-6 space-y-4">
-            <div class="flex items-center gap-2.5 pb-3 border-b border-ink-border">
-              <span class="w-6 h-6 rounded-full bg-forest-900 text-white text-xs font-mono font-bold flex items-center justify-center">
-                {{ hasPhysicalItems ? '3' : '2' }}
-              </span>
-              <h2 class="font-display text-base font-bold text-forest-950">Payment Method</h2>
-            </div>
-
-            <div class="space-y-2.5">
-              <label
-                class="border rounded-xl p-3.5 flex items-start gap-3 cursor-pointer transition-all"
-                :class="paymentMethod === 'mpesa' ? 'border-forest-900 bg-emerald-50/50 ring-1 ring-forest-900' : 'border-ink-border bg-white hover:border-slate-300'"
-              >
-                <input type="radio" value="mpesa" v-model="paymentMethod" class="sr-only" />
-                <div class="w-8 h-8 rounded-full bg-emerald-100 text-forest-900 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Zap :size="16" />
-                </div>
-                <div>
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold text-forest-950">Lipa Na M-Pesa (Direct STK Push)</span>
-                    <span class="bg-forest-950 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded">Instant Access</span>
-                  </div>
-                  <p class="text-[11px] text-ink-muted mt-0.5">
-                    An STK prompt will be sent directly to your phone screen to enter your M-Pesa PIN.
-                  </p>
-                </div>
-              </label>
-
-              <label
-                v-if="hasPhysicalItems"
-                class="border rounded-xl p-3.5 flex items-start gap-3 cursor-pointer transition-all"
-                :class="paymentMethod === 'mpesa_cash' ? 'border-forest-900 bg-emerald-50/50 ring-1 ring-forest-900' : 'border-ink-border bg-white hover:border-slate-300'"
-              >
-                <input type="radio" value="mpesa_cash" v-model="paymentMethod" class="sr-only" />
-                <div class="w-8 h-8 rounded-full bg-slate-100 text-ink-muted flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <CreditCard :size="16" />
-                </div>
-                <div>
-                  <span class="text-xs font-bold text-forest-950">
-                    {{ deliveryType === 'delivery' ? 'Pay on Delivery / Courier Handover' : 'Pay at Store Pickup' }}
-                  </span>
-                  <p class="text-[11px] text-ink-muted mt-0.5">
-                    Settle payment via M-Pesa or cash upon physical collection of your books.
-                  </p>
-                </div>
-              </label>
-            </div>
-
-            <div class="space-y-1 pt-2">
-              <label class="text-xs font-semibold text-forest-950">Order Instructions / Notes (Optional)</label>
-              <div class="relative flex items-start">
-                <FileText :size="16" class="absolute left-3 top-2.5 text-ink-muted pointer-events-none" />
-                <textarea
-                  v-model="notes"
-                  rows="2"
-                  placeholder="e.g. Call before arrival, leave with receptionist..."
-                  class="w-full pl-9 pr-3 py-2 border border-ink-border rounded text-sm outline-none focus:border-forest-900 resize-none"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- RIGHT: Order Summary Sidebar -->
-        <div class="lg:col-span-5 bg-white rounded-xl shadow-subtle border border-ink-border p-6 space-y-5 sticky top-24">
-          <div class="pb-3 border-b border-ink-border flex justify-between items-center">
-            <h3 class="font-display font-bold text-base text-forest-950">Order Summary</h3>
-            <span class="text-xs font-semibold text-ink-muted tabular-figure font-mono">{{ totalItems }} item(s)</span>
-          </div>
-
-          <!-- Items Breakdown -->
-          <div class="space-y-3 max-h-64 overflow-y-auto divide-y divide-slate-100 pr-1">
-            <div
-              v-for="item in items"
-              :key="`${item.productId}-${item.formatId}`"
-              class="pt-2.5 first:pt-0 flex gap-3 items-center"
-            >
-              <div class="w-12 h-14 bg-paper-cream rounded border border-ink-border overflow-hidden flex-shrink-0 flex items-center justify-center">
-                <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" class="w-full h-full object-cover" />
-                <ShoppingBag v-else :size="18" class="text-ink-muted opacity-40" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <h4 class="text-xs font-bold text-forest-950 truncate">{{ item.title }}</h4>
-                <div class="flex items-center gap-2 mt-0.5 text-[10px] text-ink-muted">
-                  <span
-                    class="font-mono font-bold uppercase"
-                    :class="item.format === 'hardcopy' ? 'text-amber-900 bg-amber-50 px-1 rounded' : 'text-emerald-900 bg-emerald-50 px-1 rounded'"
-                  >
-                    {{ item.format }}
-                  </span>
-                  <span>â€¢ Qty: {{ item.quantity }}</span>
-                </div>
-              </div>
-              <span class="text-xs font-bold text-forest-950 font-mono tabular-figure">
-                {{ formatCurrency(item.price * item.quantity) }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Totals Calculation (Includes Delivery Fee in Total) -->
-          <div class="space-y-2 border-t border-ink-border pt-3 text-xs">
-            <div class="flex justify-between text-ink-muted">
-              <span>Subtotal</span>
-              <span class="font-semibold text-forest-950 font-mono tabular-figure">{{ formatCurrency(subtotal) }}</span>
-            </div>
-
-            <div class="flex justify-between text-ink-muted">
-              <span>Delivery Fee</span>
-              <span v-if="!hasPhysicalItems || deliveryType === 'pickup'" class="text-emerald-700 font-bold font-mono">
-                FREE
-              </span>
-              <span v-else-if="deliveryFeeStatus === 'known'" class="font-semibold text-forest-950 font-mono tabular-figure">
-                {{ formatCurrency(deliveryFee) }}
-              </span>
-              <span v-else class="text-slate-500 font-medium">
-                To be confirmed
-              </span>
-            </div>
-
-            <div class="flex justify-between items-baseline pt-2 border-t border-ink-border text-base">
-              <span class="font-bold text-forest-950">Total to Pay</span>
-              <span class="font-display font-extrabold text-xl text-forest-950 font-mono tabular-figure">
-                {{ formatCurrency(totalToPay) }}
-              </span>
-            </div>
-          </div>
-
-          <div v-if="formError" class="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start gap-2">
-            <AlertCircle :size="15" class="flex-shrink-0 mt-0.5" />
-            <span>{{ formError }}</span>
-          </div>
-
-          <button
-            type="button"
-            class="w-full bg-forest-950 text-white font-bold text-xs uppercase py-3.5 px-6 rounded hover:bg-forest-800 transition-all flex items-center justify-center gap-2 shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            :disabled="!isFormValid || isSubmitting"
-            @click="handlePlaceOrder"
-          >
-            <span v-if="isSubmitting" class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-            <span v-else>
-              {{ paymentMethod === 'mpesa' ? `Pay ${formatCurrency(totalToPay)} via M-Pesa` : `Confirm Order (${formatCurrency(totalToPay)})` }}
-            </span>
-          </button>
-
-          <div class="flex items-center justify-center gap-2 text-[11px] text-ink-muted pt-1">
-            <ShieldCheck :size="14" class="text-forest-900" />
-            <span>Direct Safaricom Daraja STK Settlement</span>
           </div>
         </div>
       </div>
@@ -6104,11 +5502,11 @@ async function handlePlaceOrder(): Promise<void> {
 <file path="pages/index.vue">
 <!-- pages/index.vue -->
 <script setup lang="ts">
+import { ref, computed } from 'vue';
 import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
 import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
 import HeroBanner from '~/components/storefront/HeroBanner.vue';
 import TrustBadgeStrip from '~/components/storefront/TrustBadgeStrip.vue';
-import CategoryGrid from '~/components/storefront/CategoryGrid.vue';
 import BookCard from '~/components/storefront/BookCard.vue';
 import CartDrawer from '~/components/storefront/CartDrawer.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
@@ -6137,7 +5535,7 @@ useSeoMeta({
   ogDescription: 'Shop authentic hardcovers, paperbacks, and instant eBooks with Lipa Na M-Pesa.',
 });
 
-// Inclusive category filter (handles aliases like Finance/Business, Religious/Christian)
+// Inclusive category filter
 const filteredBooks = computed(() => {
   if (!books.value) return [];
   let result = [...books.value];
@@ -6195,22 +5593,22 @@ function handleBookRequestSubmit(): void {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col bg-paper text-ink">
+  <div class="min-h-screen flex flex-col bg-paper-canvas text-ink antialiased">
     <TopUtilityBar />
     <BookstoreHeader @search="handleSearch" @select-category="handleCategorySelect" />
     <HeroBanner />
     <TrustBadgeStrip />
-    <CategoryGrid @select="handleCategorySelect" />
 
     <!-- Main Catalog Section -->
-    <section id="bestsellers" class="py-12 px-4 max-w-6xl mx-auto w-full space-y-6">
-      <div class="flex flex-wrap items-end justify-between gap-4">
+    <section id="bestsellers" class="py-10 sm:py-14 px-4 sm:px-6 max-w-6xl mx-auto w-full space-y-6">
+      <div class="flex flex-wrap items-end justify-between gap-4 pb-2">
         <div>
-          <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-forest-950 uppercase tracking-wide">
-            CATALOG &amp; EDITIONS
+          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-gold-600 block">Curated Collection</span>
+          <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-forest-950 tracking-tight">
+            Featured Catalog &amp; Editions
           </h2>
-          <p class="text-xs sm:text-sm text-ink font-medium">
-            Browse authentic hardcovers and instant Cloudflare R2 eBooks
+          <p class="text-xs sm:text-sm text-ink-muted mt-0.5">
+            Discover handpicked print editions and instant digital downloads
           </p>
         </div>
 
@@ -6219,44 +5617,44 @@ function handleBookRequestSubmit(): void {
           class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-950 hover:text-gold-600 transition-colors cursor-pointer"
           @click="showRequestModal = true"
         >
-          <MessageSquare :size="14" /> Can't find a book? Request it
+          <MessageSquare :size="14" /> Can't find a title? Request it
         </button>
       </div>
 
       <!-- Active Filter Pill Bar -->
-      <div v-if="activeCategoryFilter !== 'ALL' || searchQuery" class="flex items-center justify-between bg-paper-surface px-4 py-2.5 rounded-lg border-2 border-ink-border shadow-sm">
-        <span class="text-xs text-forest-950 font-bold">
-          Filtering: <span class="underline text-forest-900">{{ activeCategoryFilter }}</span>
+      <div v-if="activeCategoryFilter !== 'ALL' || searchQuery" class="flex items-center justify-between bg-paper-surface px-4 py-2.5 rounded-xl border border-paper-border shadow-2xs">
+        <span class="text-xs text-forest-950 font-medium">
+          Filtering by: <strong class="underline text-forest-900 font-bold">{{ activeCategoryFilter }}</strong>
           <template v-if="searchQuery"> (Search: "{{ searchQuery }}")</template>
         </span>
         <button
           type="button"
-          class="text-xs text-forest-950 font-bold hover:underline cursor-pointer bg-paper-cream px-2 py-1 rounded"
+          class="text-xs text-forest-950 font-bold hover:underline cursor-pointer bg-paper-cream px-2.5 py-1 rounded-md"
           @click="activeCategoryFilter = 'ALL'; searchQuery = '';"
         >
-          Reset All Filters
+          Reset Filter
         </button>
       </div>
 
       <!-- Loading Skeletons -->
       <div v-if="fetchStatus === 'pending'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-        <div v-for="n in 8" :key="n" class="bg-paper-surface rounded border border-ink-border p-3 space-y-2.5">
-          <Skeleton height="220px" radius="4px" />
+        <div v-for="n in 8" :key="n" class="bg-paper-surface rounded-xl border border-paper-border p-3.5 space-y-3">
+          <Skeleton height="220px" radius="6px" />
           <Skeleton height="14px" width="80%" />
           <Skeleton height="10px" width="40%" />
         </div>
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="filteredBooks.length === 0" class="bg-paper-surface rounded-xl border border-ink-border p-12 text-center space-y-3 shadow-subtle">
-        <BookOpen :size="40" class="mx-auto text-forest-900 opacity-60" />
+      <div v-else-if="filteredBooks.length === 0" class="bg-paper-surface rounded-2xl border border-paper-border p-12 text-center space-y-3.5 shadow-soft">
+        <BookOpen :size="40" class="mx-auto text-forest-900 opacity-50" />
         <h3 class="font-display text-base font-bold text-forest-950">No titles match your filter</h3>
-        <p class="text-xs text-ink max-w-xs mx-auto">
-          Try resetting your search query or browse another category.
+        <p class="text-xs text-ink-muted max-w-xs mx-auto">
+          Try clearing your search query to view all available titles.
         </p>
         <button
           type="button"
-          class="bg-forest-950 text-white text-xs font-bold uppercase px-4 py-2 rounded hover:bg-forest-800 cursor-pointer"
+          class="bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold uppercase px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-subtle"
           @click="activeCategoryFilter = 'ALL'; searchQuery = '';"
         >
           View All Titles
@@ -6273,62 +5671,64 @@ function handleBookRequestSubmit(): void {
       </div>
     </section>
 
-    <!-- Request a Book Section Banner -->
-    <section class="py-12 bg-forest-950 text-white px-4">
+    <!-- Custom Orders Section Banner -->
+    <section class="py-12 sm:py-14 bg-forest-950 text-paper px-4 sm:px-6">
       <div class="max-w-4xl mx-auto text-center space-y-4">
-        <span class="text-xs font-bold uppercase tracking-widest text-gold-300">Custom Orders &amp; Procurement</span>
-        <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-white">Looking for a specific book?</h2>
-        <p class="text-xs sm:text-sm text-slate-100 max-w-lg mx-auto leading-relaxed">
-          Our team can procure rare editions, textbooks, and international publications for you in digital or physical print format.
+        <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-gold-300">Procurement &amp; Custom Orders</span>
+        <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-paper">Looking for a specific publication?</h2>
+        <p class="text-xs sm:text-sm text-paper/80 max-w-lg mx-auto leading-relaxed">
+          Our team can procure rare editions, academic textbooks, and international publications for you in digital or physical print format.
         </p>
-        <button
-          type="button"
-          class="bg-gold-500 text-forest-950 font-extrabold text-xs uppercase px-6 py-3 rounded hover:bg-gold-600 transition-colors shadow cursor-pointer"
-          @click="showRequestModal = true"
-        >
-          Submit Book Request
-        </button>
+        <div class="pt-2">
+          <button
+            type="button"
+            class="bg-gold-500 text-forest-950 font-bold text-xs uppercase px-6 py-3 rounded-xl hover:bg-gold-400 transition-colors shadow-medium cursor-pointer active:scale-[0.98]"
+            @click="showRequestModal = true"
+          >
+            Submit Book Request
+          </button>
+        </div>
       </div>
     </section>
 
     <!-- Footer -->
-    <footer class="bg-forest-950 text-white py-10 px-4 sm:px-6 border-t border-forest-900 mt-auto">
+    <footer class="bg-forest-950 text-paper py-10 px-4 sm:px-6 border-t border-forest-900/80 mt-auto">
       <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
         <div class="space-y-1 text-center sm:text-left">
-          <span class="font-display font-bold text-base tracking-tight text-white block">FLEMELA</span>
-          <p class="text-slate-200 text-xs font-medium">Books that inspire. Knowledge that transforms.</p>
+          <span class="font-display font-bold text-base tracking-tight text-paper block">FLEMELA BOOKSTORE</span>
+          <p class="text-paper/70 text-xs">Books that inspire. Knowledge that transforms.</p>
         </div>
-        <p class="text-slate-300 text-xs font-mono">&copy; 2026 Flemela Bookstore. All rights reserved.</p>
+        <p class="text-paper/50 text-xs font-mono">&copy; 2026 Flemela Bookstore. All rights reserved.</p>
       </div>
     </footer>
 
     <!-- Request Modal -->
-    <Modal :open="showRequestModal" title="Request a Book / Special Order" @close="showRequestModal = false">
+    <Modal :open="showRequestModal" title="Request a Book / Custom Order" @close="showRequestModal = false">
       <form class="space-y-4" @submit.prevent="handleBookRequestSubmit">
-        <p class="text-xs text-ink font-medium">
-          Tell us the book details and your contact info. We will source it and notify you via WhatsApp.
+        <p class="text-xs text-ink-muted">
+          Tell us the book title, author, and your contact number. We will source it and notify you via WhatsApp.
         </p>
 
-        <div class="space-y-1">
+        <div class="space-y-1.5">
           <label class="text-xs font-bold text-forest-950">Book Title *</label>
-          <input v-model="requestTitle" type="text" placeholder="e.g. Atomic Habits" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 font-medium" required />
+          <input v-model="requestTitle" type="text" placeholder="e.g. Atomic Habits" class="w-full px-3.5 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900" required />
         </div>
 
-        <div class="space-y-1">
+        <div class="space-y-1.5">
           <label class="text-xs font-bold text-forest-950">Author Name</label>
-          <input v-model="requestAuthor" type="text" placeholder="e.g. James Clear" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 font-medium" />
+          <input v-model="requestAuthor" type="text" placeholder="e.g. James Clear" class="w-full px-3.5 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900" />
         </div>
 
-        <div class="space-y-1">
+        <div class="space-y-1.5">
           <label class="text-xs font-bold text-forest-950">WhatsApp Phone Number *</label>
-          <input v-model="requestContact" type="tel" placeholder="07XXXXXXXX" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 font-mono" required />
+          <input v-model="requestContact" type="tel" placeholder="07XXXXXXXX" class="w-full px-3.5 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 font-mono" required />
         </div>
 
         <div class="flex justify-end gap-2 pt-2">
-          <button type="button" class="px-4 py-2 text-xs font-bold hover:bg-slate-100 rounded cursor-pointer" @click="showRequestModal = false">
+          <button type="button" class="px-4 py-2 text-xs font-bold hover:bg-slate-100 rounded-lg cursor-pointer" @click="showRequestModal = false">
             Cancel
           </button>
-          <button type="submit" class="bg-forest-950 text-white text-xs font-bold uppercase px-5 py-2 rounded hover:bg-forest-800 cursor-pointer" :disabled="isSubmittingRequest">
+          <button type="submit" class="bg-forest-950 text-paper text-xs font-bold uppercase px-5 py-2 rounded-lg hover:bg-forest-900 cursor-pointer shadow-subtle" :disabled="isSubmittingRequest">
             {{ isSubmittingRequest ? 'Submitting...' : 'Submit Request' }}
           </button>
         </div>
@@ -6498,7 +5898,7 @@ export default defineEventHandler(async (event) => {
 <file path="server/api/admin/books/[id].delete.ts">
 // =============================================================================
 // server/api/admin/books/[id].delete.ts
-// Proxy endpoint deleting a book product and cascading its formats.
+// Proxy endpoint deleting a book product and cascading its child records.
 // =============================================================================
 
 import { sokoClient } from '../../../utils/sokoClient';
@@ -6511,14 +5911,14 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    await sokoClient(`/products/${id}`, {
+    const result = await sokoClient<{ success: boolean; deleted: boolean }>(`/products/${id}`, {
       method: 'DELETE',
     });
-    return { success: true, deleted: true };
+    return result;
   } catch (err: any) {
     throw createError({
       statusCode: err.statusCode || 500,
-      statusMessage: err.statusMessage || 'Failed to delete book',
+      statusMessage: err.statusMessage || 'Failed to delete book from catalog',
     });
   }
 });
@@ -7023,7 +6423,7 @@ export default defineEventHandler(async (event) => {
 <file path="server/api/admin/login.post.ts">
 // =============================================================================
 // server/api/admin/login.post.ts
-// Handles admin authentication and sets accessible session cookie for Nuxt.
+// Authenticates store admin against Soko API and sets session cookie.
 // =============================================================================
 
 import { z } from 'zod';
@@ -7052,10 +6452,12 @@ export default defineEventHandler(async (event) => {
       org: { id: string; name: string; slug: string };
     }>('/auth/login', {
       method: 'POST',
-      body: parsed.data,
+      body: {
+        email: parsed.data.email.trim().toLowerCase(),
+        password: parsed.data.password,
+      },
     });
 
-    // httpOnly: false allows isomorphic useCookie & client-side Nuxt router middleware to read session state
     setCookie(event, 'flemela_admin_session', res.tokens.accessToken, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
@@ -7071,9 +6473,17 @@ export default defineEventHandler(async (event) => {
       org: res.org,
     };
   } catch (err: any) {
+    const status = err.statusCode || err.response?.status || 401;
+    const message =
+      err.data?.error?.message ||
+      err.data?.message ||
+      err.statusMessage ||
+      err.message ||
+      'Invalid email or password';
+
     throw createError({
-      statusCode: err.statusCode || 401,
-      statusMessage: err.data?.error?.message || err.statusMessage || 'Invalid email or password',
+      statusCode: status,
+      statusMessage: message,
     });
   }
 });
@@ -7299,6 +6709,36 @@ export default defineEventHandler(async (event) => {
 });
 </file>
 
+<file path="server/api/orders/[id]/payment-status.patch.ts">
+// =============================================================================
+// flemela/server/api/admin/orders/[id]/payment-status.patch.ts
+// Proxy endpoint allowing store admin to approve payment and release downloads.
+// =============================================================================
+
+import { sokoClient } from '../../../utils/sokoClient';
+
+export default defineEventHandler(async (event) => {
+  const id = getRouterParam(event, 'id');
+  const body = await readBody(event);
+
+  if (!id) {
+    throw createError({ statusCode: 400, statusMessage: 'Order ID is required' });
+  }
+
+  try {
+    return await sokoClient(`/orders/${id}/payment-status`, {
+      method: 'PATCH',
+      body,
+    });
+  } catch (err: any) {
+    throw createError({
+      statusCode: err.statusCode || 500,
+      statusMessage: err.statusMessage || 'Failed to update order payment status',
+    });
+  }
+});
+</file>
+
 <file path="server/api/orders/[id]/status.get.ts">
 // =============================================================================
 // server/api/orders/[id]/status.get.ts
@@ -7338,6 +6778,9 @@ export interface OrderStatusResponse {
 }
 
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig();
+  const storeSlug = config.public.storeSlug;
+
   const orderId = getRouterParam(event, 'id');
   const query = getQuery(event);
   const phone = typeof query.phone === 'string' ? query.phone : undefined;
@@ -7347,7 +6790,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const order = await sokoClient<any>(`/public/stores/flemela/orders/${orderId}`, {
+    const order = await sokoClient<any>(`/public/stores/${storeSlug}/orders/${orderId}`, {
       query: { phone },
     });
 
@@ -7386,6 +6829,8 @@ import { sokoClient } from '../../utils/sokoClient';
 import type { Book, ProductFormat } from '~/types';
 
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig();
+  const storeSlug = config.public.storeSlug;
   const slug = getRouterParam(event, 'slug');
 
   if (!slug) {
@@ -7393,9 +6838,8 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const book = await sokoClient<Book>(`/public/stores/flemela/products/${slug}`);
+    const book = await sokoClient<Book>(`/public/stores/${storeSlug}/products/${slug}`);
 
-    // If backend didn't embed formats directly, populate via format endpoint
     if (!book.formats || book.formats.length === 0) {
       try {
         const formats = await sokoClient<ProductFormat[]>(`/products/${book.id}/formats`);
@@ -7424,10 +6868,12 @@ import { sokoClient } from '../../utils/sokoClient';
 import type { Book } from '~/types';
 
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig();
+  const storeSlug = config.public.storeSlug;
   const query = getQuery(event);
 
   try {
-    const products = await sokoClient<Book[]>('/public/stores/current/products', {
+    const products = await sokoClient<Book[]>(`/public/stores/${storeSlug}/products`, {
       query: {
         category_id: (query.category_id as string) || undefined,
         q: (query.q as string) || undefined,
@@ -7436,17 +6882,7 @@ export default defineEventHandler(async (event) => {
 
     return products || [];
   } catch {
-    // Fallback: query via direct public store route
-    try {
-      return await sokoClient<Book[]>('/public/stores/flemela/products', {
-        query: {
-          category_id: (query.category_id as string) || undefined,
-          q: (query.q as string) || undefined,
-        },
-      });
-    } catch {
-      return [];
-    }
+    return [];
   }
 });
 </file>
@@ -7454,7 +6890,7 @@ export default defineEventHandler(async (event) => {
 <file path="server/api/stores/current.get.ts">
 // =============================================================================
 // server/api/stores/current.get.ts
-// Proxy endpoint retrieving public metadata for the active storefront.
+// Proxy endpoint retrieving public metadata for the active bookstore storefront.
 // =============================================================================
 
 import { sokoClient } from '../../utils/sokoClient';
@@ -7476,10 +6912,12 @@ export interface PublicStoreMetadata {
 }
 
 export default defineEventHandler(async () => {
+  const config = useRuntimeConfig();
+  const storeSlug = config.public.storeSlug;
+
   try {
-    return await sokoClient<PublicStoreMetadata>('/public/stores/flemela');
+    return await sokoClient<PublicStoreMetadata>(`/public/stores/${storeSlug}`);
   } catch (err: any) {
-    // Graceful fallback defaults if backend is initializing
     return {
       name: 'Flemela Bookstore',
       description: 'Books that inspire. Knowledge that transforms.',
@@ -7502,7 +6940,7 @@ export default defineEventHandler(async () => {
 <file path="server/api/checkout.post.ts">
 // =============================================================================
 // server/api/checkout.post.ts
-// Proxies order placement with centralized phone validation.
+// Proxies order placement with centralized phone validation & dynamic store slug.
 // =============================================================================
 
 import { z } from 'zod';
@@ -7534,7 +6972,7 @@ const CheckoutBodySchema = z.object({
     .array(
       z.object({
         product_id: z.string().uuid('Invalid product ID'),
-        format_id: z.string().uuid('Invalid format ID').optional(),
+        format_id: z.string().uuid('Invalid format ID').nullable().optional(),
         quantity: z.number().int().positive('Quantity must be greater than zero'),
         delivery_method: z.enum(['digital', 'pickup', 'delivery']).default('digital'),
       })
@@ -7543,6 +6981,9 @@ const CheckoutBodySchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig();
+  const storeSlug = config.public.storeSlug;
+
   const rawBody = await readBody(event);
   const parsed = CheckoutBodySchema.safeParse(rawBody);
 
@@ -7567,7 +7008,7 @@ export default defineEventHandler(async (event) => {
     customerLng: parsed.data.customerLng ?? null,
     items: parsed.data.items.map((item) => ({
       product_id: item.product_id,
-      format_id: item.format_id,
+      format_id: item.format_id || null,
       quantity: item.quantity,
       delivery_method: item.delivery_method,
     })),
@@ -7575,7 +7016,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     const response = await sokoClient<{ orderId: string; checkoutRequestId?: string }>(
-      '/public/stores/flemela/orders',
+      `/public/stores/${storeSlug}/orders`,
       {
         method: 'POST',
         body: payload,
@@ -7609,123 +7050,29 @@ export default defineEventHandler(() => {
 
 <file path="server/api/product.get.ts">
 // =============================================================================
-// server/api/products.get.ts
-// Proxy endpoint returning bookstore products with nested product_formats.
-// Includes seed fallbacks matching Screenshot 2 so the catalog renders immediately.
+// server/api/product.get.ts
+// Synchronized product endpoint proxying to configured store slug.
 // =============================================================================
 
+import { sokoClient } from '../utils/sokoClient';
 import type { Book } from '~/types';
 
-const SEED_BESTSELLERS: Book[] = [
-  {
-    id: 'b1111111-1111-1111-1111-111111111111',
-    org_id: 'org_flemela_main',
-    category_id: 'cat_biz',
-    category_name: 'Business & Finance',
-    name: 'Freakonomics: A Rogue Economist Explores the Hidden Side of Everything',
-    slug: 'freakonomics',
-    author: 'Steven D. Levitt & Stephen J. Dubner',
-    description: 'Freakonomics explores the hidden side of everything through behavioral and economic insights.',
-    price: 999,
-    status: 'published',
-    badge: 'BESTSELLER',
-    rating: 5,
-    reviews_count: 320,
-    images: [{ image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop', image_public_id: 'b1', sort_order: 0 }],
-    formats: [
-      { id: 'f1', product_id: 'b1111111-1111-1111-1111-111111111111', format: 'hardcopy', price: 999, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' },
-      { id: 'f2', product_id: 'b1111111-1111-1111-1111-111111111111', format: 'pdf', price: 149, file_url: 'https://sample.pdf', file_public_id: 'raw_f1', file_size_bytes: 12500000, stock: null, created_at: '', updated_at: '' },
-      { id: 'f3', product_id: 'b1111111-1111-1111-1111-111111111111', format: 'epub', price: 149, file_url: 'https://sample.epub', file_public_id: 'raw_f2', file_size_bytes: 4500000, stock: null, created_at: '', updated_at: '' },
-    ],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'b2222222-2222-2222-2222-222222222222',
-    org_id: 'org_flemela_main',
-    category_id: 'cat_psych',
-    category_name: 'Psychology / Self-Help',
-    name: 'Flow: The Psychology of Optimal Experience',
-    slug: 'flow-psychology-optimal-experience',
-    author: 'Mihaly Csikszentmihalyi',
-    description: 'Legendary classic on how to unlock deep focus, happiness, and peak human performance.',
-    price: 999,
-    status: 'published',
-    badge: 'NATIONAL BESTSELLER',
-    rating: 5,
-    reviews_count: 415,
-    images: [{ image_url: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600&auto=format&fit=crop', image_public_id: 'b2', sort_order: 0 }],
-    formats: [
-      { id: 'f4', product_id: 'b2222222-2222-2222-2222-222222222222', format: 'hardcopy', price: 999, file_url: null, file_public_id: null, file_size_bytes: null, stock: 15, created_at: '', updated_at: '' },
-      { id: 'f5', product_id: 'b2222222-2222-2222-2222-222222222222', format: 'pdf', price: 149, file_url: 'https://sample.pdf', file_public_id: 'raw_f3', file_size_bytes: 8500000, stock: null, created_at: '', updated_at: '' },
-    ],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'b3333333-3333-3333-3333-333333333333',
-    org_id: 'org_flemela_main',
-    category_id: 'cat_self',
-    category_name: 'Self-Help',
-    name: 'The Compound Effect: Jumpstart Your Income, Your Life, Your Success',
-    slug: 'the-compound-effect',
-    author: 'Darren Hardy',
-    description: 'Small, smart choices + consistency + time = radical, exponential success.',
-    price: 999,
-    status: 'published',
-    badge: 'NEW YORK TIMES BESTSELLER',
-    rating: 5,
-    reviews_count: 612,
-    images: [{ image_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&auto=format&fit=crop', image_public_id: 'b3', sort_order: 0 }],
-    formats: [
-      { id: 'f6', product_id: 'b3333333-3333-3333-3333-333333333333', format: 'hardcopy', price: 999, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' },
-      { id: 'f7', product_id: 'b3333333-3333-3333-3333-333333333333', format: 'epub', price: 149, file_url: 'https://sample.epub', file_public_id: 'raw_f4', file_size_bytes: 3500000, stock: null, created_at: '', updated_at: '' },
-    ],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'b4444444-4444-4444-4444-444444444444',
-    org_id: 'org_flemela_main',
-    category_id: 'cat_psych',
-    category_name: 'Psychology',
-    name: 'The Silva Mind Control Method',
-    slug: 'the-silva-mind-control-method',
-    author: 'José Silva & Philip Miele',
-    description: 'Transform your memory, concentration, and mental resilience through proven mental training.',
-    price: 999,
-    status: 'published',
-    badge: 'BESTSELLER',
-    rating: 5,
-    reviews_count: 389,
-    images: [{ image_url: 'https://images.unsplash.com/photo-1532012164546-f432f2e3dd48?w=600&auto=format&fit=crop', image_public_id: 'b4', sort_order: 0 }],
-    formats: [
-      { id: 'f8', product_id: 'b4444444-4444-4444-4444-444444444444', format: 'hardcopy', price: 999, file_url: null, file_public_id: null, file_size_bytes: null, stock: 10, created_at: '', updated_at: '' },
-      { id: 'f9', product_id: 'b4444444-4444-4444-4444-444444444444', format: 'pdf', price: 149, file_url: 'https://sample.pdf', file_public_id: 'raw_f5', file_size_bytes: 11000000, stock: null, created_at: '', updated_at: '' },
-    ],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
-
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig();
+  const storeSlug = config.public.storeSlug;
   const query = getQuery(event);
 
   try {
-    const products = await sokoClient<Book[]>('/products', {
+    const products = await sokoClient<Book[]>(`/public/stores/${storeSlug}/products`, {
       query: {
         category_id: query.category_id as string,
         q: query.q as string,
       },
     });
 
-    if (products && products.length > 0) {
-      return products;
-    }
-    return SEED_BESTSELLERS;
+    return products || [];
   } catch {
-    // Return seed bestsellers if backend is offline or empty during dev
-    return SEED_BESTSELLERS;
+    return [];
   }
 });
 </file>
@@ -7774,7 +7121,6 @@ export default defineEventHandler((event) => {
 // =============================================================================
 // server/utils/sokoClient.ts
 // Server-only typed HTTP proxy client communicating with the Soko backend.
-// Dynamically forwards caller's authenticated session token with env fallback.
 // =============================================================================
 
 import type { ApiResponse } from '~/types';
@@ -7799,10 +7145,8 @@ export async function sokoClient<T>(path: string, options: SokoClientOptions = {
     ...options.headers,
   };
 
-  // 1. Check for explicitly passed token
   let authToken = options.token;
 
-  // 2. Check for token on active Nitro event context (set by admin-auth middleware or cookie)
   if (!authToken && process.server) {
     try {
       const event = useRequestEvent();
@@ -7813,11 +7157,10 @@ export async function sokoClient<T>(path: string, options: SokoClientOptions = {
           undefined;
       }
     } catch {
-      // Fallback if called outside active request event
+      // Fallback
     }
   }
 
-  // 3. Fallback to static org API key if configured
   if (!authToken && config.sokoOrgApiKey) {
     authToken = config.sokoOrgApiKey;
   }
@@ -7845,7 +7188,11 @@ export async function sokoClient<T>(path: string, options: SokoClientOptions = {
     return response.data;
   } catch (err: any) {
     const status = err.response?.status || err.statusCode || 500;
-    const message = err.response?._data?.error?.message || err.message || 'Error communicating with commerce API';
+    const message =
+      err.response?._data?.error?.message ||
+      err.response?._data?.message ||
+      err.message ||
+      'Error communicating with commerce API';
 
     throw createError({
       statusCode: status,
@@ -8048,6 +7395,10 @@ export function detectKenyanCarrier(input: string): KenyanCarrier {
 # Server-only Soko Backend Connection
 SOKO_API_BASE_URL=http://localhost:3000/api/v1
 SOKO_ORG_API_KEY=your_organization_api_key_here
+NUXT_PUBLIC_STORE_SLUG=flemela
+
+FLEMELA_ADMIN_EMAIL=flemelabookstore@gmail.com
+FLEMELA_ADMIN_PASSWORD=flemela@321
 </file>
 
 <file path=".gitignore">
@@ -8090,6 +7441,7 @@ logs
 </file>
 
 <file path="nuxt.config.ts">
+// flemela/nuxt.config.ts
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
   devtools: { enabled: false },
@@ -8111,6 +7463,10 @@ export default defineNuxtConfig({
   runtimeConfig: {
     sokoApiBaseUrl: process.env.SOKO_API_BASE_URL || 'http://localhost:3000/api/v1',
     sokoOrgApiKey: process.env.SOKO_ORG_API_KEY || '',
+    adminEmail: process.env.FLEMELA_ADMIN_EMAIL || 'admin@flemela.co.ke',
+    public: {
+      storeSlug: process.env.NUXT_PUBLIC_STORE_SLUG || 'flemela',
+    },
   },
 
   app: {
@@ -8119,6 +7475,7 @@ export default defineNuxtConfig({
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1' },
+        { name: 'referrer', content: 'no-referrer' }, // <-- ADDS HOTLINK UNBLOCKER
         { name: 'theme-color', content: '#073B24' },
         {
           name: 'description',
@@ -8268,49 +7625,75 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Canonical Editorial Palette
-        forest: {
-          950: '#062B20',
-          900: '#08382A',
-          800: '#0D4A37',
-          700: '#146044',
-        },
-        gold: {
-          600: '#A87520',
-          500: '#C18B2F',
-          300: '#DFC58E',
-          100: '#F5EBD4',
-        },
+        // Modern Editorial Paper Palette
         paper: {
-          DEFAULT: '#FAF8F3',
-          cream: '#F3EFE6',
-          surface: '#FFFDF8',
-        },
-        ink: {
-          DEFAULT: '#17221E',
-          muted: '#68716B',
-          subtle: '#949B96',
-          border: 'rgba(23, 34, 30, 0.08)',
-          'border-strong': 'rgba(23, 34, 30, 0.16)',
+          DEFAULT: '#FBF9F5', // Warm Alabaster Canvas
+          canvas: '#FBF9F5',
+          cream: '#F4EFE6',  // Linen Accent / Pill background
+          surface: '#FFFFFF', // Clean Crisp Elevation
+          border: 'rgba(8, 40, 30, 0.08)',
+          'border-strong': 'rgba(8, 40, 30, 0.16)',
         },
 
-        // Backward-compatible semantic aliases mapped to palette
-        'brand-green': '#08382A',
-        'brand-green-hover': '#062B20',
-        'brand-green-dark': '#041E16',
+        // Deep Evergreen Ink
+        forest: {
+          950: '#062319',
+          900: '#08281E',
+          800: '#0D382B',
+          700: '#145240',
+          600: '#1C6953',
+        },
+
+        // Burnished Antique Gold
+        gold: {
+          600: '#A37222',
+          500: '#C18B2F',
+          400: '#D4A44C',
+          300: '#DFC58E',
+          200: '#EEDBB5',
+          100: '#F8F1E3',
+        },
+
+        // Refined Typographic Ink
+        ink: {
+          DEFAULT: '#141E1A',
+          muted: '#5F6964',
+          subtle: '#929B96',
+          border: 'rgba(20, 30, 26, 0.08)',
+          'border-strong': 'rgba(20, 30, 26, 0.16)',
+        },
+
+        // Backward-compatible semantic aliases
+        'brand-green': '#08281E',
+        'brand-green-hover': '#062319',
+        'brand-green-dark': '#041710',
         'brand-gold': '#C18B2F',
-        'brand-gold-hover': '#A87520',
-        'brand-cream': '#F3EFE6',
+        'brand-gold-hover': '#A37222',
+        'brand-cream': '#F4EFE6',
       },
+
       fontFamily: {
-        sans: ['"IBM Plex Sans"', '-apple-system', 'sans-serif'],
+        sans: ['"IBM Plex Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         display: ['Fraunces', 'Georgia', 'serif'],
         mono: ['"IBM Plex Mono"', 'monospace'],
       },
+
       boxShadow: {
-        subtle: '0 2px 8px rgba(13, 9, 7, 0.04)',
-        medium: '0 12px 28px rgba(13, 9, 7, 0.08)',
-        high: '0 24px 48px rgba(13, 9, 7, 0.12)',
+        // Realistic 3D Book Elevation with Spine Crease
+        'book': '-2px 0 6px -1px rgba(0, 0, 0, 0.07), 3px 6px 18px -2px rgba(8, 40, 30, 0.08)',
+        'book-hover': '-3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 14px 28px -3px rgba(8, 40, 30, 0.15)',
+
+        // Ambient Surface Shadows
+        'soft': '0 2px 10px rgba(8, 40, 30, 0.03)',
+        'card': '0 4px 20px rgba(8, 40, 30, 0.05)',
+        'subtle': '0 1px 4px rgba(8, 40, 30, 0.04)',
+        'medium': '0 8px 24px rgba(8, 40, 30, 0.08)',
+        'high': '0 20px 48px rgba(8, 40, 30, 0.12)',
+      },
+
+      borderRadius: {
+        // Flattens left spine edge, rounds right outer page edge
+        'book': '2px 8px 8px 2px',
       },
     },
   },
@@ -8330,6 +7713,701 @@ export default {
     "moduleResolution": "bundler"
   }
 }
+</file>
+
+<file path="assets/css/main.css">
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper-canvas: #FBF9F5;
+  --paper-surface: #FFFFFF;
+  --paper-cream: #F4EFE6;
+
+  --forest-950: #062319;
+  --forest-900: #08281E;
+  --forest-800: #0D382B;
+  --forest-700: #145240;
+
+  --gold-600: #A37222;
+  --gold-500: #C18B2F;
+  --gold-300: #DFC58E;
+  --gold-100: #F8F1E3;
+
+  --ink: #141E1A;
+  --ink-muted: #5F6964;
+  --ink-subtle: #929B96;
+}
+
+@layer base {
+  html {
+    background-color: var(--paper-canvas);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: var(--paper-canvas);
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Fraunces', Georgia, serif;
+    letter-spacing: -0.02em;
+  }
+
+  .font-mono {
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* 3D Realistic Book Treatment */
+.book-cover-3d {
+  position: relative;
+  border-radius: 2px 8px 8px 2px;
+  box-shadow: -2px 0 6px -1px rgba(0, 0, 0, 0.08), 3px 6px 18px -2px rgba(8, 40, 30, 0.10);
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.book-cover-3d::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: linear-gradient(to right, rgba(0,0,0,0.15) 0%, rgba(255,255,255,0.15) 50%, rgba(0,0,0,0.05) 100%);
+  pointer-events:none;
+}
+
+.book-hover-lift {
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.book-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: -3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 16px 30px -3px rgba(8, 40, 30, 0.14);
+}
+
+/* Smooth hidden scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</file>
+
+<file path="pages/checkout.vue">
+<!-- flemela/pages/checkout.vue -->
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import {
+  ArrowLeft,
+  ShoppingBag,
+  Download,
+  User,
+  Phone,
+  Mail,
+  FileText,
+  Zap,
+  CreditCard,
+  ShieldCheck,
+  AlertCircle,
+  MapPin,
+  Building,
+  Home,
+  CheckCircle2,
+  Copy,
+  Check,
+} from 'lucide-vue-next';
+import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
+import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
+import DeliveryTypeStep, { type DeliveryType } from '~/components/storefront/DeliveryTypeStep.vue';
+import LeafletPinPicker from '~/components/storefront/LeafletPinPicker.vue';
+import ToastContainer from '~/components/ui/ToastContainer.vue';
+import { useCart } from '~/composables/useCart';
+import { useToast } from '~/composables/useToast';
+import { normalizeKenyanPhone, isValidKenyanPhone, detectKenyanCarrier } from '~/utils/phone';
+
+const router = useRouter();
+const { items, totalItems, subtotal, hasPhysicalItems, hasDigitalItems, clearCart } = useCart();
+const { push: pushToast } = useToast();
+
+onMounted(() => {
+  if (items.value.length === 0) {
+    router.replace('/');
+  }
+});
+
+// Form State
+const customerName = ref('');
+const customerPhone = ref('');
+const customerEmail = ref('');
+const deliveryType = ref<DeliveryType>('delivery');
+const estate = ref('');
+const landmark = ref('');
+const houseNumber = ref('');
+const notes = ref('');
+const mpesaCode = ref('');
+const paymentMethod = ref<'mpesa_manual' | 'mpesa' | 'mpesa_cash'>('mpesa_manual');
+
+// Clipboard State for Till Number
+const isTillCopied = ref(false);
+const STORE_TILL_NUMBER = '174379'; // Buy Goods Till
+
+function copyTillNumber(): void {
+  if (!navigator.clipboard) return;
+  navigator.clipboard.writeText(STORE_TILL_NUMBER);
+  isTillCopied.value = true;
+  pushToast({ message: `Till number ${STORE_TILL_NUMBER} copied!`, variant: 'success' });
+  setTimeout(() => (isTillCopied.value = false), 2200);
+}
+
+// GPS Pin Coordinates
+const customerLat = ref<number | null>(null);
+const customerLng = ref<number | null>(null);
+
+const HUB_COORDS = { lat: -1.2683, lng: 36.8111, baseKm: 2.0, baseFee: 100, feePerKm: 25, maxRadiusKm: 15 };
+const deliveryFee = ref<number>(100);
+const deliveryFeeStatus = ref<'known' | 'needs_merchant_confirmation'>('known');
+
+const isSubmitting = ref(false);
+const formError = ref<string | null>(null);
+
+const detectedCarrier = computed(() => detectKenyanCarrier(customerPhone.value));
+
+function formatCurrency(val: number): string {
+  return `KSh ${val.toLocaleString('en-KE')}`;
+}
+
+function computeHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
+
+const fullDeliveryAddress = computed(() => {
+  if (!hasPhysicalItems.value) return 'Digital Delivery (eBooks via Cloudflare R2)';
+  if (deliveryType.value === 'pickup') return 'Store Pickup — Sarit Centre Hub, Westlands';
+
+  const parts = [
+    estate.value.trim(),
+    landmark.value.trim() ? `Near ${landmark.value.trim()}` : '',
+    houseNumber.value.trim() ? `House/Door: ${houseNumber.value.trim()}` : '',
+  ].filter(Boolean);
+
+  return parts.join(' • ') || 'Nairobi Delivery';
+});
+
+const isFormValid = computed(() => {
+  const hasName = customerName.value.trim().length > 0;
+  const hasValidPhone = isValidKenyanPhone(customerPhone.value);
+
+  if (!hasName || !hasValidPhone) return false;
+
+  if (paymentMethod.value === 'mpesa_manual' && !mpesaCode.value.trim()) {
+    return false;
+  }
+
+  if (hasPhysicalItems.value && deliveryType.value === 'delivery') {
+    return estate.value.trim().length > 0;
+  }
+
+  return true;
+});
+
+const totalToPay = computed(() => {
+  if (!hasPhysicalItems.value || deliveryType.value === 'pickup') {
+    return subtotal.value;
+  }
+  const feeToAdd = deliveryFeeStatus.value === 'known' ? deliveryFee.value : 0;
+  return Math.round((subtotal.value + feeToAdd) * 100) / 100;
+});
+
+function handleMapPinUpdate(coords: { lat: number; lng: number }): void {
+  customerLat.value = coords.lat;
+  customerLng.value = coords.lng;
+  if (!estate.value) estate.value = 'Pinned Map Location';
+
+  const distance = computeHaversineDistanceKm(HUB_COORDS.lat, HUB_COORDS.lng, coords.lat, coords.lng);
+  if (distance > HUB_COORDS.maxRadiusKm) {
+    deliveryFeeStatus.value = 'needs_merchant_confirmation';
+    deliveryFee.value = 0;
+  } else {
+    deliveryFeeStatus.value = 'known';
+    const billableKm = Math.max(0, distance - HUB_COORDS.baseKm);
+    deliveryFee.value = Math.round(HUB_COORDS.baseFee + billableKm * HUB_COORDS.feePerKm);
+  }
+}
+
+async function handlePlaceOrder(): Promise<void> {
+  if (!isFormValid.value || isSubmitting.value) return;
+
+  isSubmitting.value = true;
+  formError.value = null;
+
+  try {
+    const cleanPhone = normalizeKenyanPhone(customerPhone.value);
+
+    const payload = {
+      customerName: customerName.value.trim(),
+      customerPhone: cleanPhone,
+      customerEmail: customerEmail.value.trim() || null,
+      deliveryType: hasPhysicalItems.value ? deliveryType.value : 'delivery',
+      deliveryLocation: fullDeliveryAddress.value,
+      paymentMethod: paymentMethod.value,
+      mpesaCode: paymentMethod.value === 'mpesa_manual' ? mpesaCode.value.trim().toUpperCase() : null,
+      notes: notes.value.trim() || null,
+      customerLat: hasPhysicalItems.value && deliveryType.value === 'delivery' ? customerLat.value : null,
+      customerLng: hasPhysicalItems.value && deliveryType.value === 'delivery' ? customerLng.value : null,
+      items: items.value.map((i) => ({
+        product_id: i.productId,
+        format_id: i.formatId,
+        quantity: i.quantity,
+        delivery_method: i.deliveryMethod,
+      })),
+    };
+
+    const response = await $fetch<{
+      success: boolean;
+      orderId: string;
+      checkoutRequestId?: string;
+      phone: string;
+    }>('/api/checkout', {
+      method: 'POST',
+      body: payload,
+    });
+
+    clearCart();
+
+    router.push({
+      path: '/checkout/confirm',
+      query: {
+        orderId: response.orderId,
+        checkoutRequestId: response.checkoutRequestId || undefined,
+        phone: response.phone,
+      },
+    });
+  } catch (err: any) {
+    formError.value = err.data?.message || err.statusMessage || 'Checkout failed. Please try again.';
+    pushToast({ message: formError.value || 'Checkout failed', variant: 'error' });
+  } finally {
+    isSubmitting.value = false;
+  }
+}
+</script>
+
+<template>
+  <div class="min-h-screen flex flex-col bg-paper-canvas text-ink antialiased">
+    <TopUtilityBar />
+    <BookstoreHeader />
+
+    <main class="max-w-6xl mx-auto w-full py-8 px-4 sm:px-6 flex-1 space-y-6">
+      
+      <!-- Back Navigation Header -->
+      <div class="flex items-center justify-between">
+        <NuxtLink to="/" class="inline-flex items-center gap-1.5 text-xs font-semibold text-forest-900 hover:text-gold-600 transition-colors">
+          <ArrowLeft :size="14" /> Return to Catalog
+        </NuxtLink>
+        <span class="text-[11px] font-mono uppercase tracking-widest text-ink-muted">Secure Checkout</span>
+      </div>
+
+      <div class="grid lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- Left: Form Steps (7 Cols) -->
+        <div class="lg:col-span-7 space-y-6">
+          
+          <!-- Pure Digital eBook Alert Banner -->
+          <div
+            v-if="hasDigitalItems && !hasPhysicalItems"
+            class="bg-emerald-50/80 border border-emerald-300/80 rounded-2xl p-4 flex items-center gap-3.5 text-xs text-emerald-950 shadow-soft"
+          >
+            <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center flex-shrink-0">
+              <Download :size="18" />
+            </div>
+            <div>
+              <strong class="font-semibold text-emerald-900 block">Pure Digital Order</strong>
+              <span class="text-emerald-950/80">Your eBooks will be unlocked for instant download as soon as your payment reference is submitted.</span>
+            </div>
+          </div>
+
+          <!-- Step 1: Contact Information Card -->
+          <section aria-labelledby="step-contact-heading" class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-5">
+            <div class="flex items-center gap-3 pb-3.5 border-b border-paper-border">
+              <span class="w-6 h-6 rounded-full bg-forest-950 text-gold-300 text-xs font-mono font-bold flex items-center justify-center shadow-xs">1</span>
+              <h2 id="step-contact-heading" class="font-display text-base sm:text-lg font-bold text-forest-950">Reader &amp; Contact Details</h2>
+            </div>
+
+            <div class="space-y-4">
+              <!-- Customer Name -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-forest-950">Full Name *</label>
+                <div class="relative flex items-center">
+                  <User :size="15" class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+                  <input
+                    v-model="customerName"
+                    type="text"
+                    placeholder="e.g. Amani Wanjiku"
+                    class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 transition-all text-forest-950 placeholder:text-ink-subtle"
+                    required
+                  />
+                </div>
+              </div>
+
+              <!-- Phone & Email Grid -->
+              <div class="grid sm:grid-cols-2 gap-4">
+                <!-- M-Pesa Phone -->
+                <div class="space-y-1.5">
+                  <label class="text-xs font-semibold text-forest-950">M-Pesa Phone Number *</label>
+                  <div class="relative flex items-center">
+                    <Phone :size="15" class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+                    <input
+                      v-model="customerPhone"
+                      type="tel"
+                      placeholder="07XXXXXXXX"
+                      class="w-full pl-10 pr-20 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 font-mono text-forest-950 transition-all placeholder:text-ink-subtle"
+                      required
+                    />
+                    <span
+                      v-if="detectedCarrier"
+                      class="absolute right-2.5 text-[9px] font-mono font-extrabold uppercase px-1.5 py-0.5 rounded-md tracking-wider"
+                      :class="{
+                        'bg-emerald-100 text-emerald-950': detectedCarrier === 'safaricom',
+                        'bg-red-100 text-red-950': detectedCarrier === 'airtel',
+                        'bg-amber-100 text-amber-950': detectedCarrier === 'telkom',
+                      }"
+                    >
+                      {{ detectedCarrier }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Email -->
+                <div class="space-y-1.5">
+                  <label class="text-xs font-semibold text-forest-950">Email Address (Optional)</label>
+                  <div class="relative flex items-center">
+                    <Mail :size="15" class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+                    <input
+                      v-model="customerEmail"
+                      type="email"
+                      placeholder="name@email.com"
+                      class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 transition-all text-forest-950 placeholder:text-ink-subtle"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Step 2: Physical Delivery Card -->
+          <section v-if="hasPhysicalItems" aria-labelledby="step-fulfillment-heading" class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-5">
+            <div class="flex items-center gap-3 pb-3.5 border-b border-paper-border">
+              <span class="w-6 h-6 rounded-full bg-forest-950 text-gold-300 text-xs font-mono font-bold flex items-center justify-center shadow-xs">2</span>
+              <h2 id="step-fulfillment-heading" class="font-display text-base sm:text-lg font-bold text-forest-950">Fulfillment &amp; Delivery Option</h2>
+            </div>
+
+            <DeliveryTypeStep v-model="deliveryType" />
+
+            <div v-if="deliveryType === 'delivery'" class="space-y-4 pt-2">
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-forest-950">Estate / Neighborhood *</label>
+                <div class="relative flex items-center">
+                  <MapPin :size="15" class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+                  <input
+                    v-model="estate"
+                    type="text"
+                    placeholder="e.g. Kilimani, South C, Westlands, Kileleshwa"
+                    class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 transition-all text-forest-950 placeholder:text-ink-subtle"
+                    required
+                  />
+                </div>
+              </div>
+
+              <!-- Interactive Pin Drop -->
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-semibold text-ink-muted flex items-center gap-1.5">
+                  <MapPin :size="12" class="text-gold-600" />
+                  <span>Set Drop-off Pin for Accurate Rider Navigation:</span>
+                </label>
+                <LeafletPinPicker
+                  :lat="customerLat"
+                  :lng="customerLng"
+                  @update:location="handleMapPinUpdate"
+                />
+              </div>
+
+              <!-- Building & Door Details -->
+              <div class="grid sm:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                  <label class="text-xs font-semibold text-forest-950">Building / Landmark</label>
+                  <div class="relative flex items-center">
+                    <Building :size="15" class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+                    <input
+                      v-model="landmark"
+                      type="text"
+                      placeholder="e.g. Chaka Place, Near Yaya"
+                      class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle"
+                    />
+                  </div>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-xs font-semibold text-forest-950">House / Apartment #</label>
+                  <div class="relative flex items-center">
+                    <Home :size="15" class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+                    <input
+                      v-model="houseNumber"
+                      type="text"
+                      placeholder="e.g. Apt 4B, 2nd Floor"
+                      class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Store Pickup Info -->
+            <div v-else class="p-4 bg-paper-cream/70 rounded-xl border border-paper-border text-xs text-ink-muted space-y-1">
+              <span class="font-bold text-forest-950 block font-sans">Pickup Location:</span>
+              <p>Flemela Bookstore Main Counter, Sarit Centre Lower Level, Westlands, Nairobi.</p>
+              <span class="text-[11px] text-emerald-800 font-semibold block pt-1">✓ Books ready for pickup within 2 hours of payment approval.</span>
+            </div>
+          </section>
+
+          <!-- Step 3: Payment Method Card -->
+          <section aria-labelledby="step-payment-heading" class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-5">
+            <div class="flex items-center gap-3 pb-3.5 border-b border-paper-border">
+              <span class="w-6 h-6 rounded-full bg-forest-950 text-gold-300 text-xs font-mono font-bold flex items-center justify-center shadow-xs">
+                {{ hasPhysicalItems ? '3' : '2' }}
+              </span>
+              <h2 id="step-payment-heading" class="font-display text-base sm:text-lg font-bold text-forest-950">Payment Method</h2>
+            </div>
+
+            <div class="space-y-3.5">
+              
+              <!-- OPTION A: DIRECT MANUAL M-PESA PASS (PRIMARY) -->
+              <label
+                class="border-2 rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5 cursor-pointer transition-all relative overflow-hidden"
+                :class="paymentMethod === 'mpesa_manual' ? 'border-forest-900 bg-paper-cream/40 shadow-soft ring-1 ring-forest-900' : 'border-paper-border bg-white hover:border-forest-800/30'"
+              >
+                <div class="flex items-start gap-3.5">
+                  <input type="radio" value="mpesa_manual" v-model="paymentMethod" class="sr-only" />
+                  <div class="w-9 h-9 rounded-full bg-emerald-100 text-forest-900 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <CheckCircle2 :size="18" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <strong class="text-xs sm:text-sm font-bold text-forest-950 block">Pay Directly via M-Pesa</strong>
+                      <span class="bg-forest-950 text-gold-300 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Recommended
+                      </span>
+                    </div>
+                    <p class="text-xs text-ink-muted mt-0.5 leading-relaxed">
+                      Pay directly to our store Till Number and paste your M-Pesa transaction reference code below.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Digital M-Pesa Pass -->
+                <div v-if="paymentMethod === 'mpesa_manual'" class="pt-3 border-t border-paper-border/80 space-y-3 pl-0 sm:pl-12">
+                  
+                  <!-- Till Number Chip with 1-Click Copy -->
+                  <div class="bg-white rounded-xl p-3.5 border border-paper-border flex flex-wrap items-center justify-between gap-3 shadow-xs">
+                    <div class="space-y-0.5">
+                      <span class="text-[10px] uppercase font-mono font-bold text-ink-subtle tracking-widest block">Lipa Na M-Pesa â€¢ Buy Goods Till</span>
+                      <div class="flex items-baseline gap-2">
+                        <span class="font-mono text-lg font-bold text-forest-950 tracking-wider">{{ STORE_TILL_NUMBER }}</span>
+                        <span class="text-xs font-semibold text-ink-muted">(Flemela Bookstore)</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      class="px-3 py-1.5 bg-paper-cream hover:bg-forest-950 hover:text-white rounded-lg text-xs font-bold font-sans transition-colors flex items-center gap-1.5 border border-paper-border cursor-pointer shadow-2xs"
+                      @click="copyTillNumber"
+                    >
+                      <component :is="isTillCopied ? Check : Copy" :size="13" :class="isTillCopied ? 'text-emerald-600' : 'text-forest-950'" />
+                      <span>{{ isTillCopied ? 'Copied!' : 'Copy Till' }}</span>
+                    </button>
+                  </div>
+
+                  <!-- Reference Code Input -->
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-forest-950 flex items-center justify-between">
+                      <span>M-Pesa Transaction Code *</span>
+                      <span class="text-[10px] text-ink-muted font-normal">Found in your Safaricom SMS</span>
+                    </label>
+                    <input
+                      v-model="mpesaCode"
+                      type="text"
+                      placeholder="e.g. SH12AB34CD"
+                      class="w-full px-3.5 py-2.5 bg-white border border-paper-border rounded-xl text-sm font-mono font-bold uppercase tracking-widest outline-none focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 transition-all text-forest-950 placeholder:text-ink-subtle"
+                      required
+                    />
+                  </div>
+                </div>
+              </label>
+
+              <!-- OPTION B: AUTOMATED DARAJA STK PUSH -->
+              <label
+                class="border rounded-2xl p-4 sm:p-4.5 flex items-start gap-3.5 cursor-pointer transition-all"
+                :class="paymentMethod === 'mpesa' ? 'border-forest-900 bg-paper-cream/40 shadow-soft ring-1 ring-forest-900' : 'border-paper-border bg-white hover:border-forest-800/30'"
+              >
+                <input type="radio" value="mpesa" v-model="paymentMethod" class="sr-only" />
+                <div class="w-9 h-9 rounded-full bg-emerald-100 text-forest-900 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Zap :size="18" />
+                </div>
+                <div>
+                  <strong class="text-xs sm:text-sm font-bold text-forest-950 block">Automated M-Pesa STK Push</strong>
+                  <p class="text-xs text-ink-muted mt-0.5 leading-relaxed">
+                    Sends an automated PIN prompt to your phone screen.
+                  </p>
+                </div>
+              </label>
+
+              <!-- OPTION C: PAY ON DELIVERY (HARDCOPY ONLY) -->
+              <label
+                v-if="hasPhysicalItems"
+                class="border rounded-2xl p-4 sm:p-4.5 flex items-start gap-3.5 cursor-pointer transition-all"
+                :class="paymentMethod === 'mpesa_cash' ? 'border-forest-900 bg-paper-cream/40 shadow-soft ring-1 ring-forest-900' : 'border-paper-border bg-white hover:border-forest-800/30'"
+              >
+                <input type="radio" value="mpesa_cash" v-model="paymentMethod" class="sr-only" />
+                <div class="w-9 h-9 rounded-full bg-slate-100 text-ink-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <CreditCard :size="18" />
+                </div>
+                <div>
+                  <strong class="text-xs sm:text-sm font-bold text-forest-950 block">
+                    {{ deliveryType === 'delivery' ? 'Pay on Delivery / Rider Handover' : 'Pay at Store Pickup' }}
+                  </strong>
+                  <p class="text-xs text-ink-muted mt-0.5 leading-relaxed">
+                    Settle via M-Pesa or cash upon physical collection of your print copies.
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            <!-- Order Notes -->
+            <div class="space-y-1.5 pt-2">
+              <label class="text-xs font-semibold text-forest-950">Order Notes or Gate Instructions (Optional)</label>
+              <div class="relative flex items-start">
+                <FileText :size="15" class="absolute left-3.5 top-3 text-ink-subtle pointer-events-none" />
+                <textarea
+                  v-model="notes"
+                  rows="2"
+                  placeholder="e.g. Leave with building receptionist, call on arrival..."
+                  class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle resize-none"
+                />
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Right: Order Summary Sidebar (5 Cols) -->
+        <div class="lg:col-span-5 bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-6 sticky top-24">
+          <div class="pb-3.5 border-b border-paper-border flex justify-between items-center">
+            <h3 class="font-display font-bold text-base sm:text-lg text-forest-950">Order Summary</h3>
+            <span class="text-xs font-semibold font-mono text-ink-muted">{{ totalItems }} edition(s)</span>
+          </div>
+
+          <!-- Items Breakdown List -->
+          <div class="space-y-3.5 max-h-72 overflow-y-auto divide-y divide-paper-border/60 pr-1">
+            <div
+              v-for="item in items"
+              :key="`${item.productId}-${item.formatId}`"
+              class="pt-3 first:pt-0 flex gap-3.5 items-center"
+            >
+              <div class="w-12 h-16 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex-shrink-0 flex items-center justify-center shadow-xs">
+                <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" class="w-full h-full object-cover" />
+                <ShoppingBag v-else :size="18" class="text-ink-muted opacity-40" />
+              </div>
+              <div class="flex-1 min-w-0 space-y-0.5">
+                <h4 class="text-xs sm:text-sm font-bold text-forest-950 truncate">{{ item.title }}</h4>
+                <div class="flex items-center gap-2 text-[10px] text-ink-muted">
+                  <span class="font-mono font-bold uppercase text-forest-900 bg-paper-cream px-1.5 py-0.2 rounded">
+                    {{ item.format }}
+                  </span>
+                  <span>â€¢ Qty: {{ item.quantity }}</span>
+                </div>
+              </div>
+              <span class="text-xs sm:text-sm font-bold text-forest-950 font-mono tabular-figure">
+                {{ formatCurrency(item.price * item.quantity) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Totals Breakdown -->
+          <div class="space-y-2.5 border-t border-paper-border pt-4 text-xs">
+            <div class="flex justify-between text-ink-muted font-medium">
+              <span>Books Subtotal</span>
+              <span class="font-semibold text-forest-950 font-mono tabular-figure">{{ formatCurrency(subtotal) }}</span>
+            </div>
+
+            <div class="flex justify-between text-ink-muted font-medium">
+              <span>Delivery Fee</span>
+              <span v-if="!hasPhysicalItems || deliveryType === 'pickup'" class="text-emerald-800 font-bold font-mono">
+                FREE
+              </span>
+              <span v-else-if="deliveryFeeStatus === 'known'" class="font-semibold text-forest-950 font-mono tabular-figure">
+                {{ formatCurrency(deliveryFee) }}
+              </span>
+              <span v-else class="text-ink-subtle italic">To be confirmed</span>
+            </div>
+
+            <div class="flex justify-between items-baseline pt-3 border-t border-paper-border text-base">
+              <span class="font-bold text-forest-950 font-sans">Total Amount</span>
+              <span class="font-display font-extrabold text-xl sm:text-2xl text-forest-950 font-mono tabular-figure">
+                {{ formatCurrency(totalToPay) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Error Alert -->
+          <div v-if="formError" class="p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2.5">
+            <AlertCircle :size="16" class="flex-shrink-0 mt-0.5" />
+            <span>{{ formError }}</span>
+          </div>
+
+          <!-- Submit Order Button -->
+          <button
+            type="button"
+            class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-950 text-paper font-sans font-bold text-xs uppercase tracking-wider py-4 px-6 rounded-xl shadow-medium hover:shadow-high transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+            :disabled="!isFormValid || isSubmitting"
+            @click="handlePlaceOrder"
+          >
+            <span v-if="isSubmitting" class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+            <span v-else>
+              {{ paymentMethod === 'mpesa_manual' ? `Complete Order â€¢ ${formatCurrency(totalToPay)}` : (paymentMethod === 'mpesa' ? `Pay ${formatCurrency(totalToPay)} via M-Pesa` : `Confirm Order â€¢ ${formatCurrency(totalToPay)}`) }}
+            </span>
+          </button>
+
+          <div class="flex items-center justify-center gap-2 text-[11px] text-ink-muted pt-1">
+            <ShieldCheck :size="14" class="text-forest-900 flex-shrink-0" />
+            <span>Encrypted Token Delivery &amp; Verified Physical Handover</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <ToastContainer />
+  </div>
+</template>
 </file>
 
 </files>

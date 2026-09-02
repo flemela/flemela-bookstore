@@ -1,20 +1,23 @@
 <!-- components/storefront/BookCard.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { ShoppingBag, Truck, Download } from 'lucide-vue-next';
+import { ShoppingBag, Truck, Download, MessageSquare } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat } from '~/types';
 
 interface Props {
-  book: Book;
+  book: Book & { isSeed?: boolean };
 }
 
 const props = defineProps<Props>();
+const emit = defineEmits<{
+  requestSeed: [title: string, author?: string];
+}>();
+
 const { addItem, openDrawer } = useCart();
 const { push: pushToast } = useToast();
 
-// Cover image resolver supporting string array, object array, and fallbacks
 const coverImage = computed(() => {
   if (!props.book) return '/images/book-placeholder.svg';
   const rawImg = props.book.images?.[0];
@@ -23,7 +26,6 @@ const coverImage = computed(() => {
   return rawImg.image_url || (props.book as any).cover_image_url || '/images/book-placeholder.svg';
 });
 
-// Selected format state (defaults to lowest-price format)
 const selectedFormatId = ref<string>('');
 
 watch(
@@ -60,10 +62,17 @@ function handleSelectFormat(formatId: string, event: Event): void {
   selectedFormatId.value = formatId;
 }
 
-function handleAddToCart(event: Event): void {
+function handleAction(event: Event): void {
   event.preventDefault();
   event.stopPropagation();
 
+  // Edge Case: If seed book is clicked, route to custom procurement modal
+  if (props.book.isSeed) {
+    emit('requestSeed', props.book.name, props.book.author || undefined);
+    return;
+  }
+
+  // Real merchant book: Add to cart
   const fmt = activeFormat.value;
   const priceToUse = fmt ? fmt.price : props.book.price;
   const formatType = fmt ? fmt.format : 'hardcopy';
@@ -90,10 +99,10 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <div class="bg-paper-surface rounded-xl border border-paper-border hover:border-forest-800/30 p-3 sm:p-4 flex flex-col justify-between book-hover-lift group shadow-soft hover:shadow-card transition-all duration-300">
+  <div class="bg-theme-surface rounded-2xl border border-theme-border hover:border-theme-forest/30 p-3.5 sm:p-4 flex flex-col justify-between book-hover-lift group shadow-soft transition-all duration-300">
     <div class="space-y-3">
       <!-- 3D Book Cover Frame -->
-      <NuxtLink :to="`/book/${book.slug}`" class="block relative aspect-[3/4] bg-paper-cream rounded-book overflow-hidden book-cover-3d">
+      <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block relative aspect-[3/4] bg-theme-cream rounded-book overflow-hidden book-cover-3d" @click="book.isSeed ? handleAction($event) : null">
         <img
           :src="coverImage"
           :alt="`Cover for ${book.name}`"
@@ -105,42 +114,41 @@ function handleAddToCart(event: Event): void {
           @error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'"
         />
 
-        <!-- Optional Curated Badge -->
         <div v-if="book.badge" class="absolute top-2.5 left-2.5 z-10">
-          <span class="text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-forest-950/90 backdrop-blur-xs text-gold-300 shadow-sm border border-gold-500/30">
-            ★ {{ book.badge }}
+          <span class="text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-theme-coral text-white shadow-sm">
+            {{ book.badge }}
           </span>
         </div>
       </NuxtLink>
 
-      <!-- Book Typography Details -->
+      <!-- Details -->
       <div class="space-y-1 text-left pt-0.5">
-        <span class="text-[9px] sm:text-[10px] uppercase font-mono font-bold tracking-widest text-gold-600 block truncate">
+        <span class="text-[9px] sm:text-[10px] uppercase font-mono font-bold tracking-widest text-theme-coral block truncate">
           {{ book.category_name || 'General' }}
         </span>
 
-        <NuxtLink :to="`/book/${book.slug}`" class="block">
-          <h3 class="font-display text-sm sm:text-base font-bold text-forest-950 group-hover:text-forest-800 transition-colors line-clamp-2 leading-snug">
+        <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="book.isSeed ? handleAction($event) : null">
+          <h3 class="font-display text-sm sm:text-base font-bold text-theme-ink group-hover:text-theme-coral transition-colors line-clamp-2 leading-snug">
             {{ book.name }}
           </h3>
         </NuxtLink>
 
-        <p class="text-xs italic text-ink-muted leading-tight truncate">
+        <p class="text-xs italic text-theme-muted leading-tight truncate">
           {{ book.author ? `By ${book.author}` : 'Original Edition' }}
         </p>
 
-        <!-- Segmented Mini-Pill Format Switcher -->
+        <!-- Segmented Format Switcher -->
         <div v-if="book.formats && book.formats.length > 1" class="pt-2">
-          <div class="inline-flex bg-paper-cream/80 p-0.5 rounded-lg border border-paper-border w-full justify-between gap-1">
+          <div class="inline-flex bg-theme-canvas p-0.5 rounded-lg border border-theme-border w-full justify-between gap-1">
             <button
               v-for="fmt in book.formats"
               :key="fmt.id"
               type="button"
-              class="flex-1 py-1 px-1.5 text-[9px] font-mono font-bold rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer select-none truncate"
+              class="flex-1 py-1 px-1 text-[9px] font-mono font-bold rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer select-none truncate"
               :class="[
                 selectedFormatId === fmt.id
-                  ? 'bg-forest-950 text-white shadow-xs'
-                  : 'text-ink-muted hover:text-forest-950 hover:bg-white/60'
+                  ? 'bg-theme-dark text-white shadow-xs'
+                  : 'text-theme-muted hover:text-theme-ink hover:bg-white/60'
               ]"
               @click="(e) => handleSelectFormat(fmt.id, e)"
             >
@@ -152,24 +160,25 @@ function handleAddToCart(event: Event): void {
       </div>
     </div>
 
-    <!-- Pricing & Tactile Action Button -->
-    <div class="pt-3 mt-3 border-t border-paper-border/80 space-y-2">
+    <!-- Pricing & Action Button -->
+    <div class="pt-3 mt-3 border-t border-theme-border/80 space-y-2">
       <div class="flex items-baseline justify-between">
-        <span class="text-[11px] text-ink-muted font-medium font-sans">
-          {{ activeFormat?.format === 'hardcopy' ? 'Physical Copy' : 'Instant eBook' }}
+        <span class="text-[11px] text-theme-muted font-medium">
+          {{ book.isSeed ? 'Available to Order' : (activeFormat?.format === 'hardcopy' ? 'Physical Copy' : 'Instant eBook') }}
         </span>
-        <span class="text-sm sm:text-base font-bold font-mono text-forest-950 tabular-figure">
+        <span class="text-sm sm:text-base font-bold font-mono text-theme-ink tabular-figure">
           {{ formatCurrency(currentPrice) }}
         </span>
       </div>
 
       <button
         type="button"
-        class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-950 text-paper font-sans font-bold text-[11px] uppercase tracking-wider py-2.5 px-3 rounded-lg shadow-subtle transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-        @click="handleAddToCart"
+        class="w-full text-white font-sans font-bold text-[11px] uppercase tracking-wider py-2.5 px-3 rounded-xl shadow-soft transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+        :class="book.isSeed ? 'bg-theme-forest hover:bg-theme-dark' : 'bg-theme-coral hover:bg-theme-coral-hover'"
+        @click="handleAction"
       >
-        <ShoppingBag :size="13" class="text-gold-300" />
-        <span>Add to Cart</span>
+        <component :is="book.isSeed ? MessageSquare : ShoppingBag" :size="13" />
+        <span>{{ book.isSeed ? 'Special Order' : 'Add to Cart' }}</span>
       </button>
     </div>
   </div>

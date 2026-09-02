@@ -1,4 +1,4 @@
-<!-- pages/admin/books/[id]/edit.vue -->
+<!-- flemela/pages/admin/books/[id]/edit.vue -->
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import {
@@ -65,7 +65,7 @@ onMounted(() => {
   }
 });
 
-// 🪄 Automated Open Web Cover Discovery Engine
+// Automated High-Res Cover Discovery
 async function handleAutoFindCover(): Promise<void> {
   if (!name.value.trim()) {
     pushToast({ message: 'Enter a book title first', variant: 'error' });
@@ -75,7 +75,7 @@ async function handleAutoFindCover(): Promise<void> {
   isSearchingCover.value = true;
   try {
     const res = await $fetch<{ coverUrl: string | null; title: string; source: string | null }>(
-      '/api/admin/books/find-cover',
+      '/api/admin/books/findCover',
       {
         query: {
           title: name.value.trim(),
@@ -139,7 +139,7 @@ async function handleCoverUpload(event: Event): Promise<void> {
   }
 }
 
-// Upload eBook file directly to Cloudflare R2
+// Upload eBook to Cloudflare R2
 async function handleNewEbookUpload(event: Event): Promise<void> {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
@@ -180,20 +180,24 @@ async function handleUpdateBook(): Promise<void> {
   formError.value = null;
 
   try {
+    const formattedDescription = author.value.trim()
+      ? `By ${author.value.trim()}${description.value ? `\n\n${description.value.trim()}` : ''}`
+      : description.value.trim() || null;
+
     await $fetch(`/api/admin/books/${bookId.value}`, {
       method: 'PATCH',
       body: {
         name: name.value.trim(),
         author: author.value.trim() || null,
         category_id: categoryId.value || undefined,
-        description: description.value.trim() || null,
+        description: formattedDescription,
         status: status.value,
         images: coverUrl.value
           ? [{ image_url: coverUrl.value.trim(), image_public_id: coverPublicId.value || 'cover_img' }]
           : undefined,
       },
     });
-    pushToast({ message: 'Book details and cover art updated successfully!', variant: 'success' });
+    pushToast({ message: 'Book details updated successfully!', variant: 'success' });
   } catch (err: any) {
     formError.value = err.data?.message || err.statusMessage || 'Failed to update book';
   } finally {
@@ -201,12 +205,9 @@ async function handleUpdateBook(): Promise<void> {
   }
 }
 
+// Add format (EPUB/PDF permitted even if file is not yet uploaded)
 async function handleAddFormat(): Promise<void> {
   const isDigital = newFormatType.value === 'pdf' || newFormatType.value === 'epub';
-  if (isDigital && !newFormatFileKey.value) {
-    alert('Please select and upload a digital file to Cloudflare R2 first.');
-    return;
-  }
 
   try {
     await $fetch(`/api/admin/books/${bookId.value}/formats`, {
@@ -215,29 +216,29 @@ async function handleAddFormat(): Promise<void> {
         format: newFormatType.value,
         price: Number(newFormatPrice.value),
         stock: newFormatType.value === 'hardcopy' ? Number(newFormatStock.value || 0) : null,
-        file_url: isDigital ? newFormatFileKey.value : null,
-        file_public_id: isDigital ? newFormatFileKey.value : null,
-        file_size_bytes: isDigital ? newFormatFileSize.value : null,
+        file_url: isDigital ? (newFormatFileKey.value || null) : null,
+        file_public_id: isDigital ? (newFormatFileKey.value || null) : null,
+        file_size_bytes: isDigital ? (newFormatFileSize.value || null) : null,
       },
     });
 
     pushToast({ message: `Added ${newFormatType.value.toUpperCase()} format`, variant: 'success' });
     newFormatFileKey.value = null;
     newFormatFileSize.value = null;
-    refresh();
+    await refresh();
   } catch (err: any) {
-    alert(err.data?.message || 'Failed to add format');
+    pushToast({ message: err.data?.message || err.statusMessage || 'Failed to add format', variant: 'error' });
   }
 }
 
+// Immediate format removal (Zero Dialogue)
 async function handleDeleteFormat(formatId: string): Promise<void> {
-  if (!confirm('Remove this reading format?')) return;
   try {
     await $fetch(`/api/admin/books/${bookId.value}/formats/${formatId}`, { method: 'DELETE' });
     pushToast({ message: 'Format removed', variant: 'info' });
-    refresh();
+    await refresh();
   } catch (err: any) {
-    alert(err.statusMessage || 'Failed to delete format');
+    pushToast({ message: err.statusMessage || 'Failed to delete format', variant: 'error' });
   }
 }
 </script>
@@ -245,25 +246,30 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
 <template>
   <AdminLayout>
     <div class="max-w-4xl mx-auto space-y-6">
-      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline">
-        <ArrowLeft :size="14" /> Back to Books Catalog
+      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-semibold text-forest-900 hover:text-gold-600 transition-colors">
+        <ArrowLeft :size="14" /> Return to Books Catalog
       </NuxtLink>
 
-      <div class="bg-white rounded-xl shadow-subtle border border-ink-border p-6 sm:p-8 space-y-6">
-        <div class="pb-4 border-b border-ink-border">
+      <div class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-8 space-y-7">
+        <div class="pb-4 border-b border-paper-border">
           <h1 class="font-display text-2xl font-bold text-forest-950">Edit Book: {{ book?.name }}</h1>
-          <p class="text-xs text-ink-muted">Update book metadata, auto-find or replace cover art, and manage formats.</p>
+          <p class="text-xs text-ink-muted">Update book metadata, cover art, physical stock, and digital editions.</p>
         </div>
 
-        <form class="space-y-4" @submit.prevent="handleUpdateBook">
+        <form class="space-y-5" @submit.prevent="handleUpdateBook">
           <div class="grid sm:grid-cols-2 gap-4">
-            <div class="space-y-1">
+            <div class="space-y-1.5">
               <label class="text-xs font-semibold text-forest-950">Book Title *</label>
               <div class="flex gap-2">
-                <input v-model="name" type="text" class="flex-1 px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900" required />
+                <input
+                  v-model="name"
+                  type="text"
+                  class="flex-1 px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+                  required
+                />
                 <button
                   type="button"
-                  class="px-3 py-2 bg-paper-cream border border-ink-border hover:border-forest-900 text-forest-950 rounded text-xs font-bold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap"
+                  class="px-3 py-2.5 bg-paper-cream border border-paper-border hover:border-forest-900 text-forest-950 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all whitespace-nowrap shadow-2xs"
                   :disabled="isSearchingCover || !name"
                   @click="handleAutoFindCover"
                 >
@@ -274,24 +280,34 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
               </div>
             </div>
 
-            <div class="space-y-1">
+            <div class="space-y-1.5">
               <label class="text-xs font-semibold text-forest-950">Author Name</label>
-              <input v-model="author" type="text" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900" />
+              <input
+                v-model="author"
+                type="text"
+                class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+              />
             </div>
           </div>
 
           <div class="grid sm:grid-cols-2 gap-4">
-            <div class="space-y-1">
+            <div class="space-y-1.5">
               <label class="text-xs font-semibold text-forest-950">Category</label>
-              <select v-model="categoryId" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 bg-white">
+              <select
+                v-model="categoryId"
+                class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+              >
                 <option value="">Select category...</option>
                 <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
               </select>
             </div>
 
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">Status</label>
-              <select v-model="status" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 bg-white">
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-forest-950">Publishing Status</label>
+              <select
+                v-model="status"
+                class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+              >
                 <option value="published">Published &amp; Live</option>
                 <option value="draft">Draft Mode</option>
                 <option value="archived">Archived</option>
@@ -299,37 +315,48 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
             </div>
           </div>
 
-          <div class="space-y-1">
+          <div class="space-y-1.5">
             <label class="text-xs font-semibold text-forest-950">Description / Synopsis</label>
-            <textarea v-model="description" rows="3" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 resize-none" />
+            <textarea
+              v-model="description"
+              rows="3"
+              class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 resize-none"
+            />
           </div>
 
-          <!-- Cover Art Preview & Auto-Find -->
-          <div class="space-y-2 pt-2 border-t border-ink-border">
-            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Cover Art</h3>
+          <!-- Cover Image Frame -->
+          <div class="space-y-3 pt-3 border-t border-paper-border">
+            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Cover Image</h3>
             <div class="flex items-start gap-4">
-              <div class="w-20 h-28 bg-paper-cream rounded border border-ink-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm">
-                <img v-if="coverUrl" :src="coverUrl" :alt="name ? `${name} Cover` : 'Cover'" class="w-full h-full object-cover" @error="coverUrl = ''" />
+              <div class="w-20 h-28 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-xs">
+                <img
+                  v-if="coverUrl"
+                  :src="coverUrl"
+                  :alt="name ? `${name} Cover` : 'Cover'"
+                  class="w-full h-full object-cover"
+                  referrerpolicy="no-referrer"
+                  @error="coverUrl = ''"
+                />
                 <BookOpen v-else :size="24" class="text-ink-muted opacity-40" />
               </div>
-              <div class="space-y-2 flex-1">
+              <div class="space-y-2.5 flex-1">
                 <div class="flex flex-wrap gap-2 items-center">
                   <button
                     type="button"
-                    class="bg-forest-950 text-white hover:bg-forest-800 text-xs font-bold px-3 py-1.5 rounded inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                    class="bg-forest-950 text-paper hover:bg-forest-900 text-xs font-bold px-3.5 py-2 rounded-xl inline-flex items-center gap-1.5 cursor-pointer transition-all shadow-subtle"
                     :disabled="isSearchingCover || !name"
                     @click="handleAutoFindCover"
                   >
-                    <Sparkles :size="13" class="text-gold-300" /> Auto-Find Cover from Web
+                    <Sparkles :size="13" class="text-gold-300" /> Auto-Find HD Cover
                   </button>
 
-                  <label class="cursor-pointer bg-white border border-ink-border text-forest-950 text-xs font-bold px-3 py-1.5 rounded hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 shadow-xs">
+                  <label class="cursor-pointer bg-white border border-paper-border text-forest-950 text-xs font-bold px-3.5 py-2 rounded-xl hover:bg-paper-cream transition-colors inline-flex items-center gap-1.5 shadow-2xs">
                     <Upload :size="13" /> {{ isUploadingCover ? 'Uploading...' : 'Upload Image' }}
                     <input type="file" accept="image/*" class="hidden" :disabled="isUploadingCover" @change="handleCoverUpload" />
                   </label>
                 </div>
 
-                <div class="space-y-1 pt-1">
+                <div class="space-y-1">
                   <label class="text-[11px] text-ink-muted flex items-center gap-1">
                     <LinkIcon :size="12" /> Direct Cover Image URL:
                   </label>
@@ -337,57 +364,68 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
                     v-model="coverUrl"
                     type="url"
                     placeholder="https://..."
-                    class="w-full px-3 py-1.5 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
+                    class="w-full px-3.5 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          <div v-if="formError" class="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-center gap-2">
+          <div v-if="formError" class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
             <AlertCircle :size="14" class="flex-shrink-0" />
             <span>{{ formError }}</span>
           </div>
 
           <div class="flex justify-end pt-2">
-            <button type="submit" class="bg-forest-900 text-white text-xs font-bold uppercase px-5 py-2.5 rounded hover:bg-forest-800 shadow cursor-pointer" :disabled="isSaving">
+            <button
+              type="submit"
+              class="bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold uppercase tracking-wider px-6 py-3 rounded-xl shadow-medium cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+              :disabled="isSaving"
+            >
               {{ isSaving ? 'Saving...' : 'Save Book Details' }}
             </button>
           </div>
         </form>
 
         <!-- Formats Section -->
-        <div class="pt-6 border-t border-ink-border space-y-4">
-          <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Active Reading Formats</h3>
+        <div class="pt-6 border-t border-paper-border space-y-4">
+          <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Active Editions &amp; Formats</h3>
 
-          <div class="space-y-2">
+          <div class="space-y-2.5">
             <div
               v-for="fmt in book?.formats"
               :key="fmt.id"
-              class="p-3.5 bg-slate-50 border border-ink-border rounded-lg flex justify-between items-center text-xs"
+              class="p-3.5 bg-paper-canvas/60 border border-paper-border rounded-xl flex justify-between items-center text-xs"
             >
               <div class="flex items-center gap-3">
-                <span class="font-bold uppercase text-forest-950 flex items-center gap-1">
-                  <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="13" />
+                <span class="font-bold uppercase text-forest-950 flex items-center gap-1.5 font-mono">
+                  <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="13" class="text-gold-600" />
                   {{ fmt.format }}
                 </span>
                 <span class="font-mono font-bold text-forest-950">KSh {{ fmt.price }}</span>
-                <span v-if="fmt.format === 'hardcopy'" class="text-ink-muted">({{ fmt.stock }} copies in stock)</span>
-                <span v-else class="text-emerald-700 font-semibold">{{ fmt.file_public_id ? 'Cloudflare R2 File Ready ✓' : 'File Attached' }}</span>
+                <span v-if="fmt.format === 'hardcopy'" class="text-ink-muted">({{ fmt.stock }} in stock)</span>
+                <span v-else class="text-emerald-800 font-medium">{{ fmt.file_public_id ? 'Cloudflare R2 Ready ✓' : 'Digital Edition (File Optional)' }}</span>
               </div>
-              <button type="button" class="text-red-500 hover:text-red-700 p-1 cursor-pointer" @click="handleDeleteFormat(fmt.id)">
+              
+              <!-- Immediate Format Delete -->
+              <button
+                type="button"
+                class="text-ink-muted hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                title="Remove format immediately"
+                @click="handleDeleteFormat(fmt.id)"
+              >
                 <Trash2 :size="14" />
               </button>
             </div>
           </div>
 
           <!-- Add Format Form -->
-          <div class="p-4 bg-paper-cream border border-ink-border rounded-xl space-y-3">
-            <h4 class="text-xs font-bold text-forest-950 uppercase font-mono">Add Format</h4>
+          <div class="p-5 bg-paper-cream/60 border border-paper-border rounded-2xl space-y-3.5 shadow-2xs">
+            <h4 class="text-xs font-bold text-forest-950 uppercase font-mono">Add Format / Edition</h4>
             <div class="grid sm:grid-cols-12 gap-3 items-end">
               <div class="sm:col-span-3 space-y-1">
                 <label class="text-[10px] text-ink-muted font-semibold">Format Type</label>
-                <select v-model="newFormatType" class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs">
+                <select v-model="newFormatType" class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs font-medium">
                   <option value="pdf">PDF eBook</option>
                   <option value="epub">EPUB eBook</option>
                   <option value="hardcopy">Physical Hardcopy</option>
@@ -396,24 +434,24 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
 
               <div class="sm:col-span-3 space-y-1">
                 <label class="text-[10px] text-ink-muted font-semibold">Price (KSh)</label>
-                <input v-model.number="newFormatPrice" type="number" min="0" class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono font-bold" />
+                <input v-model.number="newFormatPrice" type="number" min="0" class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs font-mono font-bold" />
               </div>
 
               <div v-if="newFormatType === 'hardcopy'" class="sm:col-span-4 space-y-1">
                 <label class="text-[10px] text-ink-muted font-semibold">Stock Count</label>
-                <input v-model.number="newFormatStock" type="number" min="0" class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono" />
+                <input v-model.number="newFormatStock" type="number" min="0" class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs font-mono font-medium" />
               </div>
 
               <div v-else class="sm:col-span-4 space-y-1">
-                <label class="text-[10px] text-ink-muted font-semibold">eBook File (Cloudflare R2)</label>
-                <label class="w-full bg-white border border-ink-border text-forest-950 text-[11px] font-medium px-2 py-1.5 rounded flex items-center justify-between cursor-pointer">
-                  <span class="truncate">{{ newFormatFileKey ? 'File Ready ✓' : (isUploadingNewEbook ? 'Uploading...' : 'Upload File') }}</span>
+                <label class="text-[10px] text-ink-muted font-semibold">Cloudflare R2 File (Optional)</label>
+                <label class="w-full bg-white border border-paper-border text-forest-950 text-[11px] font-medium px-3 py-2 rounded-xl flex items-center justify-between cursor-pointer">
+                  <span class="truncate">{{ newFormatFileKey ? 'R2 File Ready ✓' : (isUploadingNewEbook ? 'Uploading...' : 'Upload File') }}</span>
                   <input type="file" :accept="newFormatType === 'pdf' ? '.pdf' : '.epub'" class="hidden" :disabled="isUploadingNewEbook" @change="handleNewEbookUpload" />
                 </label>
               </div>
 
               <div class="sm:col-span-2">
-                <button type="button" class="w-full bg-forest-900 text-white text-xs font-bold py-2 rounded hover:bg-forest-800 shadow-sm cursor-pointer" @click="handleAddFormat">
+                <button type="button" class="w-full bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold py-2.5 rounded-xl shadow-subtle cursor-pointer transition-all active:scale-[0.98]" @click="handleAddFormat">
                   + Add
                 </button>
               </div>
