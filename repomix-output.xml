@@ -51,13 +51,17 @@ components/
   admin/
     AdminLayout.vue
   storefront/
+    BentoCategories.vue
     BookCard.vue
+    BookRequestModal.vue
     BookstoreHeader.vue
     BookstoreNav.vue
     CartDrawer.vue
     CategoryGrid.vue
+    DealsWeek.vue
     DeliveryTypeStep.vue
     HeroBanner.vue
+    HeroReference.vue
     LeafletPinPicker.vue
     QuantityStepper.vue
     TopUtilityBar.vue
@@ -77,6 +81,8 @@ composables/
   useAdminAuth.ts
   useCart.ts
   useToast.ts
+data/
+  seeds.ts
 middleware/
   admin-auth.ts
 pages/
@@ -120,6 +126,7 @@ server/
         [id].delete.ts
         [id].get.ts
         [id].patch.ts
+        bulk-delete.post.ts
         findCover.get.ts
         import.post.ts
         index.get.ts
@@ -336,182 +343,331 @@ const route = useRoute();
 </template>
 </file>
 
-<file path="components/storefront/BookCard.vue">
-<!-- components/storefront/BookCard.vue -->
+<file path="components/storefront/BentoCategories.vue">
+<!-- components/storefront/BentoCategories.vue -->
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { ShoppingBag, Truck, Download } from 'lucide-vue-next';
-import { useCart } from '~/composables/useCart';
+import { ArrowUpRight } from 'lucide-vue-next';
+
+const emit = defineEmits<{
+  select: [category: string];
+}>();
+
+const bentoItems = [
+  {
+    name: 'Fiction & Literature',
+    shortName: 'Fiction',
+    count: 'Curated Editions',
+    bgClass: 'bg-bento-fiction',
+    cover: 'https://covers.openlibrary.org/b/isbn/9780062315007-M.jpg',
+  },
+  {
+    name: 'Psychology & Self-Help',
+    shortName: 'Self-Help',
+    count: 'Bestselling Titles',
+    bgClass: 'bg-bento-thriller',
+    cover: 'https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg',
+    isLarge: true,
+  },
+  {
+    name: 'Christian Books',
+    shortName: 'Christian',
+    count: 'Spiritual Wisdom',
+    bgClass: 'bg-bento-fantasy',
+    cover: 'https://covers.openlibrary.org/b/isbn/9780807014295-M.jpg',
+  },
+  {
+    name: 'Nonfiction',
+    shortName: 'Nonfiction',
+    count: 'History & Science',
+    bgClass: 'bg-bento-nonfiction',
+    cover: 'https://covers.openlibrary.org/b/isbn/9780062316097-M.jpg',
+  },
+  {
+    name: 'Business & Finance',
+    shortName: 'Finance',
+    count: 'Wealth & Strategy',
+    bgClass: 'bg-bento-romance',
+    cover: 'https://covers.openlibrary.org/b/isbn/9780857197689-M.jpg',
+  },
+];
+</script>
+
+<template>
+  <section class="py-14 px-4 max-w-6xl mx-auto space-y-6">
+    <div class="text-center space-y-1">
+      <span class="text-[10px] font-mono uppercase font-bold tracking-widest text-theme-coral block">Browse by Genre</span>
+      <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-theme-ink tracking-tight uppercase">
+        WHAT KIND OF STORY ARE YOU CRAVING TODAY?
+      </h2>
+    </div>
+
+    <!-- Bento Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[170px]">
+      <!-- Card 1 -->
+      <div
+        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
+        :class="bentoItems[0].bgClass"
+        @click="emit('select', bentoItems[0].name)"
+      >
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[0].count }}</span>
+          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[0].shortName }}</h3>
+        <img :src="bentoItems[0].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[8deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+      </div>
+
+      <!-- Card 2: Self-Help (Spans 2 rows on desktop) -->
+      <div
+        class="lg:row-span-2 rounded-2xl p-6 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
+        :class="bentoItems[1].bgClass"
+        @click="emit('select', bentoItems[1].name)"
+      >
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[11px] text-white/80 font-mono">{{ bentoItems[1].count }}</span>
+          <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
+            <ArrowUpRight :size="15" />
+          </div>
+        </div>
+        <div class="relative h-44 flex items-center justify-center">
+          <img :src="bentoItems[1].cover" alt="" class="w-28 h-40 object-cover rounded-lg shadow-2xl rotate-[-8deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+        </div>
+        <h3 class="font-display text-2xl font-bold uppercase z-10">{{ bentoItems[1].shortName }}</h3>
+      </div>
+
+      <!-- Card 3 -->
+      <div
+        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
+        :class="bentoItems[2].bgClass"
+        @click="emit('select', bentoItems[2].name)"
+      >
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[2].count }}</span>
+          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[2].shortName }}</h3>
+        <img :src="bentoItems[2].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[-10deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+      </div>
+
+      <!-- Card 4 -->
+      <div
+        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
+        :class="bentoItems[3].bgClass"
+        @click="emit('select', bentoItems[3].name)"
+      >
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[3].count }}</span>
+          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[3].shortName }}</h3>
+        <img :src="bentoItems[3].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[6deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+      </div>
+
+      <!-- Card 5 -->
+      <div
+        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
+        :class="bentoItems[4].bgClass"
+        @click="emit('select', bentoItems[4].name)"
+      >
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[4].count }}</span>
+          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[4].shortName }}</h3>
+        <img :src="bentoItems[4].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+      </div>
+    </div>
+  </section>
+</template>
+</file>
+
+<file path="components/storefront/BookRequestModal.vue">
+<!-- components/storefront/BookRequestModal.vue -->
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+import { X, MessageSquare, Send } from 'lucide-vue-next';
 import { useToast } from '~/composables/useToast';
-import type { Book, ProductFormat } from '~/types';
 
 interface Props {
-  book: Book;
+  open: boolean;
+  initialTitle?: string;
+  initialAuthor?: string;
 }
 
-const props = defineProps<Props>();
-const { addItem, openDrawer } = useCart();
+const props = withDefaults(defineProps<Props>(), {
+  initialTitle: '',
+  initialAuthor: '',
+});
+
+const emit = defineEmits<{
+  close: [];
+}>();
+
 const { push: pushToast } = useToast();
 
-// Cover image resolver supporting string array, object array, and fallbacks
-const coverImage = computed(() => {
-  if (!props.book) return '/images/book-placeholder.svg';
-  const rawImg = props.book.images?.[0];
-  if (!rawImg) return (props.book as any).cover_image_url || '/images/book-placeholder.svg';
-  if (typeof rawImg === 'string') return rawImg;
-  return rawImg.image_url || (props.book as any).cover_image_url || '/images/book-placeholder.svg';
+const title = ref(props.initialTitle);
+const author = ref(props.initialAuthor);
+const customerPhone = ref('');
+const preferredFormat = ref<'hardcopy' | 'ebook' | 'either'>('either');
+const isSubmitting = ref(false);
+
+watch(() => props.open, (isOpen) => {
+  if (isOpen) {
+    title.value = props.initialTitle || '';
+    author.value = props.initialAuthor || '';
+  }
 });
 
-// Selected format state (defaults to lowest-price format)
-const selectedFormatId = ref<string>('');
+function handleSubmit(): void {
+  if (!title.value.trim() || !customerPhone.value.trim()) return;
 
-watch(
-  () => props.book.formats,
-  (fmts: ProductFormat[] | undefined) => {
-    if (fmts && fmts.length > 0) {
-      const sorted = [...fmts].sort((a, b) => a.price - b.price);
-      selectedFormatId.value = sorted[0].id;
+  isSubmitting.value = true;
+
+  const lines = [
+    `*📚 Flemela Bookstore — Custom Book Request*`,
+    `Book Title: ${title.value.trim()}`,
+    author.value.trim() ? `Author: ${author.value.trim()}` : null,
+    `Preferred Format: ${preferredFormat.value.toUpperCase()}`,
+    `Customer Contact: ${customerPhone.value.trim()}`,
+  ].filter(Boolean);
+
+  const whatsappUrl = `https://wa.me/254700000000?text=${encodeURIComponent(lines.join('\n'))}`;
+
+  setTimeout(() => {
+    isSubmitting.value = false;
+    emit('close');
+    pushToast({ message: 'Request submitted! Opening WhatsApp...', variant: 'success' });
+    if (typeof window !== 'undefined') {
+      window.open(whatsappUrl, '_blank');
     }
-  },
-  { immediate: true }
-);
-
-const activeFormat = computed<ProductFormat | undefined>(() => {
-  if (!props.book.formats || props.book.formats.length === 0) return undefined;
-  return (
-    props.book.formats.find((f) => f.id === selectedFormatId.value) ||
-    props.book.formats[0]
-  );
-});
-
-const currentPrice = computed(() => {
-  if (activeFormat.value) return activeFormat.value.price;
-  return props.book.price ?? 0;
-});
-
-function formatCurrency(val: number): string {
-  return `KSh ${val.toLocaleString('en-KE')}`;
-}
-
-function handleSelectFormat(formatId: string, event: Event): void {
-  event.preventDefault();
-  event.stopPropagation();
-  selectedFormatId.value = formatId;
-}
-
-function handleAddToCart(event: Event): void {
-  event.preventDefault();
-  event.stopPropagation();
-
-  const fmt = activeFormat.value;
-  const priceToUse = fmt ? fmt.price : props.book.price;
-  const formatType = fmt ? fmt.format : 'hardcopy';
-  const formatId = fmt ? fmt.id : 'default';
-
-  addItem({
-    productId: props.book.id,
-    formatId,
-    title: props.book.name,
-    format: formatType,
-    price: priceToUse,
-    quantity: 1,
-    coverUrl: coverImage.value,
-    author: props.book.author,
-  });
-
-  pushToast({
-    message: `Added "${props.book.name}" (${formatType.toUpperCase()}) to cart!`,
-    variant: 'success',
-  });
-
-  openDrawer();
+  }, 400);
 }
 </script>
 
 <template>
-  <div class="bg-paper-surface rounded-xl border border-paper-border hover:border-forest-800/30 p-3 sm:p-4 flex flex-col justify-between book-hover-lift group shadow-soft hover:shadow-card transition-all duration-300">
-    <div class="space-y-3">
-      <!-- 3D Book Cover Frame -->
-      <NuxtLink :to="`/book/${book.slug}`" class="block relative aspect-[3/4] bg-paper-cream rounded-book overflow-hidden book-cover-3d">
-        <img
-          :src="coverImage"
-          :alt="`Cover for ${book.name}`"
-          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          loading="lazy"
-          referrerpolicy="no-referrer"
-          width="260"
-          height="346"
-          @error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'"
-        />
-
-        <!-- Optional Curated Badge -->
-        <div v-if="book.badge" class="absolute top-2.5 left-2.5 z-10">
-          <span class="text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-forest-950/90 backdrop-blur-xs text-gold-300 shadow-sm border border-gold-500/30">
-            ★ {{ book.badge }}
-          </span>
+  <Teleport to="body">
+    <div
+      v-if="open"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-theme-dark/70 backdrop-blur-xs"
+      @click.self="emit('close')"
+    >
+      <div
+        class="bg-theme-surface rounded-2xl shadow-2xl border border-theme-border w-full max-w-lg p-6 sm:p-7 space-y-5 animate-in fade-in zoom-in-95 duration-200"
+        role="dialog"
+        aria-modal="true"
+      >
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-theme-coral/10 text-theme-coral flex items-center justify-center">
+              <MessageSquare :size="16" />
+            </div>
+            <div>
+              <h3 class="font-display font-bold text-base sm:text-lg text-theme-ink">Request / Special Order</h3>
+              <p class="text-[11px] text-theme-muted">Our team will source this title and notify you on WhatsApp.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="p-1.5 text-theme-muted hover:text-theme-ink rounded-lg transition-colors cursor-pointer"
+            @click="emit('close')"
+          >
+            <X :size="18" />
+          </button>
         </div>
-      </NuxtLink>
 
-      <!-- Book Typography Details -->
-      <div class="space-y-1 text-left pt-0.5">
-        <span class="text-[9px] sm:text-[10px] uppercase font-mono font-bold tracking-widest text-gold-600 block truncate">
-          {{ book.category_name || 'General' }}
-        </span>
+        <!-- Form -->
+        <form class="space-y-4" @submit.prevent="handleSubmit">
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-theme-ink">Book Title *</label>
+            <input
+              v-model="title"
+              type="text"
+              placeholder="e.g. Atomic Habits or Thinking Fast & Slow"
+              class="w-full px-3.5 py-2.5 bg-theme-canvas border border-theme-border rounded-xl text-xs sm:text-sm outline-none focus:border-theme-forest transition-all"
+              required
+            />
+          </div>
 
-        <NuxtLink :to="`/book/${book.slug}`" class="block">
-          <h3 class="font-display text-sm sm:text-base font-bold text-forest-950 group-hover:text-forest-800 transition-colors line-clamp-2 leading-snug">
-            {{ book.name }}
-          </h3>
-        </NuxtLink>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-xs font-semibold text-theme-ink">Author Name</label>
+              <input
+                v-model="author"
+                type="text"
+                placeholder="e.g. James Clear"
+                class="w-full px-3.5 py-2.5 bg-theme-canvas border border-theme-border rounded-xl text-xs sm:text-sm outline-none focus:border-theme-forest transition-all"
+              />
+            </div>
 
-        <p class="text-xs italic text-ink-muted leading-tight truncate">
-          {{ book.author ? `By ${book.author}` : 'Original Edition' }}
-        </p>
+            <div class="space-y-1">
+              <label class="text-xs font-semibold text-theme-ink">Your WhatsApp Phone *</label>
+              <input
+                v-model="customerPhone"
+                type="tel"
+                placeholder="07XXXXXXXX"
+                class="w-full px-3.5 py-2.5 bg-theme-canvas border border-theme-border rounded-xl text-xs sm:text-sm font-mono outline-none focus:border-theme-forest transition-all"
+                required
+              />
+            </div>
+          </div>
 
-        <!-- Segmented Mini-Pill Format Switcher -->
-        <div v-if="book.formats && book.formats.length > 1" class="pt-2">
-          <div class="inline-flex bg-paper-cream/80 p-0.5 rounded-lg border border-paper-border w-full justify-between gap-1">
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-theme-ink">Preferred Format</label>
+            <div class="grid grid-cols-3 gap-2 text-xs font-medium">
+              <label
+                class="border rounded-xl p-2.5 text-center cursor-pointer transition-all"
+                :class="preferredFormat === 'hardcopy' ? 'border-theme-coral bg-orange-50/60 font-bold text-theme-coral' : 'border-theme-border hover:bg-slate-50'"
+              >
+                <input type="radio" value="hardcopy" v-model="preferredFormat" class="sr-only" />
+                Physical Print
+              </label>
+              <label
+                class="border rounded-xl p-2.5 text-center cursor-pointer transition-all"
+                :class="preferredFormat === 'ebook' ? 'border-theme-coral bg-orange-50/60 font-bold text-theme-coral' : 'border-theme-border hover:bg-slate-50'"
+              >
+                <input type="radio" value="ebook" v-model="preferredFormat" class="sr-only" />
+                eBook (PDF/EPUB)
+              </label>
+              <label
+                class="border rounded-xl p-2.5 text-center cursor-pointer transition-all"
+                :class="preferredFormat === 'either' ? 'border-theme-coral bg-orange-50/60 font-bold text-theme-coral' : 'border-theme-border hover:bg-slate-50'"
+              >
+                <input type="radio" value="either" v-model="preferredFormat" class="sr-only" />
+                Either / Any
+              </label>
+            </div>
+          </div>
+
+          <div class="pt-2 flex justify-end gap-2.5">
             <button
-              v-for="fmt in book.formats"
-              :key="fmt.id"
               type="button"
-              class="flex-1 py-1 px-1.5 text-[9px] font-mono font-bold rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer select-none truncate"
-              :class="[
-                selectedFormatId === fmt.id
-                  ? 'bg-forest-950 text-white shadow-xs'
-                  : 'text-ink-muted hover:text-forest-950 hover:bg-white/60'
-              ]"
-              @click="(e) => handleSelectFormat(fmt.id, e)"
+              class="px-4 py-2 text-xs font-semibold text-theme-muted hover:text-theme-ink rounded-lg"
+              @click="emit('close')"
             >
-              <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="10" />
-              <span>{{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}</span>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="bg-theme-coral hover:bg-theme-coral-hover text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              :disabled="isSubmitting"
+            >
+              <Send :size="13" />
+              <span>{{ isSubmitting ? 'Submitting...' : 'Send Request via WhatsApp' }}</span>
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
-
-    <!-- Pricing & Tactile Action Button -->
-    <div class="pt-3 mt-3 border-t border-paper-border/80 space-y-2">
-      <div class="flex items-baseline justify-between">
-        <span class="text-[11px] text-ink-muted font-medium font-sans">
-          {{ activeFormat?.format === 'hardcopy' ? 'Physical Copy' : 'Instant eBook' }}
-        </span>
-        <span class="text-sm sm:text-base font-bold font-mono text-forest-950 tabular-figure">
-          {{ formatCurrency(currentPrice) }}
-        </span>
-      </div>
-
-      <button
-        type="button"
-        class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-950 text-paper font-sans font-bold text-[11px] uppercase tracking-wider py-2.5 px-3 rounded-lg shadow-subtle transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-        @click="handleAddToCart"
-      >
-        <ShoppingBag :size="13" class="text-gold-300" />
-        <span>Add to Cart</span>
-      </button>
-    </div>
-  </div>
+  </Teleport>
 </template>
 </file>
 
@@ -989,6 +1145,139 @@ function handleClick(categoryKey: string): void {
 </template>
 </file>
 
+<file path="components/storefront/DealsWeek.vue">
+<!-- components/storefront/DealsWeek.vue -->
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import BookCard from '~/components/storefront/BookCard.vue';
+import { DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import type { Book } from '~/types';
+
+interface Props {
+  books: Book[];
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<{
+  requestSeed: [title: string, author?: string];
+}>();
+
+const carouselRef = ref<HTMLElement | null>(null);
+
+const dealBooks = computed(() => {
+  return mergeWithSeeds(props.books, DEALS_SEEDS, 4);
+});
+
+// Real Countdown Timer (Target: Next Sunday Midnight)
+const days = ref('04');
+const hours = ref('18');
+const minutes = ref('40');
+const seconds = ref('23');
+let timerInterval: ReturnType<typeof setInterval> | undefined;
+
+function updateCountdown(): void {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const daysUntilSunday = (7 - dayOfWeek) % 7 || 7;
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59);
+
+  const diff = Math.max(0, target.getTime() - now.getTime());
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const m = Math.floor((diff / 1000 / 60) % 60);
+  const s = Math.floor((diff / 1000) % 60);
+
+  days.value = String(d).padStart(2, '0');
+  hours.value = String(h).padStart(2, '0');
+  minutes.value = String(m).padStart(2, '0');
+  seconds.value = String(s).padStart(2, '0');
+}
+
+onMounted(() => {
+  updateCountdown();
+  timerInterval = setInterval(updateCountdown, 1000);
+});
+
+onUnmounted(() => {
+  if (timerInterval) clearInterval(timerInterval);
+});
+
+function scrollLeft(): void {
+  carouselRef.value?.scrollBy({ left: -280, behavior: 'smooth' });
+}
+
+function scrollRight(): void {
+  carouselRef.value?.scrollBy({ left: 280, behavior: 'smooth' });
+}
+</script>
+
+<template>
+  <section class="bg-theme-sand py-14 px-4">
+    <div class="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 items-center">
+      <!-- Left: Countdown Column -->
+      <div class="lg:col-span-4 space-y-4">
+        <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-theme-coral block">BOOK OF THE WEEK</span>
+        <h2 class="font-display text-3xl font-extrabold text-theme-ink uppercase tracking-tight">
+          DEALS OF THE WEEK
+        </h2>
+        <p class="text-xs text-theme-muted leading-relaxed">
+          Unforgettable reads that are dominating bestsellers and changing how we view wealth, power, and wisdom.
+        </p>
+
+        <!-- Dynamic Timer Boxes -->
+        <ClientOnly>
+          <div class="flex items-center gap-2 pt-2">
+            <div class="bg-white rounded-xl px-3 py-2 border border-stone-200 text-center shadow-xs">
+              <span class="font-mono text-sm font-bold text-theme-ink block">{{ days }}D</span>
+            </div>
+            <span class="font-bold text-theme-ink">:</span>
+            <div class="bg-white rounded-xl px-3 py-2 border border-stone-200 text-center shadow-xs">
+              <span class="font-mono text-sm font-bold text-theme-ink block">{{ hours }}H</span>
+            </div>
+            <span class="font-bold text-theme-ink">:</span>
+            <div class="bg-white rounded-xl px-3 py-2 border border-stone-200 text-center shadow-xs">
+              <span class="font-mono text-sm font-bold text-theme-ink block">{{ minutes }}M</span>
+            </div>
+            <span class="font-bold text-theme-ink">:</span>
+            <div class="bg-white rounded-xl px-3 py-2 border border-stone-200 text-center shadow-xs">
+              <span class="font-mono text-sm font-bold text-theme-coral block">{{ seconds }}S</span>
+            </div>
+          </div>
+        </ClientOnly>
+
+        <!-- Carousel Buttons -->
+        <div class="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            class="w-9 h-9 rounded-full bg-white border border-stone-200 flex items-center justify-center text-theme-ink hover:bg-stone-50 cursor-pointer shadow-xs active:scale-95 transition-all"
+            aria-label="Previous deal"
+            @click="scrollLeft"
+          >
+            <ChevronLeft :size="16" />
+          </button>
+          <button
+            type="button"
+            class="w-9 h-9 rounded-full bg-theme-coral text-white flex items-center justify-center hover:bg-theme-coral-hover cursor-pointer shadow-xs active:scale-95 transition-all"
+            aria-label="Next deal"
+            @click="scrollRight"
+          >
+            <ChevronRight :size="16" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Deals Cards -->
+      <div ref="carouselRef" class="lg:col-span-8 flex gap-4 overflow-x-auto no-scrollbar py-2">
+        <div v-for="book in dealBooks" :key="book.id" class="w-56 sm:w-60 flex-shrink-0">
+          <BookCard :book="book" @request-seed="(t, a) => emit('requestSeed', t, a)" />
+        </div>
+      </div>
+    </div>
+  </section>
+</template>
+</file>
+
 <file path="components/storefront/DeliveryTypeStep.vue">
 <!-- components/storefront/DeliveryTypeStep.vue -->
 <script setup lang="ts">
@@ -1140,6 +1429,135 @@ function scrollToSection(id: string): void {
             @click="scrollToSection('categories')"
           >
             Browse Categories
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>
+</file>
+
+<file path="components/storefront/HeroReference.vue">
+<!-- components/storefront/HeroReference.vue -->
+<script setup lang="ts">
+import { ref } from 'vue';
+import { Search, ChevronDown, Sparkles } from 'lucide-vue-next';
+
+const emit = defineEmits<{
+  search: [query: string, category: string];
+  selectCategory: [category: string];
+}>();
+
+const searchQuery = ref('');
+const selectedCategory = ref('All Categories');
+const isDropdownOpen = ref(false);
+
+const categories = [
+  'All Categories',
+  'Fiction & Literature',
+  'Psychology & Self-Help',
+  'Business & Finance',
+  'Christian Books',
+  'Education & Textbooks',
+  'Biographies & Memoir'
+];
+
+function handleSearch(): void {
+  emit('search', searchQuery.value.trim(), selectedCategory.value);
+}
+
+function handleSelectCat(cat: string): void {
+  selectedCategory.value = cat;
+  isDropdownOpen.value = false;
+  emit('selectCategory', cat === 'All Categories' ? 'ALL' : cat);
+}
+</script>
+
+<template>
+  <section class="relative bg-theme-dark text-white pt-12 pb-20 px-4 overflow-hidden">
+    <!-- Floating Cover Stacks (Left and Right) -->
+    <div class="absolute inset-0 pointer-events-none opacity-30 flex justify-between items-center px-4 sm:px-12">
+      <!-- Left Stack -->
+      <div class="hidden lg:flex flex-col gap-6 -translate-x-6">
+        <img src="https://covers.openlibrary.org/b/isbn/9780140283334-M.jpg" alt="" class="w-16 h-24 object-cover rounded shadow-lg rotate-[-6deg]" referrerpolicy="no-referrer" />
+        <img src="https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg" alt="" class="w-20 h-28 object-cover rounded shadow-lg rotate-[4deg] translate-x-4" referrerpolicy="no-referrer" />
+        <img src="https://covers.openlibrary.org/b/isbn/9780062316097-M.jpg" alt="" class="w-16 h-24 object-cover rounded shadow-lg rotate-[-3deg]" referrerpolicy="no-referrer" />
+      </div>
+
+      <!-- Right Stack -->
+      <div class="hidden lg:flex flex-col gap-6 translate-x-6">
+        <img src="https://covers.openlibrary.org/b/isbn/9781501110368-M.jpg" alt="" class="w-16 h-24 object-cover rounded shadow-lg rotate-[8deg]" referrerpolicy="no-referrer" />
+        <img src="https://covers.openlibrary.org/b/isbn/9780857197689-M.jpg" alt="" class="w-20 h-28 object-cover rounded shadow-lg rotate-[-5deg] -translate-x-4" referrerpolicy="no-referrer" />
+        <img src="https://covers.openlibrary.org/b/isbn/9780451524935-M.jpg" alt="" class="w-16 h-24 object-cover rounded shadow-lg rotate-[3deg]" referrerpolicy="no-referrer" />
+      </div>
+    </div>
+
+    <!-- Hero Content -->
+    <div class="relative z-10 max-w-3xl mx-auto text-center space-y-6">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-theme-turquoise shadow-xs">
+        <Sparkles :size="13" />
+        <span>Curated for Curious Minds</span>
+      </div>
+
+      <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold uppercase tracking-tight leading-[1.1]">
+        THE NEXT <br />
+        <span class="text-theme-turquoise">CHAPTER</span> IN <span class="text-theme-coral">YOUR</span> <br />
+        READING JOURNEY
+      </h1>
+
+      <p class="text-xs sm:text-sm text-white/75 max-w-lg mx-auto leading-relaxed">
+        Browse curated collections of page-turners, timeless classics, and life-changing books crafted to enrich your reading list.
+      </p>
+
+      <!-- Search Bar -->
+      <div class="pt-2 max-w-2xl mx-auto">
+        <div class="bg-white rounded-full p-1.5 shadow-2xl flex items-center gap-2 border border-white/20">
+          
+          <!-- Category Dropdown -->
+          <div class="relative flex-shrink-0">
+            <button
+              type="button"
+              class="px-4 py-2 text-xs font-semibold text-theme-ink flex items-center gap-1.5 border-r border-slate-200 cursor-pointer select-none"
+              @click="isDropdownOpen = !isDropdownOpen"
+            >
+              <span class="max-w-[120px] truncate">{{ selectedCategory }}</span>
+              <ChevronDown :size="13" class="text-slate-500" />
+            </button>
+
+            <div
+              v-if="isDropdownOpen"
+              class="absolute top-full left-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-left text-xs font-medium text-theme-ink"
+            >
+              <button
+                v-for="cat in categories"
+                :key="cat"
+                type="button"
+                class="w-full text-left px-4 py-2 hover:bg-slate-50 transition-colors"
+                :class="{ 'font-bold text-theme-coral bg-orange-50/50': selectedCategory === cat }"
+                @click="handleSelectCat(cat)"
+              >
+                {{ cat }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Input -->
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search by title, author, or ISBN..."
+            class="flex-1 bg-transparent px-3 text-xs sm:text-sm text-theme-ink outline-none placeholder:text-slate-400"
+            @keyup.enter="handleSearch"
+          />
+
+          <!-- Button -->
+          <button
+            type="button"
+            class="bg-theme-coral hover:bg-theme-coral-hover text-white text-xs font-bold uppercase tracking-wider px-6 py-2.5 rounded-full transition-all flex items-center gap-1.5 shadow-md cursor-pointer flex-shrink-0"
+            @click="handleSearch"
+          >
+            <Search :size="14" />
+            <span class="hidden sm:inline">Search</span>
           </button>
         </div>
       </div>
@@ -2320,6 +2738,213 @@ export function useToast() {
 }
 </file>
 
+<file path="data/seeds.ts">
+// =============================================================================
+// flemela/data/seeds.ts
+// Curated Universal Bestseller Seed Collections & Push-Aside Merging Engine
+// =============================================================================
+
+import type { Book } from '~/types';
+
+export interface SeedBook extends Book {
+  isSeed: true;
+}
+
+// Section 1: #1 Books of the Month (Personal Growth, Philosophy & Mindset)
+export const MONTHLY_TOP_SEEDS: SeedBook[] = [
+  {
+    id: 'seed-atomic-habits',
+    org_id: 'seed-flemela',
+    category_id: 'cat-self-help',
+    category_name: 'Self-Help',
+    name: 'Atomic Habits',
+    slug: 'atomic-habits',
+    author: 'James Clear',
+    description: 'An easy & proven way to build good habits and break bad ones.',
+    price: 999,
+    status: 'published',
+    badge: 'BESTSELLER',
+    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg', image_public_id: 'seed_img_1', sort_order: 0 }],
+    formats: [
+      { id: 'seed-fmt-1', product_id: 'seed-atomic-habits', format: 'hardcopy', price: 999, file_url: null, file_public_id: null, file_size_bytes: null, stock: 15, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-2', product_id: 'seed-atomic-habits', format: 'pdf', price: 149, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-psychology-of-money',
+    org_id: 'seed-flemela',
+    category_id: 'cat-finance',
+    category_name: 'Business & Finance',
+    name: 'The Psychology of Money',
+    slug: 'the-psychology-of-money',
+    author: 'Morgan Housel',
+    description: 'Timeless lessons on wealth, greed, and happiness.',
+    price: 999,
+    status: 'published',
+    badge: 'FEATURED',
+    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780857197689-L.jpg', image_public_id: 'seed_img_2', sort_order: 0 }],
+    formats: [
+      { id: 'seed-fmt-3', product_id: 'seed-psychology-of-money', format: 'hardcopy', price: 999, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-sapiens',
+    org_id: 'seed-flemela',
+    category_id: 'cat-nonfiction',
+    category_name: 'Nonfiction',
+    name: 'Sapiens: A Brief History of Humankind',
+    slug: 'sapiens-brief-history-humankind',
+    author: 'Yuval Noah Harari',
+    description: 'Explore the history of humanity from early hominids to the Silicon Age.',
+    price: 1200,
+    status: 'published',
+    badge: 'POPULAR',
+    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780062316097-L.jpg', image_public_id: 'seed_img_3', sort_order: 0 }],
+    formats: [
+      { id: 'seed-fmt-4', product_id: 'seed-sapiens', format: 'hardcopy', price: 1200, file_url: null, file_public_id: null, file_size_bytes: null, stock: 10, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-deep-work',
+    org_id: 'seed-flemela',
+    category_id: 'cat-self-help',
+    category_name: 'Self-Help',
+    name: 'Deep Work',
+    slug: 'deep-work',
+    author: 'Cal Newport',
+    description: 'Rules for focused success in a distracted world.',
+    price: 999,
+    status: 'published',
+    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9781455586691-L.jpg', image_public_id: 'seed_img_4', sort_order: 0 }],
+    formats: [
+      { id: 'seed-fmt-5', product_id: 'seed-deep-work', format: 'hardcopy', price: 999, file_url: null, file_public_id: null, file_size_bytes: null, stock: 12, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+];
+
+// Section 2: Deals of the Week (Timeless Classics)
+export const DEALS_SEEDS: SeedBook[] = [
+  {
+    id: 'seed-rich-dad-poor-dad',
+    org_id: 'seed-flemela',
+    category_id: 'cat-finance',
+    category_name: 'Business & Finance',
+    name: 'Rich Dad Poor Dad',
+    slug: 'rich-dad-poor-dad',
+    author: 'Robert T. Kiyosaki',
+    description: 'What the rich teach their kids about money that the poor and middle class do not.',
+    price: 850,
+    status: 'published',
+    badge: 'DEAL OF WEEK',
+    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9781612680194-L.jpg', image_public_id: 'seed_img_5', sort_order: 0 }],
+    formats: [
+      { id: 'seed-fmt-6', product_id: 'seed-rich-dad-poor-dad', format: 'hardcopy', price: 850, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-the-alchemist',
+    org_id: 'seed-flemela',
+    category_id: 'cat-fiction',
+    category_name: 'Fiction & Literature',
+    name: 'The Alchemist',
+    slug: 'the-alchemist',
+    author: 'Paulo Coelho',
+    description: 'A magical fable about following your dream.',
+    price: 750,
+    status: 'published',
+    badge: 'CLASSIC',
+    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780062315007-L.jpg', image_public_id: 'seed_img_6', sort_order: 0 }],
+    formats: [
+      { id: 'seed-fmt-7', product_id: 'seed-the-alchemist', format: 'hardcopy', price: 750, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-1984',
+    org_id: 'seed-flemela',
+    category_id: 'cat-fiction',
+    category_name: 'Fiction & Literature',
+    name: '1984',
+    slug: '1984-george-orwell',
+    author: 'George Orwell',
+    description: 'The dystopian masterpiece of state surveillance and truth.',
+    price: 799,
+    status: 'published',
+    badge: 'SPECIAL',
+    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg', image_public_id: 'seed_img_7', sort_order: 0 }],
+    formats: [
+      { id: 'seed-fmt-8', product_id: 'seed-1984', format: 'hardcopy', price: 799, file_url: null, file_public_id: null, file_size_bytes: null, stock: 18, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-48-laws-of-power',
+    org_id: 'seed-flemela',
+    category_id: 'cat-self-help',
+    category_name: 'Self-Help',
+    name: 'The 48 Laws of Power',
+    slug: '48-laws-of-power',
+    author: 'Robert Greene',
+    description: 'Amoral, cunning, ruthless, and instructive wisdom on mastery.',
+    price: 1100,
+    status: 'published',
+    badge: 'ESSENTIAL',
+    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780140280197-L.jpg', image_public_id: 'seed_img_8', sort_order: 0 }],
+    formats: [
+      { id: 'seed-fmt-9', product_id: 'seed-48-laws-of-power', format: 'hardcopy', price: 1100, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+];
+
+/**
+ * Merges real database books with seed placeholders.
+ * Real merchant inventory always takes the lead and pushes seeds aside.
+ */
+export function mergeWithSeeds(
+  realBooks: Book[] | null | undefined,
+  seedCollection: SeedBook[],
+  targetCount = 4
+): Book[] {
+  const real = realBooks || [];
+  if (real.length >= targetCount) {
+    return real.slice(0, targetCount);
+  }
+
+  // Filter out any seeds that share a slug or name with a real merchant book
+  const realSlugs = new Set(real.map((b) => b.slug.toLowerCase()));
+  const realNames = new Set(real.map((b) => b.name.toLowerCase()));
+
+  const eligibleSeeds = seedCollection.filter(
+    (s) => !realSlugs.has(s.slug.toLowerCase()) && !realNames.has(s.name.toLowerCase())
+  );
+
+  const needed = targetCount - real.length;
+  return [...real, ...eligibleSeeds.slice(0, needed)];
+}
+</file>
+
 <file path="middleware/admin-auth.ts">
 // =============================================================================
 // middleware/admin-auth.ts
@@ -2349,435 +2974,6 @@ export default defineNuxtRouteMiddleware((to) => {
     }, { replace: true });
   }
 });
-</file>
-
-<file path="pages/admin/books/[id]/edit.vue">
-<!-- pages/admin/books/[id]/edit.vue -->
-<script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import {
-  ArrowLeft,
-  Trash2,
-  Upload,
-  BookOpen,
-  AlertCircle,
-  Truck,
-  Download,
-  Sparkles,
-  Link as LinkIcon,
-  RefreshCw,
-} from 'lucide-vue-next';
-import AdminLayout from '~/components/admin/AdminLayout.vue';
-import { useToast } from '~/composables/useToast';
-import type { Book, BookFormatType } from '~/types';
-
-definePageMeta({
-  middleware: 'admin-auth',
-});
-
-const route = useRoute();
-const { push: pushToast } = useToast();
-const bookId = computed(() => route.params.id as string);
-
-const { data: categories } = await useFetch<Array<{ id: string; name: string }>>('/api/admin/categories');
-const { data: book, refresh } = await useFetch<Book>(`/api/admin/books/${bookId.value}`);
-
-// Base Form Fields
-const name = ref('');
-const author = ref('');
-const categoryId = ref('');
-const description = ref('');
-const status = ref<'draft' | 'published' | 'archived'>('published');
-
-// Cover art state
-const coverUrl = ref('');
-const coverPublicId = ref('');
-const isUploadingCover = ref(false);
-const isSearchingCover = ref(false);
-
-// New Format State
-const newFormatType = ref<BookFormatType>('pdf');
-const newFormatPrice = ref(149);
-const newFormatStock = ref<number | null>(null);
-const newFormatFileKey = ref<string | null>(null);
-const newFormatFileSize = ref<number | null>(null);
-const isUploadingNewEbook = ref(false);
-
-const isSaving = ref(false);
-const formError = ref<string | null>(null);
-
-onMounted(() => {
-  if (book.value) {
-    name.value = book.value.name;
-    author.value = book.value.author || '';
-    categoryId.value = book.value.category_id || '';
-    description.value = book.value.description || '';
-    status.value = book.value.status;
-    const firstImg = book.value.images?.[0];
-    coverUrl.value = typeof firstImg === 'string' ? firstImg : firstImg?.image_url || '';
-    coverPublicId.value = typeof firstImg === 'object' ? firstImg?.image_public_id || '' : '';
-  }
-});
-
-// 🪄 Automated Open Web Cover Discovery Engine
-async function handleAutoFindCover(): Promise<void> {
-  if (!name.value.trim()) {
-    pushToast({ message: 'Enter a book title first', variant: 'error' });
-    return;
-  }
-
-  isSearchingCover.value = true;
-  try {
-    const res = await $fetch<{ coverUrl: string | null; title: string; source: string | null }>(
-      '/api/admin/books/find-cover',
-      {
-        query: {
-          title: name.value.trim(),
-          author: author.value.trim() || undefined,
-        },
-      }
-    );
-
-    if (res?.coverUrl) {
-      coverUrl.value = res.coverUrl;
-      coverPublicId.value = `auto_${res.source || 'web'}`;
-      pushToast({ message: `Discovered cover art from ${res.source === 'googlebooks' ? 'Google Books' : 'Open Library'}!`, variant: 'success' });
-    } else {
-      pushToast({ message: 'No online cover found.', variant: 'info' });
-    }
-  } catch {
-    pushToast({ message: 'Auto-discovery timed out.', variant: 'error' });
-  } finally {
-    isSearchingCover.value = false;
-  }
-}
-
-// Upload Cover Art to Cloudinary
-async function handleCoverUpload(event: Event): Promise<void> {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
-
-  isUploadingCover.value = true;
-  try {
-    const sig = await $fetch<{
-      signature: string;
-      timestamp: number;
-      folder: string;
-      apiKey: string;
-      cloudName: string;
-    }>('/api/admin/upload-signature', { method: 'POST' });
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('api_key', sig.apiKey);
-    formData.append('timestamp', String(sig.timestamp));
-    formData.append('signature', sig.signature);
-    formData.append('folder', sig.folder);
-
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
-      method: 'POST',
-      body: formData,
-    });
-    const data = await res.json();
-
-    if (data.secure_url) {
-      coverUrl.value = data.secure_url;
-      coverPublicId.value = data.public_id;
-      pushToast({ message: 'Cover art updated on Cloudinary', variant: 'success' });
-    }
-  } catch {
-    pushToast({ message: 'Cover image upload failed', variant: 'error' });
-  } finally {
-    isUploadingCover.value = false;
-  }
-}
-
-// Upload eBook file directly to Cloudflare R2
-async function handleNewEbookUpload(event: Event): Promise<void> {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
-
-  isUploadingNewEbook.value = true;
-  try {
-    const presigned = await $fetch<{ uploadUrl: string; key: string }>('/api/admin/books/upload-url', {
-      method: 'POST',
-      body: {
-        filename: file.name,
-        format: newFormatType.value,
-        contentType: file.type || 'application/pdf',
-      },
-    });
-
-    const uploadRes = await fetch(presigned.uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type || 'application/pdf' },
-      body: file,
-    });
-
-    if (!uploadRes.ok) throw new Error('R2 upload failed');
-
-    newFormatFileKey.value = presigned.key;
-    newFormatFileSize.value = file.size;
-
-    pushToast({ message: `Uploaded ${file.name} to Cloudflare R2!`, variant: 'success' });
-  } catch {
-    pushToast({ message: 'eBook upload to Cloudflare R2 failed', variant: 'error' });
-  } finally {
-    isUploadingNewEbook.value = false;
-  }
-}
-
-async function handleUpdateBook(): Promise<void> {
-  isSaving.value = true;
-  formError.value = null;
-
-  try {
-    await $fetch(`/api/admin/books/${bookId.value}`, {
-      method: 'PATCH',
-      body: {
-        name: name.value.trim(),
-        author: author.value.trim() || null,
-        category_id: categoryId.value || undefined,
-        description: description.value.trim() || null,
-        status: status.value,
-        images: coverUrl.value
-          ? [{ image_url: coverUrl.value.trim(), image_public_id: coverPublicId.value || 'cover_img' }]
-          : undefined,
-      },
-    });
-    pushToast({ message: 'Book details and cover art updated successfully!', variant: 'success' });
-  } catch (err: any) {
-    formError.value = err.data?.message || err.statusMessage || 'Failed to update book';
-  } finally {
-    isSaving.value = false;
-  }
-}
-
-async function handleAddFormat(): Promise<void> {
-  const isDigital = newFormatType.value === 'pdf' || newFormatType.value === 'epub';
-  if (isDigital && !newFormatFileKey.value) {
-    alert('Please select and upload a digital file to Cloudflare R2 first.');
-    return;
-  }
-
-  try {
-    await $fetch(`/api/admin/books/${bookId.value}/formats`, {
-      method: 'POST',
-      body: {
-        format: newFormatType.value,
-        price: Number(newFormatPrice.value),
-        stock: newFormatType.value === 'hardcopy' ? Number(newFormatStock.value || 0) : null,
-        file_url: isDigital ? newFormatFileKey.value : null,
-        file_public_id: isDigital ? newFormatFileKey.value : null,
-        file_size_bytes: isDigital ? newFormatFileSize.value : null,
-      },
-    });
-
-    pushToast({ message: `Added ${newFormatType.value.toUpperCase()} format`, variant: 'success' });
-    newFormatFileKey.value = null;
-    newFormatFileSize.value = null;
-    refresh();
-  } catch (err: any) {
-    alert(err.data?.message || 'Failed to add format');
-  }
-}
-
-async function handleDeleteFormat(formatId: string): Promise<void> {
-  if (!confirm('Remove this reading format?')) return;
-  try {
-    await $fetch(`/api/admin/books/${bookId.value}/formats/${formatId}`, { method: 'DELETE' });
-    pushToast({ message: 'Format removed', variant: 'info' });
-    refresh();
-  } catch (err: any) {
-    alert(err.statusMessage || 'Failed to delete format');
-  }
-}
-</script>
-
-<template>
-  <AdminLayout>
-    <div class="max-w-4xl mx-auto space-y-6">
-      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline">
-        <ArrowLeft :size="14" /> Back to Books Catalog
-      </NuxtLink>
-
-      <div class="bg-white rounded-xl shadow-subtle border border-ink-border p-6 sm:p-8 space-y-6">
-        <div class="pb-4 border-b border-ink-border">
-          <h1 class="font-display text-2xl font-bold text-forest-950">Edit Book: {{ book?.name }}</h1>
-          <p class="text-xs text-ink-muted">Update book metadata, auto-find or replace cover art, and manage formats.</p>
-        </div>
-
-        <form class="space-y-4" @submit.prevent="handleUpdateBook">
-          <div class="grid sm:grid-cols-2 gap-4">
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">Book Title *</label>
-              <div class="flex gap-2">
-                <input v-model="name" type="text" class="flex-1 px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900" required />
-                <button
-                  type="button"
-                  class="px-3 py-2 bg-paper-cream border border-ink-border hover:border-forest-900 text-forest-950 rounded text-xs font-bold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap"
-                  :disabled="isSearchingCover || !name"
-                  @click="handleAutoFindCover"
-                >
-                  <RefreshCw v-if="isSearchingCover" :size="12" class="animate-spin" />
-                  <Sparkles v-else :size="12" class="text-gold-600" />
-                  <span>{{ isSearchingCover ? 'Searching...' : '🪄 Find Cover' }}</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">Author Name</label>
-              <input v-model="author" type="text" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900" />
-            </div>
-          </div>
-
-          <div class="grid sm:grid-cols-2 gap-4">
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">Category</label>
-              <select v-model="categoryId" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 bg-white">
-                <option value="">Select category...</option>
-                <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">Status</label>
-              <select v-model="status" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 bg-white">
-                <option value="published">Published &amp; Live</option>
-                <option value="draft">Draft Mode</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-forest-950">Description / Synopsis</label>
-            <textarea v-model="description" rows="3" class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 resize-none" />
-          </div>
-
-          <!-- Cover Art Preview & Auto-Find -->
-          <div class="space-y-2 pt-2 border-t border-ink-border">
-            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Cover Art</h3>
-            <div class="flex items-start gap-4">
-              <div class="w-20 h-28 bg-paper-cream rounded border border-ink-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm">
-                <img v-if="coverUrl" :src="coverUrl" :alt="name ? `${name} Cover` : 'Cover'" class="w-full h-full object-cover" @error="coverUrl = ''" />
-                <BookOpen v-else :size="24" class="text-ink-muted opacity-40" />
-              </div>
-              <div class="space-y-2 flex-1">
-                <div class="flex flex-wrap gap-2 items-center">
-                  <button
-                    type="button"
-                    class="bg-forest-950 text-white hover:bg-forest-800 text-xs font-bold px-3 py-1.5 rounded inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
-                    :disabled="isSearchingCover || !name"
-                    @click="handleAutoFindCover"
-                  >
-                    <Sparkles :size="13" class="text-gold-300" /> Auto-Find Cover from Web
-                  </button>
-
-                  <label class="cursor-pointer bg-white border border-ink-border text-forest-950 text-xs font-bold px-3 py-1.5 rounded hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 shadow-xs">
-                    <Upload :size="13" /> {{ isUploadingCover ? 'Uploading...' : 'Upload Image' }}
-                    <input type="file" accept="image/*" class="hidden" :disabled="isUploadingCover" @change="handleCoverUpload" />
-                  </label>
-                </div>
-
-                <div class="space-y-1 pt-1">
-                  <label class="text-[11px] text-ink-muted flex items-center gap-1">
-                    <LinkIcon :size="12" /> Direct Cover Image URL:
-                  </label>
-                  <input
-                    v-model="coverUrl"
-                    type="url"
-                    placeholder="https://..."
-                    class="w-full px-3 py-1.5 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="formError" class="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-center gap-2">
-            <AlertCircle :size="14" class="flex-shrink-0" />
-            <span>{{ formError }}</span>
-          </div>
-
-          <div class="flex justify-end pt-2">
-            <button type="submit" class="bg-forest-900 text-white text-xs font-bold uppercase px-5 py-2.5 rounded hover:bg-forest-800 shadow cursor-pointer" :disabled="isSaving">
-              {{ isSaving ? 'Saving...' : 'Save Book Details' }}
-            </button>
-          </div>
-        </form>
-
-        <!-- Formats Section -->
-        <div class="pt-6 border-t border-ink-border space-y-4">
-          <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Active Reading Formats</h3>
-
-          <div class="space-y-2">
-            <div
-              v-for="fmt in book?.formats"
-              :key="fmt.id"
-              class="p-3.5 bg-slate-50 border border-ink-border rounded-lg flex justify-between items-center text-xs"
-            >
-              <div class="flex items-center gap-3">
-                <span class="font-bold uppercase text-forest-950 flex items-center gap-1">
-                  <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="13" />
-                  {{ fmt.format }}
-                </span>
-                <span class="font-mono font-bold text-forest-950">KSh {{ fmt.price }}</span>
-                <span v-if="fmt.format === 'hardcopy'" class="text-ink-muted">({{ fmt.stock }} copies in stock)</span>
-                <span v-else class="text-emerald-700 font-semibold">{{ fmt.file_public_id ? 'Cloudflare R2 File Ready ✓' : 'File Attached' }}</span>
-              </div>
-              <button type="button" class="text-red-500 hover:text-red-700 p-1 cursor-pointer" @click="handleDeleteFormat(fmt.id)">
-                <Trash2 :size="14" />
-              </button>
-            </div>
-          </div>
-
-          <!-- Add Format Form -->
-          <div class="p-4 bg-paper-cream border border-ink-border rounded-xl space-y-3">
-            <h4 class="text-xs font-bold text-forest-950 uppercase font-mono">Add Format</h4>
-            <div class="grid sm:grid-cols-12 gap-3 items-end">
-              <div class="sm:col-span-3 space-y-1">
-                <label class="text-[10px] text-ink-muted font-semibold">Format Type</label>
-                <select v-model="newFormatType" class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs">
-                  <option value="pdf">PDF eBook</option>
-                  <option value="epub">EPUB eBook</option>
-                  <option value="hardcopy">Physical Hardcopy</option>
-                </select>
-              </div>
-
-              <div class="sm:col-span-3 space-y-1">
-                <label class="text-[10px] text-ink-muted font-semibold">Price (KSh)</label>
-                <input v-model.number="newFormatPrice" type="number" min="0" class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono font-bold" />
-              </div>
-
-              <div v-if="newFormatType === 'hardcopy'" class="sm:col-span-4 space-y-1">
-                <label class="text-[10px] text-ink-muted font-semibold">Stock Count</label>
-                <input v-model.number="newFormatStock" type="number" min="0" class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono" />
-              </div>
-
-              <div v-else class="sm:col-span-4 space-y-1">
-                <label class="text-[10px] text-ink-muted font-semibold">eBook File (Cloudflare R2)</label>
-                <label class="w-full bg-white border border-ink-border text-forest-950 text-[11px] font-medium px-2 py-1.5 rounded flex items-center justify-between cursor-pointer">
-                  <span class="truncate">{{ newFormatFileKey ? 'File Ready ✓' : (isUploadingNewEbook ? 'Uploading...' : 'Upload File') }}</span>
-                  <input type="file" :accept="newFormatType === 'pdf' ? '.pdf' : '.epub'" class="hidden" :disabled="isUploadingNewEbook" @change="handleNewEbookUpload" />
-                </label>
-              </div>
-
-              <div class="sm:col-span-2">
-                <button type="button" class="w-full bg-forest-900 text-white text-xs font-bold py-2 rounded hover:bg-forest-800 shadow-sm cursor-pointer" @click="handleAddFormat">
-                  + Add
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </AdminLayout>
-</template>
 </file>
 
 <file path="pages/admin/books/import.vue">
@@ -3072,223 +3268,6 @@ function onFileSelect(e: Event): void {
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </AdminLayout>
-</template>
-</file>
-
-<file path="pages/admin/books/index.vue">
-<!-- pages/admin/books/index.vue -->
-<script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Plus, Search, Trash2, Edit2, BookOpen, Download, Truck, ExternalLink } from 'lucide-vue-next';
-import AdminLayout from '~/components/admin/AdminLayout.vue';
-import { useToast } from '~/composables/useToast';
-import type { Book } from '~/types';
-
-definePageMeta({
-  middleware: 'admin-auth',
-});
-
-const { push: pushToast } = useToast();
-const { data: books, refresh, status: fetchStatus } = await useFetch<Book[]>('/api/admin/books');
-
-const searchQuery = ref('');
-const selectedCategory = ref('');
-
-const filteredBooks = computed(() => {
-  if (!books.value) return [];
-  let list = [...books.value];
-
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase().trim();
-    list = list.filter((b) => b.name.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q));
-  }
-
-  if (selectedCategory.value) {
-    list = list.filter((b) => b.category_id === selectedCategory.value);
-  }
-
-  return list;
-});
-
-function resolveCoverUrl(book: Book): string {
-  const firstImg = book.images?.[0];
-  if (!firstImg) return (book as any).cover_image_url || '';
-  if (typeof firstImg === 'string') return firstImg;
-  return firstImg.image_url || (book as any).cover_image_url || '';
-}
-
-async function handleDeleteBook(id: string, name: string): Promise<void> {
-  if (!confirm(`Are you sure you want to permanently delete "${name}"? All formats, covers, and stock will be deleted cleanly.`)) {
-    return;
-  }
-
-  try {
-    await $fetch(`/api/admin/books/${id}`, { method: 'DELETE' });
-    pushToast({ message: `"${name}" removed from catalog`, variant: 'success' });
-    await refresh();
-  } catch (err: any) {
-    pushToast({ message: err.statusMessage || 'Failed to delete book', variant: 'error' });
-  }
-}
-</script>
-
-<template>
-  <AdminLayout>
-    <div class="space-y-6">
-      <!-- Header -->
-      <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-ink-border">
-        <div>
-          <h1 class="font-display text-2xl font-bold text-forest-950">Books &amp; eBooks Catalog</h1>
-          <p class="text-xs text-ink-muted">Manage multi-format pricing, physical stock, and digital files.</p>
-        </div>
-
-        <NuxtLink
-          to="/admin/books/new"
-          class="bg-forest-900 text-white text-xs font-bold uppercase py-2.5 px-4 rounded-md hover:bg-forest-800 transition-colors flex items-center gap-1.5 shadow-sm"
-        >
-          <Plus :size="16" /> Add New Book
-        </NuxtLink>
-      </div>
-
-      <!-- Filter Controls -->
-      <div class="bg-white p-4 rounded-lg border border-ink-border shadow-subtle flex flex-wrap gap-4 items-center justify-between">
-        <div class="relative flex-1 min-w-[240px]">
-          <Search :size="16" class="absolute left-3 top-2.5 text-ink-muted pointer-events-none" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search catalog by title or author..."
-            class="w-full pl-9 pr-3 py-1.5 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
-          />
-        </div>
-        <div class="text-xs text-ink-muted font-mono tabular-figure">
-          Showing <strong>{{ filteredBooks.length }}</strong> books
-        </div>
-      </div>
-
-      <!-- Inventory Table -->
-      <div class="bg-white rounded-lg border border-ink-border shadow-subtle overflow-hidden">
-        <table class="w-full text-left text-xs border-collapse">
-          <thead>
-            <tr class="bg-slate-50 border-b border-ink-border text-ink-muted uppercase tracking-wider font-bold font-mono text-[9px]">
-              <th class="py-3 px-4">Cover</th>
-              <th class="py-3 px-4">Title &amp; Author</th>
-              <th class="py-3 px-4">Category</th>
-              <th class="py-3 px-4">Available Formats</th>
-              <th class="py-3 px-4">Status</th>
-              <th class="py-3 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-if="fetchStatus === 'pending'">
-              <td colspan="6" class="py-12 text-center text-ink-muted">
-                Loading catalog...
-              </td>
-            </tr>
-
-            <tr v-else-if="filteredBooks.length === 0">
-              <td colspan="6" class="py-12 text-center text-ink-muted">
-                No books found in catalog. Add your first book or run an Excel import.
-              </td>
-            </tr>
-
-            <tr v-for="book in filteredBooks" :key="book.id" class="hover:bg-slate-50/80 transition-colors">
-              <!-- Cover Thumbnail -->
-              <td class="py-3 px-4 w-16">
-                <div class="w-10 h-14 bg-paper-cream rounded border border-ink-border overflow-hidden flex items-center justify-center">
-                  <img
-                    v-if="resolveCoverUrl(book)"
-                    :src="resolveCoverUrl(book)"
-                    :alt="`Cover for ${book.name}`"
-                    class="w-full h-full object-cover"
-                    referrerpolicy="no-referrer"
-                    @error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'"
-                  />
-                  <BookOpen v-else :size="16" class="text-ink-muted opacity-40" />
-                </div>
-              </td>
-
-              <!-- Title & Author -->
-              <td class="py-3 px-4 max-w-xs">
-                <NuxtLink :to="`/admin/books/${book.id}/edit`" class="font-bold text-forest-950 hover:text-forest-800 line-clamp-1">
-                  {{ book.name }}
-                </NuxtLink>
-                <p class="text-[11px] text-ink-muted truncate">{{ book.author || '—' }}</p>
-              </td>
-
-              <!-- Category -->
-              <td class="py-3 px-4">
-                <span class="inline-block text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-800">
-                  {{ book.category_name || 'General' }}
-                </span>
-              </td>
-
-              <!-- Formats Array -->
-              <td class="py-3 px-4">
-                <div class="flex flex-wrap gap-1.5">
-                  <span
-                    v-for="fmt in book.formats"
-                    :key="fmt.id"
-                    class="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded border"
-                    :class="{
-                      'bg-amber-50 text-amber-900 border-amber-200': fmt.format === 'hardcopy',
-                      'bg-emerald-50 text-emerald-900 border-emerald-200': fmt.format === 'pdf',
-                      'bg-blue-50 text-blue-900 border-blue-200': fmt.format === 'epub',
-                    }"
-                  >
-                    <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="10" />
-                    {{ fmt.format.toUpperCase() }}: KSh {{ fmt.price }}
-                  </span>
-                  <span v-if="!book.formats?.length" class="text-[10px] text-slate-400 italic">No formats configured</span>
-                </div>
-              </td>
-
-              <!-- Status -->
-              <td class="py-3 px-4">
-                <span
-                  class="inline-block text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded"
-                  :class="book.status === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'"
-                >
-                  {{ book.status }}
-                </span>
-              </td>
-
-              <!-- Actions -->
-              <td class="py-3 px-4 text-right">
-                <div class="inline-flex items-center gap-2">
-                  <NuxtLink
-                    :to="`/book/${book.slug}`"
-                    target="_blank"
-                    class="p-1.5 rounded hover:bg-slate-100 text-ink-muted hover:text-forest-900 transition-colors"
-                    title="View on Storefront"
-                  >
-                    <ExternalLink :size="14" />
-                  </NuxtLink>
-
-                  <NuxtLink
-                    :to="`/admin/books/${book.id}/edit`"
-                    class="p-1.5 rounded hover:bg-slate-100 text-ink-muted hover:text-forest-900 transition-colors"
-                    title="Edit Book"
-                  >
-                    <Edit2 :size="14" />
-                  </NuxtLink>
-
-                  <button
-                    type="button"
-                    class="p-1.5 rounded hover:bg-red-50 text-ink-muted hover:text-red-600 transition-colors cursor-pointer"
-                    title="Delete Book"
-                    @click="handleDeleteBook(book.id, book.name)"
-                  >
-                    <Trash2 :size="14" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
   </AdminLayout>
@@ -5499,248 +5478,6 @@ const whatsappShareUrl = computed(() => {
 </template>
 </file>
 
-<file path="pages/index.vue">
-<!-- pages/index.vue -->
-<script setup lang="ts">
-import { ref, computed } from 'vue';
-import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
-import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
-import HeroBanner from '~/components/storefront/HeroBanner.vue';
-import TrustBadgeStrip from '~/components/storefront/TrustBadgeStrip.vue';
-import BookCard from '~/components/storefront/BookCard.vue';
-import CartDrawer from '~/components/storefront/CartDrawer.vue';
-import ToastContainer from '~/components/ui/ToastContainer.vue';
-import Skeleton from '~/components/ui/Skeleton.vue';
-import Modal from '~/components/ui/Modal.vue';
-import { useToast } from '~/composables/useToast';
-import { BookOpen, MessageSquare } from 'lucide-vue-next';
-import type { Book } from '~/types';
-
-const { data: books, status: fetchStatus } = await useFetch<Book[]>('/api/products');
-const { push: pushToast } = useToast();
-
-const activeCategoryFilter = ref<string>('ALL');
-const searchQuery = ref<string>('');
-
-const showRequestModal = ref(false);
-const requestTitle = ref('');
-const requestAuthor = ref('');
-const requestContact = ref('');
-const isSubmittingRequest = ref(false);
-
-useSeoMeta({
-  title: 'Flemela Bookstore — Books that inspire. Knowledge that transforms.',
-  description: 'Shop authentic hardcovers and instant Cloudflare R2 eBooks across Business, Philosophy, Psychology, and Literature in Kenya.',
-  ogTitle: 'Flemela Bookstore — Books that inspire. Knowledge that transforms.',
-  ogDescription: 'Shop authentic hardcovers, paperbacks, and instant eBooks with Lipa Na M-Pesa.',
-});
-
-// Inclusive category filter
-const filteredBooks = computed(() => {
-  if (!books.value) return [];
-  let result = [...books.value];
-
-  if (activeCategoryFilter.value !== 'ALL') {
-    const filterKey = activeCategoryFilter.value.toLowerCase().trim();
-    result = result.filter((b) => {
-      const cat = (b.category_name || '').toLowerCase().trim();
-      if (cat === filterKey) return true;
-      if (cat.includes(filterKey) || filterKey.includes(cat)) return true;
-      if (filterKey.includes('fiction') && cat.includes('fiction')) return true;
-      if ((filterKey.includes('finance') || filterKey.includes('business')) && (cat.includes('finance') || cat.includes('business') || cat.includes('wealth'))) return true;
-      if ((filterKey.includes('religious') || filterKey.includes('christian')) && (cat.includes('religious') || cat.includes('christian') || cat.includes('faith'))) return true;
-      if ((filterKey.includes('biograph') || filterKey.includes('memoir')) && (cat.includes('biograph') || cat.includes('memoir'))) return true;
-      if (filterKey.includes('self-help') && (cat.includes('self') || cat.includes('psychology'))) return true;
-      return false;
-    });
-  }
-
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase().trim();
-    result = result.filter(
-      (b) => b.name.toLowerCase().includes(q) || (b.author && b.author.toLowerCase().includes(q)) || (b.description && b.description.toLowerCase().includes(q))
-    );
-  }
-
-  return result;
-});
-
-function handleSearch(query: string, category: string): void {
-  searchQuery.value = query;
-  activeCategoryFilter.value = (category && category !== 'All Categories') ? category : 'ALL';
-}
-
-function handleCategorySelect(category: string): void {
-  activeCategoryFilter.value = category;
-}
-
-function handleBookRequestSubmit(): void {
-  if (!requestTitle.value.trim() || !requestContact.value.trim()) return;
-  isSubmittingRequest.value = true;
-
-  setTimeout(() => {
-    isSubmittingRequest.value = false;
-    showRequestModal.value = false;
-    requestTitle.value = '';
-    requestAuthor.value = '';
-    requestContact.value = '';
-    pushToast({
-      message: 'Book request received! Our team will source it and notify you.',
-      variant: 'success',
-    });
-  }, 600);
-}
-</script>
-
-<template>
-  <div class="min-h-screen flex flex-col bg-paper-canvas text-ink antialiased">
-    <TopUtilityBar />
-    <BookstoreHeader @search="handleSearch" @select-category="handleCategorySelect" />
-    <HeroBanner />
-    <TrustBadgeStrip />
-
-    <!-- Main Catalog Section -->
-    <section id="bestsellers" class="py-10 sm:py-14 px-4 sm:px-6 max-w-6xl mx-auto w-full space-y-6">
-      <div class="flex flex-wrap items-end justify-between gap-4 pb-2">
-        <div>
-          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-gold-600 block">Curated Collection</span>
-          <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-forest-950 tracking-tight">
-            Featured Catalog &amp; Editions
-          </h2>
-          <p class="text-xs sm:text-sm text-ink-muted mt-0.5">
-            Discover handpicked print editions and instant digital downloads
-          </p>
-        </div>
-
-        <button
-          type="button"
-          class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-950 hover:text-gold-600 transition-colors cursor-pointer"
-          @click="showRequestModal = true"
-        >
-          <MessageSquare :size="14" /> Can't find a title? Request it
-        </button>
-      </div>
-
-      <!-- Active Filter Pill Bar -->
-      <div v-if="activeCategoryFilter !== 'ALL' || searchQuery" class="flex items-center justify-between bg-paper-surface px-4 py-2.5 rounded-xl border border-paper-border shadow-2xs">
-        <span class="text-xs text-forest-950 font-medium">
-          Filtering by: <strong class="underline text-forest-900 font-bold">{{ activeCategoryFilter }}</strong>
-          <template v-if="searchQuery"> (Search: "{{ searchQuery }}")</template>
-        </span>
-        <button
-          type="button"
-          class="text-xs text-forest-950 font-bold hover:underline cursor-pointer bg-paper-cream px-2.5 py-1 rounded-md"
-          @click="activeCategoryFilter = 'ALL'; searchQuery = '';"
-        >
-          Reset Filter
-        </button>
-      </div>
-
-      <!-- Loading Skeletons -->
-      <div v-if="fetchStatus === 'pending'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-        <div v-for="n in 8" :key="n" class="bg-paper-surface rounded-xl border border-paper-border p-3.5 space-y-3">
-          <Skeleton height="220px" radius="6px" />
-          <Skeleton height="14px" width="80%" />
-          <Skeleton height="10px" width="40%" />
-        </div>
-      </div>
-
-      <!-- Empty State -->
-      <div v-else-if="filteredBooks.length === 0" class="bg-paper-surface rounded-2xl border border-paper-border p-12 text-center space-y-3.5 shadow-soft">
-        <BookOpen :size="40" class="mx-auto text-forest-900 opacity-50" />
-        <h3 class="font-display text-base font-bold text-forest-950">No titles match your filter</h3>
-        <p class="text-xs text-ink-muted max-w-xs mx-auto">
-          Try clearing your search query to view all available titles.
-        </p>
-        <button
-          type="button"
-          class="bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold uppercase px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-subtle"
-          @click="activeCategoryFilter = 'ALL'; searchQuery = '';"
-        >
-          View All Titles
-        </button>
-      </div>
-
-      <!-- Books Grid: 2-col Mobile, 3-col Tablet, 4-col Desktop -->
-      <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-        <BookCard
-          v-for="book in filteredBooks"
-          :key="book.id"
-          :book="book"
-        />
-      </div>
-    </section>
-
-    <!-- Custom Orders Section Banner -->
-    <section class="py-12 sm:py-14 bg-forest-950 text-paper px-4 sm:px-6">
-      <div class="max-w-4xl mx-auto text-center space-y-4">
-        <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-gold-300">Procurement &amp; Custom Orders</span>
-        <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-paper">Looking for a specific publication?</h2>
-        <p class="text-xs sm:text-sm text-paper/80 max-w-lg mx-auto leading-relaxed">
-          Our team can procure rare editions, academic textbooks, and international publications for you in digital or physical print format.
-        </p>
-        <div class="pt-2">
-          <button
-            type="button"
-            class="bg-gold-500 text-forest-950 font-bold text-xs uppercase px-6 py-3 rounded-xl hover:bg-gold-400 transition-colors shadow-medium cursor-pointer active:scale-[0.98]"
-            @click="showRequestModal = true"
-          >
-            Submit Book Request
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="bg-forest-950 text-paper py-10 px-4 sm:px-6 border-t border-forest-900/80 mt-auto">
-      <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
-        <div class="space-y-1 text-center sm:text-left">
-          <span class="font-display font-bold text-base tracking-tight text-paper block">FLEMELA BOOKSTORE</span>
-          <p class="text-paper/70 text-xs">Books that inspire. Knowledge that transforms.</p>
-        </div>
-        <p class="text-paper/50 text-xs font-mono">&copy; 2026 Flemela Bookstore. All rights reserved.</p>
-      </div>
-    </footer>
-
-    <!-- Request Modal -->
-    <Modal :open="showRequestModal" title="Request a Book / Custom Order" @close="showRequestModal = false">
-      <form class="space-y-4" @submit.prevent="handleBookRequestSubmit">
-        <p class="text-xs text-ink-muted">
-          Tell us the book title, author, and your contact number. We will source it and notify you via WhatsApp.
-        </p>
-
-        <div class="space-y-1.5">
-          <label class="text-xs font-bold text-forest-950">Book Title *</label>
-          <input v-model="requestTitle" type="text" placeholder="e.g. Atomic Habits" class="w-full px-3.5 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900" required />
-        </div>
-
-        <div class="space-y-1.5">
-          <label class="text-xs font-bold text-forest-950">Author Name</label>
-          <input v-model="requestAuthor" type="text" placeholder="e.g. James Clear" class="w-full px-3.5 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900" />
-        </div>
-
-        <div class="space-y-1.5">
-          <label class="text-xs font-bold text-forest-950">WhatsApp Phone Number *</label>
-          <input v-model="requestContact" type="tel" placeholder="07XXXXXXXX" class="w-full px-3.5 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 font-mono" required />
-        </div>
-
-        <div class="flex justify-end gap-2 pt-2">
-          <button type="button" class="px-4 py-2 text-xs font-bold hover:bg-slate-100 rounded-lg cursor-pointer" @click="showRequestModal = false">
-            Cancel
-          </button>
-          <button type="submit" class="bg-forest-950 text-paper text-xs font-bold uppercase px-5 py-2 rounded-lg hover:bg-forest-900 cursor-pointer shadow-subtle" :disabled="isSubmittingRequest">
-            {{ isSubmittingRequest ? 'Submitting...' : 'Submit Request' }}
-          </button>
-        </div>
-      </form>
-    </Modal>
-
-    <CartDrawer />
-    <ToastContainer />
-  </div>
-</template>
-</file>
-
 <file path="public/images/book-placeholder.svg">
 <svg width="400" height="533" viewBox="0 0 400 533" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="400" height="533" fill="#F5F5EC"/>
@@ -5988,6 +5725,24 @@ export default defineEventHandler(async (event) => {
       statusMessage: err.statusMessage || 'Failed to update book',
     });
   }
+});
+</file>
+
+<file path="server/api/admin/books/bulk-delete.post.ts">
+// =============================================================================
+// flemela/server/api/admin/books/bulk-delete.post.ts
+// Proxy endpoint allowing bulk deletion of selected books.
+// =============================================================================
+
+import { sokoClient } from '../../../utils/sokoClient';
+
+export default defineEventHandler(async (event) => {
+  const body = await readBody(event);
+
+  return sokoClient('/products/bulk-delete', {
+    method: 'POST',
+    body,
+  });
 });
 </file>
 
@@ -7613,94 +7368,6 @@ bun run preview
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 </file>
 
-<file path="tailwind.config.js">
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    './components/**/*.{js,vue,ts}',
-    './layouts/**/*.vue',
-    './pages/**/*.vue',
-    './app.vue',
-  ],
-  theme: {
-    extend: {
-      colors: {
-        // Modern Editorial Paper Palette
-        paper: {
-          DEFAULT: '#FBF9F5', // Warm Alabaster Canvas
-          canvas: '#FBF9F5',
-          cream: '#F4EFE6',  // Linen Accent / Pill background
-          surface: '#FFFFFF', // Clean Crisp Elevation
-          border: 'rgba(8, 40, 30, 0.08)',
-          'border-strong': 'rgba(8, 40, 30, 0.16)',
-        },
-
-        // Deep Evergreen Ink
-        forest: {
-          950: '#062319',
-          900: '#08281E',
-          800: '#0D382B',
-          700: '#145240',
-          600: '#1C6953',
-        },
-
-        // Burnished Antique Gold
-        gold: {
-          600: '#A37222',
-          500: '#C18B2F',
-          400: '#D4A44C',
-          300: '#DFC58E',
-          200: '#EEDBB5',
-          100: '#F8F1E3',
-        },
-
-        // Refined Typographic Ink
-        ink: {
-          DEFAULT: '#141E1A',
-          muted: '#5F6964',
-          subtle: '#929B96',
-          border: 'rgba(20, 30, 26, 0.08)',
-          'border-strong': 'rgba(20, 30, 26, 0.16)',
-        },
-
-        // Backward-compatible semantic aliases
-        'brand-green': '#08281E',
-        'brand-green-hover': '#062319',
-        'brand-green-dark': '#041710',
-        'brand-gold': '#C18B2F',
-        'brand-gold-hover': '#A37222',
-        'brand-cream': '#F4EFE6',
-      },
-
-      fontFamily: {
-        sans: ['"IBM Plex Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        display: ['Fraunces', 'Georgia', 'serif'],
-        mono: ['"IBM Plex Mono"', 'monospace'],
-      },
-
-      boxShadow: {
-        // Realistic 3D Book Elevation with Spine Crease
-        'book': '-2px 0 6px -1px rgba(0, 0, 0, 0.07), 3px 6px 18px -2px rgba(8, 40, 30, 0.08)',
-        'book-hover': '-3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 14px 28px -3px rgba(8, 40, 30, 0.15)',
-
-        // Ambient Surface Shadows
-        'soft': '0 2px 10px rgba(8, 40, 30, 0.03)',
-        'card': '0 4px 20px rgba(8, 40, 30, 0.05)',
-        'subtle': '0 1px 4px rgba(8, 40, 30, 0.04)',
-        'medium': '0 8px 24px rgba(8, 40, 30, 0.08)',
-        'high': '0 20px 48px rgba(8, 40, 30, 0.12)',
-      },
-
-      borderRadius: {
-        // Flattens left spine edge, rounds right outer page edge
-        'book': '2px 8px 8px 2px',
-      },
-    },
-  },
-  plugins: [],
-};
-</file>
-
 <file path="tsconfig.json">
 {
   "extends": "./.nuxt/tsconfig.json",
@@ -7715,37 +7382,1306 @@ export default {
 }
 </file>
 
+<file path="components/storefront/BookCard.vue">
+<!-- components/storefront/BookCard.vue -->
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue';
+import { ShoppingBag, Truck, Download, MessageSquare } from 'lucide-vue-next';
+import { useCart } from '~/composables/useCart';
+import { useToast } from '~/composables/useToast';
+import type { Book, ProductFormat } from '~/types';
+
+interface Props {
+  book: Book & { isSeed?: boolean };
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<{
+  requestSeed: [title: string, author?: string];
+}>();
+
+const { addItem, openDrawer } = useCart();
+const { push: pushToast } = useToast();
+
+const coverImage = computed(() => {
+  if (!props.book) return '/images/book-placeholder.svg';
+  const rawImg = props.book.images?.[0];
+  if (!rawImg) return (props.book as any).cover_image_url || '/images/book-placeholder.svg';
+  if (typeof rawImg === 'string') return rawImg;
+  return rawImg.image_url || (props.book as any).cover_image_url || '/images/book-placeholder.svg';
+});
+
+const selectedFormatId = ref<string>('');
+
+watch(
+  () => props.book.formats,
+  (fmts: ProductFormat[] | undefined) => {
+    if (fmts && fmts.length > 0) {
+      const sorted = [...fmts].sort((a, b) => a.price - b.price);
+      selectedFormatId.value = sorted[0].id;
+    }
+  },
+  { immediate: true }
+);
+
+const activeFormat = computed<ProductFormat | undefined>(() => {
+  if (!props.book.formats || props.book.formats.length === 0) return undefined;
+  return (
+    props.book.formats.find((f) => f.id === selectedFormatId.value) ||
+    props.book.formats[0]
+  );
+});
+
+const currentPrice = computed(() => {
+  if (activeFormat.value) return activeFormat.value.price;
+  return props.book.price ?? 0;
+});
+
+function formatCurrency(val: number): string {
+  return `KSh ${val.toLocaleString('en-KE')}`;
+}
+
+function handleSelectFormat(formatId: string, event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
+  selectedFormatId.value = formatId;
+}
+
+function handleAction(event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
+
+  // Edge Case: If seed book is clicked, route to custom procurement modal
+  if (props.book.isSeed) {
+    emit('requestSeed', props.book.name, props.book.author || undefined);
+    return;
+  }
+
+  // Real merchant book: Add to cart
+  const fmt = activeFormat.value;
+  const priceToUse = fmt ? fmt.price : props.book.price;
+  const formatType = fmt ? fmt.format : 'hardcopy';
+  const formatId = fmt ? fmt.id : 'default';
+
+  addItem({
+    productId: props.book.id,
+    formatId,
+    title: props.book.name,
+    format: formatType,
+    price: priceToUse,
+    quantity: 1,
+    coverUrl: coverImage.value,
+    author: props.book.author,
+  });
+
+  pushToast({
+    message: `Added "${props.book.name}" (${formatType.toUpperCase()}) to cart!`,
+    variant: 'success',
+  });
+
+  openDrawer();
+}
+</script>
+
+<template>
+  <div class="bg-theme-surface rounded-2xl border border-theme-border hover:border-theme-forest/30 p-3.5 sm:p-4 flex flex-col justify-between book-hover-lift group shadow-soft transition-all duration-300">
+    <div class="space-y-3">
+      <!-- 3D Book Cover Frame -->
+      <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block relative aspect-[3/4] bg-theme-cream rounded-book overflow-hidden book-cover-3d" @click="book.isSeed ? handleAction($event) : null">
+        <img
+          :src="coverImage"
+          :alt="`Cover for ${book.name}`"
+          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          loading="lazy"
+          referrerpolicy="no-referrer"
+          width="260"
+          height="346"
+          @error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'"
+        />
+
+        <div v-if="book.badge" class="absolute top-2.5 left-2.5 z-10">
+          <span class="text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-theme-coral text-white shadow-sm">
+            {{ book.badge }}
+          </span>
+        </div>
+      </NuxtLink>
+
+      <!-- Details -->
+      <div class="space-y-1 text-left pt-0.5">
+        <span class="text-[9px] sm:text-[10px] uppercase font-mono font-bold tracking-widest text-theme-coral block truncate">
+          {{ book.category_name || 'General' }}
+        </span>
+
+        <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="book.isSeed ? handleAction($event) : null">
+          <h3 class="font-display text-sm sm:text-base font-bold text-theme-ink group-hover:text-theme-coral transition-colors line-clamp-2 leading-snug">
+            {{ book.name }}
+          </h3>
+        </NuxtLink>
+
+        <p class="text-xs italic text-theme-muted leading-tight truncate">
+          {{ book.author ? `By ${book.author}` : 'Original Edition' }}
+        </p>
+
+        <!-- Segmented Format Switcher -->
+        <div v-if="book.formats && book.formats.length > 1" class="pt-2">
+          <div class="inline-flex bg-theme-canvas p-0.5 rounded-lg border border-theme-border w-full justify-between gap-1">
+            <button
+              v-for="fmt in book.formats"
+              :key="fmt.id"
+              type="button"
+              class="flex-1 py-1 px-1 text-[9px] font-mono font-bold rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer select-none truncate"
+              :class="[
+                selectedFormatId === fmt.id
+                  ? 'bg-theme-dark text-white shadow-xs'
+                  : 'text-theme-muted hover:text-theme-ink hover:bg-white/60'
+              ]"
+              @click="(e) => handleSelectFormat(fmt.id, e)"
+            >
+              <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="10" />
+              <span>{{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pricing & Action Button -->
+    <div class="pt-3 mt-3 border-t border-theme-border/80 space-y-2">
+      <div class="flex items-baseline justify-between">
+        <span class="text-[11px] text-theme-muted font-medium">
+          {{ book.isSeed ? 'Available to Order' : (activeFormat?.format === 'hardcopy' ? 'Physical Copy' : 'Instant eBook') }}
+        </span>
+        <span class="text-sm sm:text-base font-bold font-mono text-theme-ink tabular-figure">
+          {{ formatCurrency(currentPrice) }}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        class="w-full text-white font-sans font-bold text-[11px] uppercase tracking-wider py-2.5 px-3 rounded-xl shadow-soft transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+        :class="book.isSeed ? 'bg-theme-forest hover:bg-theme-dark' : 'bg-theme-coral hover:bg-theme-coral-hover'"
+        @click="handleAction"
+      >
+        <component :is="book.isSeed ? MessageSquare : ShoppingBag" :size="13" />
+        <span>{{ book.isSeed ? 'Special Order' : 'Add to Cart' }}</span>
+      </button>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="pages/admin/books/[id]/edit.vue">
+<!-- flemela/pages/admin/books/[id]/edit.vue -->
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue';
+import {
+  ArrowLeft,
+  Trash2,
+  Upload,
+  BookOpen,
+  AlertCircle,
+  Truck,
+  Download,
+  Sparkles,
+  Link as LinkIcon,
+  RefreshCw,
+} from 'lucide-vue-next';
+import AdminLayout from '~/components/admin/AdminLayout.vue';
+import { useToast } from '~/composables/useToast';
+import type { Book, BookFormatType } from '~/types';
+
+definePageMeta({
+  middleware: 'admin-auth',
+});
+
+const route = useRoute();
+const { push: pushToast } = useToast();
+const bookId = computed(() => route.params.id as string);
+
+const { data: categories } = await useFetch<Array<{ id: string; name: string }>>('/api/admin/categories');
+const { data: book, refresh } = await useFetch<Book>(`/api/admin/books/${bookId.value}`);
+
+// Base Form Fields
+const name = ref('');
+const author = ref('');
+const categoryId = ref('');
+const description = ref('');
+const status = ref<'draft' | 'published' | 'archived'>('published');
+
+// Cover art state
+const coverUrl = ref('');
+const coverPublicId = ref('');
+const isUploadingCover = ref(false);
+const isSearchingCover = ref(false);
+
+// New Format State
+const newFormatType = ref<BookFormatType>('pdf');
+const newFormatPrice = ref(149);
+const newFormatStock = ref<number | null>(null);
+const newFormatFileKey = ref<string | null>(null);
+const newFormatFileSize = ref<number | null>(null);
+const isUploadingNewEbook = ref(false);
+
+const isSaving = ref(false);
+const formError = ref<string | null>(null);
+
+onMounted(() => {
+  if (book.value) {
+    name.value = book.value.name;
+    author.value = book.value.author || '';
+    categoryId.value = book.value.category_id || '';
+    description.value = book.value.description || '';
+    status.value = book.value.status;
+    const firstImg = book.value.images?.[0];
+    coverUrl.value = typeof firstImg === 'string' ? firstImg : firstImg?.image_url || '';
+    coverPublicId.value = typeof firstImg === 'object' ? firstImg?.image_public_id || '' : '';
+  }
+});
+
+// Automated High-Res Cover Discovery
+async function handleAutoFindCover(): Promise<void> {
+  if (!name.value.trim()) {
+    pushToast({ message: 'Enter a book title first', variant: 'error' });
+    return;
+  }
+
+  isSearchingCover.value = true;
+  try {
+    const res = await $fetch<{ coverUrl: string | null; title: string; source: string | null }>(
+      '/api/admin/books/findCover',
+      {
+        query: {
+          title: name.value.trim(),
+          author: author.value.trim() || undefined,
+        },
+      }
+    );
+
+    if (res?.coverUrl) {
+      coverUrl.value = res.coverUrl;
+      coverPublicId.value = `auto_${res.source || 'web'}`;
+      pushToast({ message: `Discovered cover art from ${res.source === 'googlebooks' ? 'Google Books' : 'Open Library'}!`, variant: 'success' });
+    } else {
+      pushToast({ message: 'No online cover found.', variant: 'info' });
+    }
+  } catch {
+    pushToast({ message: 'Auto-discovery timed out.', variant: 'error' });
+  } finally {
+    isSearchingCover.value = false;
+  }
+}
+
+// Upload Cover Art to Cloudinary
+async function handleCoverUpload(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  isUploadingCover.value = true;
+  try {
+    const sig = await $fetch<{
+      signature: string;
+      timestamp: number;
+      folder: string;
+      apiKey: string;
+      cloudName: string;
+    }>('/api/admin/upload-signature', { method: 'POST' });
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('api_key', sig.apiKey);
+    formData.append('timestamp', String(sig.timestamp));
+    formData.append('signature', sig.signature);
+    formData.append('folder', sig.folder);
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+
+    if (data.secure_url) {
+      coverUrl.value = data.secure_url;
+      coverPublicId.value = data.public_id;
+      pushToast({ message: 'Cover art updated on Cloudinary', variant: 'success' });
+    }
+  } catch {
+    pushToast({ message: 'Cover image upload failed', variant: 'error' });
+  } finally {
+    isUploadingCover.value = false;
+  }
+}
+
+// Upload eBook to Cloudflare R2
+async function handleNewEbookUpload(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  isUploadingNewEbook.value = true;
+  try {
+    const presigned = await $fetch<{ uploadUrl: string; key: string }>('/api/admin/books/upload-url', {
+      method: 'POST',
+      body: {
+        filename: file.name,
+        format: newFormatType.value,
+        contentType: file.type || 'application/pdf',
+      },
+    });
+
+    const uploadRes = await fetch(presigned.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'application/pdf' },
+      body: file,
+    });
+
+    if (!uploadRes.ok) throw new Error('R2 upload failed');
+
+    newFormatFileKey.value = presigned.key;
+    newFormatFileSize.value = file.size;
+
+    pushToast({ message: `Uploaded ${file.name} to Cloudflare R2!`, variant: 'success' });
+  } catch {
+    pushToast({ message: 'eBook upload to Cloudflare R2 failed', variant: 'error' });
+  } finally {
+    isUploadingNewEbook.value = false;
+  }
+}
+
+async function handleUpdateBook(): Promise<void> {
+  isSaving.value = true;
+  formError.value = null;
+
+  try {
+    const formattedDescription = author.value.trim()
+      ? `By ${author.value.trim()}${description.value ? `\n\n${description.value.trim()}` : ''}`
+      : description.value.trim() || null;
+
+    await $fetch(`/api/admin/books/${bookId.value}`, {
+      method: 'PATCH',
+      body: {
+        name: name.value.trim(),
+        author: author.value.trim() || null,
+        category_id: categoryId.value || undefined,
+        description: formattedDescription,
+        status: status.value,
+        images: coverUrl.value
+          ? [{ image_url: coverUrl.value.trim(), image_public_id: coverPublicId.value || 'cover_img' }]
+          : undefined,
+      },
+    });
+    pushToast({ message: 'Book details updated successfully!', variant: 'success' });
+  } catch (err: any) {
+    formError.value = err.data?.message || err.statusMessage || 'Failed to update book';
+  } finally {
+    isSaving.value = false;
+  }
+}
+
+// Add format (EPUB/PDF permitted even if file is not yet uploaded)
+async function handleAddFormat(): Promise<void> {
+  const isDigital = newFormatType.value === 'pdf' || newFormatType.value === 'epub';
+
+  try {
+    await $fetch(`/api/admin/books/${bookId.value}/formats`, {
+      method: 'POST',
+      body: {
+        format: newFormatType.value,
+        price: Number(newFormatPrice.value),
+        stock: newFormatType.value === 'hardcopy' ? Number(newFormatStock.value || 0) : null,
+        file_url: isDigital ? (newFormatFileKey.value || null) : null,
+        file_public_id: isDigital ? (newFormatFileKey.value || null) : null,
+        file_size_bytes: isDigital ? (newFormatFileSize.value || null) : null,
+      },
+    });
+
+    pushToast({ message: `Added ${newFormatType.value.toUpperCase()} format`, variant: 'success' });
+    newFormatFileKey.value = null;
+    newFormatFileSize.value = null;
+    await refresh();
+  } catch (err: any) {
+    pushToast({ message: err.data?.message || err.statusMessage || 'Failed to add format', variant: 'error' });
+  }
+}
+
+// Immediate format removal (Zero Dialogue)
+async function handleDeleteFormat(formatId: string): Promise<void> {
+  try {
+    await $fetch(`/api/admin/books/${bookId.value}/formats/${formatId}`, { method: 'DELETE' });
+    pushToast({ message: 'Format removed', variant: 'info' });
+    await refresh();
+  } catch (err: any) {
+    pushToast({ message: err.statusMessage || 'Failed to delete format', variant: 'error' });
+  }
+}
+</script>
+
+<template>
+  <AdminLayout>
+    <div class="max-w-4xl mx-auto space-y-6">
+      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-semibold text-forest-900 hover:text-gold-600 transition-colors">
+        <ArrowLeft :size="14" /> Return to Books Catalog
+      </NuxtLink>
+
+      <div class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-8 space-y-7">
+        <div class="pb-4 border-b border-paper-border">
+          <h1 class="font-display text-2xl font-bold text-forest-950">Edit Book: {{ book?.name }}</h1>
+          <p class="text-xs text-ink-muted">Update book metadata, cover art, physical stock, and digital editions.</p>
+        </div>
+
+        <form class="space-y-5" @submit.prevent="handleUpdateBook">
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-forest-950">Book Title *</label>
+              <div class="flex gap-2">
+                <input
+                  v-model="name"
+                  type="text"
+                  class="flex-1 px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+                  required
+                />
+                <button
+                  type="button"
+                  class="px-3 py-2.5 bg-paper-cream border border-paper-border hover:border-forest-900 text-forest-950 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all whitespace-nowrap shadow-2xs"
+                  :disabled="isSearchingCover || !name"
+                  @click="handleAutoFindCover"
+                >
+                  <RefreshCw v-if="isSearchingCover" :size="12" class="animate-spin" />
+                  <Sparkles v-else :size="12" class="text-gold-600" />
+                  <span>{{ isSearchingCover ? 'Searching...' : '🪄 Find Cover' }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-forest-950">Author Name</label>
+              <input
+                v-model="author"
+                type="text"
+                class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+              />
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-forest-950">Category</label>
+              <select
+                v-model="categoryId"
+                class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+              >
+                <option value="">Select category...</option>
+                <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+              </select>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-forest-950">Publishing Status</label>
+              <select
+                v-model="status"
+                class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+              >
+                <option value="published">Published &amp; Live</option>
+                <option value="draft">Draft Mode</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-forest-950">Description / Synopsis</label>
+            <textarea
+              v-model="description"
+              rows="3"
+              class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 resize-none"
+            />
+          </div>
+
+          <!-- Cover Image Frame -->
+          <div class="space-y-3 pt-3 border-t border-paper-border">
+            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Cover Image</h3>
+            <div class="flex items-start gap-4">
+              <div class="w-20 h-28 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-xs">
+                <img
+                  v-if="coverUrl"
+                  :src="coverUrl"
+                  :alt="name ? `${name} Cover` : 'Cover'"
+                  class="w-full h-full object-cover"
+                  referrerpolicy="no-referrer"
+                  @error="coverUrl = ''"
+                />
+                <BookOpen v-else :size="24" class="text-ink-muted opacity-40" />
+              </div>
+              <div class="space-y-2.5 flex-1">
+                <div class="flex flex-wrap gap-2 items-center">
+                  <button
+                    type="button"
+                    class="bg-forest-950 text-paper hover:bg-forest-900 text-xs font-bold px-3.5 py-2 rounded-xl inline-flex items-center gap-1.5 cursor-pointer transition-all shadow-subtle"
+                    :disabled="isSearchingCover || !name"
+                    @click="handleAutoFindCover"
+                  >
+                    <Sparkles :size="13" class="text-gold-300" /> Auto-Find HD Cover
+                  </button>
+
+                  <label class="cursor-pointer bg-white border border-paper-border text-forest-950 text-xs font-bold px-3.5 py-2 rounded-xl hover:bg-paper-cream transition-colors inline-flex items-center gap-1.5 shadow-2xs">
+                    <Upload :size="13" /> {{ isUploadingCover ? 'Uploading...' : 'Upload Image' }}
+                    <input type="file" accept="image/*" class="hidden" :disabled="isUploadingCover" @change="handleCoverUpload" />
+                  </label>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-[11px] text-ink-muted flex items-center gap-1">
+                    <LinkIcon :size="12" /> Direct Cover Image URL:
+                  </label>
+                  <input
+                    v-model="coverUrl"
+                    type="url"
+                    placeholder="https://..."
+                    class="w-full px-3.5 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="formError" class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+            <AlertCircle :size="14" class="flex-shrink-0" />
+            <span>{{ formError }}</span>
+          </div>
+
+          <div class="flex justify-end pt-2">
+            <button
+              type="submit"
+              class="bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold uppercase tracking-wider px-6 py-3 rounded-xl shadow-medium cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+              :disabled="isSaving"
+            >
+              {{ isSaving ? 'Saving...' : 'Save Book Details' }}
+            </button>
+          </div>
+        </form>
+
+        <!-- Formats Section -->
+        <div class="pt-6 border-t border-paper-border space-y-4">
+          <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Active Editions &amp; Formats</h3>
+
+          <div class="space-y-2.5">
+            <div
+              v-for="fmt in book?.formats"
+              :key="fmt.id"
+              class="p-3.5 bg-paper-canvas/60 border border-paper-border rounded-xl flex justify-between items-center text-xs"
+            >
+              <div class="flex items-center gap-3">
+                <span class="font-bold uppercase text-forest-950 flex items-center gap-1.5 font-mono">
+                  <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="13" class="text-gold-600" />
+                  {{ fmt.format }}
+                </span>
+                <span class="font-mono font-bold text-forest-950">KSh {{ fmt.price }}</span>
+                <span v-if="fmt.format === 'hardcopy'" class="text-ink-muted">({{ fmt.stock }} in stock)</span>
+                <span v-else class="text-emerald-800 font-medium">{{ fmt.file_public_id ? 'Cloudflare R2 Ready ✓' : 'Digital Edition (File Optional)' }}</span>
+              </div>
+              
+              <!-- Immediate Format Delete -->
+              <button
+                type="button"
+                class="text-ink-muted hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                title="Remove format immediately"
+                @click="handleDeleteFormat(fmt.id)"
+              >
+                <Trash2 :size="14" />
+              </button>
+            </div>
+          </div>
+
+          <!-- Add Format Form -->
+          <div class="p-5 bg-paper-cream/60 border border-paper-border rounded-2xl space-y-3.5 shadow-2xs">
+            <h4 class="text-xs font-bold text-forest-950 uppercase font-mono">Add Format / Edition</h4>
+            <div class="grid sm:grid-cols-12 gap-3 items-end">
+              <div class="sm:col-span-3 space-y-1">
+                <label class="text-[10px] text-ink-muted font-semibold">Format Type</label>
+                <select v-model="newFormatType" class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs font-medium">
+                  <option value="pdf">PDF eBook</option>
+                  <option value="epub">EPUB eBook</option>
+                  <option value="hardcopy">Physical Hardcopy</option>
+                </select>
+              </div>
+
+              <div class="sm:col-span-3 space-y-1">
+                <label class="text-[10px] text-ink-muted font-semibold">Price (KSh)</label>
+                <input v-model.number="newFormatPrice" type="number" min="0" class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs font-mono font-bold" />
+              </div>
+
+              <div v-if="newFormatType === 'hardcopy'" class="sm:col-span-4 space-y-1">
+                <label class="text-[10px] text-ink-muted font-semibold">Stock Count</label>
+                <input v-model.number="newFormatStock" type="number" min="0" class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs font-mono font-medium" />
+              </div>
+
+              <div v-else class="sm:col-span-4 space-y-1">
+                <label class="text-[10px] text-ink-muted font-semibold">Cloudflare R2 File (Optional)</label>
+                <label class="w-full bg-white border border-paper-border text-forest-950 text-[11px] font-medium px-3 py-2 rounded-xl flex items-center justify-between cursor-pointer">
+                  <span class="truncate">{{ newFormatFileKey ? 'R2 File Ready ✓' : (isUploadingNewEbook ? 'Uploading...' : 'Upload File') }}</span>
+                  <input type="file" :accept="newFormatType === 'pdf' ? '.pdf' : '.epub'" class="hidden" :disabled="isUploadingNewEbook" @change="handleNewEbookUpload" />
+                </label>
+              </div>
+
+              <div class="sm:col-span-2">
+                <button type="button" class="w-full bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold py-2.5 rounded-xl shadow-subtle cursor-pointer transition-all active:scale-[0.98]" @click="handleAddFormat">
+                  + Add
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </AdminLayout>
+</template>
+</file>
+
+<file path="pages/admin/books/index.vue">
+<!-- flemela/pages/admin/books/index.vue -->
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { Plus, Search, Trash2, Edit2, BookOpen, Download, Truck, ExternalLink } from 'lucide-vue-next';
+import AdminLayout from '~/components/admin/AdminLayout.vue';
+import { useToast } from '~/composables/useToast';
+import type { Book } from '~/types';
+
+definePageMeta({
+  middleware: 'admin-auth',
+});
+
+const { push: pushToast } = useToast();
+const { data: books, refresh, status: fetchStatus } = await useFetch<Book[]>('/api/admin/books');
+
+const searchQuery = ref('');
+const selectedCategory = ref('');
+const selectedBookIds = ref<string[]>([]);
+const isDeleting = ref(false);
+
+const filteredBooks = computed(() => {
+  if (!books.value) return [];
+  let list = [...books.value];
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    list = list.filter((b) => b.name.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q));
+  }
+
+  if (selectedCategory.value) {
+    list = list.filter((b) => b.category_id === selectedCategory.value);
+  }
+
+  return list;
+});
+
+const isAllSelected = computed(() => {
+  return filteredBooks.value.length > 0 && selectedBookIds.value.length === filteredBooks.value.length;
+});
+
+function toggleSelectAll(): void {
+  if (isAllSelected.value) {
+    selectedBookIds.value = [];
+  } else {
+    selectedBookIds.value = filteredBooks.value.map((b) => b.id);
+  }
+}
+
+function resolveCoverUrl(book: Book): string {
+  const firstImg = book.images?.[0];
+  if (!firstImg) return (book as any).cover_image_url || '';
+  if (typeof firstImg === 'string') return firstImg;
+  return firstImg.image_url || (book as any).cover_image_url || '';
+}
+
+// Immediate Single Delete (No Dialogue)
+async function handleDeleteBook(id: string, name: string): Promise<void> {
+  try {
+    if (books.value) {
+      books.value = books.value.filter((b) => b.id !== id);
+    }
+    selectedBookIds.value = selectedBookIds.value.filter((bId) => bId !== id);
+
+    await $fetch(`/api/admin/books/${id}`, { method: 'DELETE' });
+    pushToast({ message: `"${name}" deleted from catalog`, variant: 'success' });
+    await refresh();
+  } catch (err: any) {
+    pushToast({ message: err.statusMessage || 'Failed to delete book', variant: 'error' });
+    await refresh();
+  }
+}
+
+// Immediate Bulk Delete (No Dialogue)
+async function handleBulkDelete(): Promise<void> {
+  if (selectedBookIds.value.length === 0 || isDeleting.value) return;
+
+  const count = selectedBookIds.value.length;
+  const idsToDelete = [...selectedBookIds.value];
+  isDeleting.value = true;
+
+  try {
+    if (books.value) {
+      books.value = books.value.filter((b) => !idsToDelete.includes(b.id));
+    }
+    selectedBookIds.value = [];
+
+    await $fetch('/api/admin/books/bulk-delete', {
+      method: 'POST',
+      body: { productIds: idsToDelete },
+    });
+
+    pushToast({ message: `Deleted ${count} book(s) from catalog`, variant: 'success' });
+    await refresh();
+  } catch (err: any) {
+    pushToast({ message: err.statusMessage || 'Bulk delete failed', variant: 'error' });
+    await refresh();
+  } finally {
+    isDeleting.value = false;
+  }
+}
+</script>
+
+<template>
+  <AdminLayout>
+    <div class="space-y-6">
+      
+      <!-- Header Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-paper-border">
+        <div>
+          <h1 class="font-display text-2xl font-bold text-forest-950">Books &amp; eBooks Catalog</h1>
+          <p class="text-xs text-ink-muted">Manage multi-format pricing, physical stock, and digital files.</p>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+          <!-- Bulk Delete Action -->
+          <button
+            v-if="selectedBookIds.length > 0"
+            type="button"
+            class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-[0.98]"
+            :disabled="isDeleting"
+            @click="handleBulkDelete"
+          >
+            <Trash2 :size="14" />
+            <span>Delete Selected ({{ selectedBookIds.length }})</span>
+          </button>
+
+          <NuxtLink
+            to="/admin/books/new"
+            class="bg-forest-950 text-paper hover:bg-forest-900 text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-[0.98]"
+          >
+            <Plus :size="15" class="text-gold-300" />
+            <span>Add New Book</span>
+          </NuxtLink>
+        </div>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="bg-paper-surface p-4 rounded-2xl border border-paper-border shadow-soft flex flex-wrap gap-4 items-center justify-between">
+        <div class="relative flex-1 min-w-[240px]">
+          <Search :size="15" class="absolute left-3.5 top-3 text-ink-subtle pointer-events-none" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search catalog by title, author, or SKU..."
+            class="w-full pl-10 pr-3.5 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle"
+          />
+        </div>
+        <div class="text-xs text-ink-muted font-mono tabular-figure">
+          Showing <strong>{{ filteredBooks.length }}</strong> books
+        </div>
+      </div>
+
+      <!-- Catalog Table -->
+      <div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft overflow-hidden">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-paper-cream/40 border-b border-paper-border text-ink-subtle uppercase tracking-wider font-mono text-[9px]">
+              <!-- Select All Checkbox -->
+              <th class="py-3 px-4 w-10">
+                <input
+                  type="checkbox"
+                  :checked="isAllSelected"
+                  class="rounded border-paper-border text-forest-950 focus:ring-forest-900 cursor-pointer"
+                  @change="toggleSelectAll"
+                />
+              </th>
+              <th class="py-3 px-4">Cover</th>
+              <th class="py-3 px-4">Title &amp; Author</th>
+              <th class="py-3 px-4">Category</th>
+              <th class="py-3 px-4">Available Formats</th>
+              <th class="py-3 px-4">Status</th>
+              <th class="py-3 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-paper-border/60">
+            <tr v-if="fetchStatus === 'pending'">
+              <td colspan="7" class="py-12 text-center text-ink-muted text-xs">
+                Loading catalog...
+              </td>
+            </tr>
+
+            <tr v-else-if="filteredBooks.length === 0">
+              <td colspan="7" class="py-12 text-center text-ink-muted text-xs">
+                No books found in catalog. Add your first book or run an Excel import.
+              </td>
+            </tr>
+
+            <tr
+              v-for="book in filteredBooks"
+              :key="book.id"
+              class="hover:bg-paper-cream/30 transition-colors"
+              :class="{ 'bg-paper-cream/50': selectedBookIds.includes(book.id) }"
+            >
+              <!-- Row Select -->
+              <td class="py-3.5 px-4">
+                <input
+                  type="checkbox"
+                  :value="book.id"
+                  v-model="selectedBookIds"
+                  class="rounded border-paper-border text-forest-950 focus:ring-forest-900 cursor-pointer"
+                />
+              </td>
+
+              <!-- Cover Image -->
+              <td class="py-3.5 px-4 w-16">
+                <div class="w-10 h-14 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex items-center justify-center shadow-xs">
+                  <img
+                    v-if="resolveCoverUrl(book)"
+                    :src="resolveCoverUrl(book)"
+                    :alt="`Cover for ${book.name}`"
+                    class="w-full h-full object-cover"
+                    referrerpolicy="no-referrer"
+                    @error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'"
+                  />
+                  <BookOpen v-else :size="16" class="text-ink-muted opacity-40" />
+                </div>
+              </td>
+
+              <!-- Title & Author -->
+              <td class="py-3.5 px-4 max-w-xs">
+                <NuxtLink :to="`/admin/books/${book.id}/edit`" class="font-bold text-forest-950 hover:text-gold-600 transition-colors line-clamp-1">
+                  {{ book.name }}
+                </NuxtLink>
+                <p class="text-[11px] text-ink-muted truncate italic">{{ book.author || '—' }}</p>
+              </td>
+
+              <!-- Category -->
+              <td class="py-3.5 px-4">
+                <span class="inline-block text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-md bg-paper-cream text-forest-950 border border-paper-border">
+                  {{ book.category_name || 'General' }}
+                </span>
+              </td>
+
+              <!-- Formats Array -->
+              <td class="py-3.5 px-4">
+                <div class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="fmt in book.formats"
+                    :key="fmt.id"
+                    class="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border"
+                    :class="{
+                      'bg-amber-50 text-amber-900 border-amber-200': fmt.format === 'hardcopy',
+                      'bg-emerald-50 text-emerald-900 border-emerald-200': fmt.format === 'pdf',
+                      'bg-blue-50 text-blue-900 border-blue-200': fmt.format === 'epub',
+                    }"
+                  >
+                    <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="10" />
+                    {{ fmt.format.toUpperCase() }}: KSh {{ fmt.price }}
+                  </span>
+                  <span v-if="!book.formats?.length" class="text-[10px] text-ink-subtle italic">No formats</span>
+                </div>
+              </td>
+
+              <!-- Status Badge -->
+              <td class="py-3.5 px-4">
+                <span
+                  class="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border"
+                  :class="book.status === 'published' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-700 border-slate-200'"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full" :class="book.status === 'published' ? 'bg-emerald-600' : 'bg-slate-400'" />
+                  {{ book.status }}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="py-3.5 px-4 text-right">
+                <div class="inline-flex items-center gap-1">
+                  <NuxtLink
+                    :to="`/book/${book.slug}`"
+                    target="_blank"
+                    class="p-1.5 rounded-lg hover:bg-paper-cream text-ink-muted hover:text-forest-950 transition-colors"
+                    title="View on Storefront"
+                  >
+                    <ExternalLink :size="14" />
+                  </NuxtLink>
+
+                  <NuxtLink
+                    :to="`/admin/books/${book.id}/edit`"
+                    class="p-1.5 rounded-lg hover:bg-paper-cream text-ink-muted hover:text-forest-950 transition-colors"
+                    title="Edit Book"
+                  >
+                    <Edit2 :size="14" />
+                  </NuxtLink>
+
+                  <!-- Immediate Single Delete -->
+                  <button
+                    type="button"
+                    class="p-1.5 rounded-lg hover:bg-red-50 text-ink-muted hover:text-red-700 transition-colors cursor-pointer"
+                    title="Delete book immediately"
+                    @click="handleDeleteBook(book.id, book.name)"
+                  >
+                    <Trash2 :size="14" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </AdminLayout>
+</template>
+</file>
+
+<file path="pages/index.vue">
+<!-- pages/index.vue -->
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
+import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
+import HeroReference from '~/components/storefront/HeroReference.vue';
+import BentoCategories from '~/components/storefront/BentoCategories.vue';
+import DealsWeek from '~/components/storefront/DealsWeek.vue';
+import BookCard from '~/components/storefront/BookCard.vue';
+import CartDrawer from '~/components/storefront/CartDrawer.vue';
+import ToastContainer from '~/components/ui/ToastContainer.vue';
+import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
+import { MONTHLY_TOP_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import { BookOpen } from 'lucide-vue-next';
+import type { Book } from '~/types';
+
+const { data: realBooks } = await useFetch<Book[]>('/api/products');
+
+const activeCategoryFilter = ref<string>('ALL');
+const searchQuery = ref<string>('');
+
+const showRequestModal = ref(false);
+const modalInitialTitle = ref('');
+const modalInitialAuthor = ref('');
+
+// Section 1: #1 Books of the Month (Real DB books take lead, seeds fill remainder)
+const monthlyTopBooks = computed(() => {
+  return mergeWithSeeds(realBooks.value, MONTHLY_TOP_SEEDS, 4);
+});
+
+// Full Search & Filter Engine
+const filteredBooks = computed(() => {
+  const books = realBooks.value || [];
+  let result = [...books];
+
+  if (activeCategoryFilter.value !== 'ALL') {
+    const filterKey = activeCategoryFilter.value.toLowerCase().trim();
+    result = result.filter((b) => {
+      const cat = (b.category_name || '').toLowerCase().trim();
+      if (cat === filterKey) return true;
+      if (cat.includes(filterKey) || filterKey.includes(cat)) return true;
+      if (filterKey.includes('fiction') && cat.includes('fiction')) return true;
+      if ((filterKey.includes('finance') || filterKey.includes('business')) && (cat.includes('finance') || cat.includes('business'))) return true;
+      if ((filterKey.includes('religious') || filterKey.includes('christian')) && (cat.includes('religious') || cat.includes('christian'))) return true;
+      if (filterKey.includes('self-help') && (cat.includes('self') || cat.includes('psychology'))) return true;
+      return false;
+    });
+  }
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    result = result.filter(
+      (b) => b.name.toLowerCase().includes(q) || (b.author && b.author.toLowerCase().includes(q)) || (b.description && b.description.toLowerCase().includes(q))
+    );
+  }
+
+  return result;
+});
+
+const hasActiveFilter = computed(() => {
+  return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
+});
+
+function handleSearch(query: string, category: string): void {
+  searchQuery.value = query;
+  activeCategoryFilter.value = (category && category !== 'All Categories') ? category : 'ALL';
+  scrollToResults();
+}
+
+function handleCategorySelect(category: string): void {
+  activeCategoryFilter.value = category;
+  scrollToResults();
+}
+
+function scrollToResults(): void {
+  if (process.client) {
+    const el = document.getElementById('catalog-results');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+function handleRequestSeed(title: string, author?: string): void {
+  modalInitialTitle.value = title;
+  modalInitialAuthor.value = author || '';
+  showRequestModal.value = true;
+}
+</script>
+
+<template>
+  <div class="min-h-screen flex flex-col bg-theme-canvas text-theme-ink antialiased font-sans">
+    <TopUtilityBar />
+    <BookstoreHeader @search="handleSearch" @select-category="handleCategorySelect" />
+    
+    <!-- Hero Banner with Floating Covers & Search -->
+    <HeroReference @search="handleSearch" @select-category="handleCategorySelect" />
+
+    <!-- Search / Filter Results Section (Scroll Target) -->
+    <section id="catalog-results" v-if="hasActiveFilter" class="py-12 px-4 max-w-6xl mx-auto w-full space-y-6">
+      <div class="flex items-center justify-between bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-soft">
+        <div class="space-y-0.5">
+          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-theme-coral">Filtered Catalog</span>
+          <p class="text-xs text-theme-ink font-medium">
+            Category: <strong>{{ activeCategoryFilter }}</strong>
+            <template v-if="searchQuery"> • Search: "{{ searchQuery }}"</template>
+          </p>
+        </div>
+        <button
+          type="button"
+          class="text-xs font-bold text-theme-coral hover:underline px-3 py-1.5 bg-orange-50 rounded-xl"
+          @click="activeCategoryFilter = 'ALL'; searchQuery = '';"
+        >
+          Reset Filter
+        </button>
+      </div>
+
+      <div v-if="filteredBooks.length === 0" class="bg-theme-surface rounded-2xl border border-theme-border p-12 text-center space-y-3">
+        <BookOpen :size="36" class="mx-auto text-theme-forest opacity-40" />
+        <h3 class="font-display font-bold text-base text-theme-ink">No exact matches in live inventory</h3>
+        <p class="text-xs text-theme-muted max-w-xs mx-auto">
+          We can source this publication for you on request.
+        </p>
+        <button
+          type="button"
+          class="bg-theme-coral text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer"
+          @click="handleRequestSeed(searchQuery)"
+        >
+          Submit Special Request
+        </button>
+      </div>
+
+      <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <BookCard v-for="book in filteredBooks" :key="book.id" :book="book" @request-seed="handleRequestSeed" />
+      </div>
+    </section>
+
+    <!-- 1. #1 Book of the Month Section -->
+    <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
+      <div class="flex flex-wrap items-baseline justify-between gap-4 border-b border-theme-border pb-3">
+        <div>
+          <h2 class="font-display text-xl sm:text-2xl font-bold uppercase text-theme-ink tracking-tight">
+            THE #1 BOOK OF THE MONTH YOU CAN'T MISS
+          </h2>
+          <p class="text-xs text-theme-muted">Dominating the reading lists and changing how we view mindset, power, and success.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <BookCard v-for="book in monthlyTopBooks" :key="book.id" :book="book" @request-seed="handleRequestSeed" />
+      </div>
+    </section>
+
+    <!-- 2. Bento Category Grid -->
+    <BentoCategories @select="handleCategorySelect" />
+
+    <!-- 3. Deals of the Week (Warm Sand + Live Timer) -->
+    <DealsWeek :books="realBooks || []" @request-seed="handleRequestSeed" />
+
+    <!-- 4. Best Sellers of the Month + Promo Card -->
+    <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
+      <div class="flex items-baseline justify-between border-b border-theme-border pb-3">
+        <h2 class="font-display text-xl sm:text-2xl font-bold uppercase text-theme-ink tracking-tight">
+          BEST SELLERS OF THE MONTH
+        </h2>
+      </div>
+
+      <div class="grid lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <BookCard
+            v-for="book in ((realBooks && realBooks.length >= 6) ? realBooks.slice(0, 6) : monthlyTopBooks)"
+            :key="book.id"
+            :book="book"
+            @request-seed="handleRequestSeed"
+          />
+        </div>
+
+        <!-- Vertical Promo Card -->
+        <div class="lg:col-span-4 bg-theme-dark text-white rounded-2xl p-8 flex flex-col justify-between items-center text-center shadow-card relative overflow-hidden">
+          <div class="space-y-2 z-10">
+            <span class="text-[10px] font-mono uppercase font-bold tracking-widest text-theme-turquoise block">Special Privilege</span>
+            <h3 class="font-display text-2xl sm:text-3xl font-bold uppercase leading-tight">GET 20% OFF BESTSELLERS</h3>
+            <p class="text-xs text-white/70">Pick the stories that readers across Nairobi are talking about.</p>
+          </div>
+          <button
+            type="button"
+            class="w-full bg-theme-coral hover:bg-theme-coral-hover text-white text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-all shadow-md cursor-pointer z-10"
+            @click="handleCategorySelect('Fiction & Literature')"
+          >
+            Explore Bestsellers
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-theme-dark text-white py-12 px-4 border-t border-white/10 mt-auto">
+      <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
+        <div class="space-y-1 text-center sm:text-left">
+          <span class="font-display font-bold text-base tracking-tight text-white block">FLEMELA BOOKSTORE</span>
+          <p class="text-white/70 text-xs">Books that inspire. Knowledge that transforms.</p>
+        </div>
+        <p class="text-white/50 text-xs font-mono">&copy; 2026 Flemela Bookstore. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <!-- Modals & Drawers -->
+    <BookRequestModal
+      :open="showRequestModal"
+      :initial-title="modalInitialTitle"
+      :initial-author="modalInitialAuthor"
+      @close="showRequestModal = false"
+    />
+    <CartDrawer />
+    <ToastContainer />
+  </div>
+</template>
+</file>
+
+<file path="tailwind.config.js">
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    './components/**/*.{js,vue,ts}',
+    './layouts/**/*.vue',
+    './pages/**/*.vue',
+    './app.vue',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // Variable-driven Theme Tokens
+        theme: {
+          dark: 'var(--theme-dark)',
+          forest: 'var(--theme-forest)',
+          coral: 'var(--theme-coral)',
+          'coral-hover': 'var(--theme-coral-hover)',
+          turquoise: 'var(--theme-turquoise)',
+          sand: 'var(--theme-sand)',
+          canvas: 'var(--theme-canvas)',
+          surface: 'var(--theme-surface)',
+          cream: 'var(--theme-cream)',
+          border: 'var(--theme-border)',
+          'border-strong': 'var(--theme-border-strong)',
+          ink: 'var(--theme-ink)',
+          muted: 'var(--theme-ink-muted)',
+          subtle: 'var(--theme-ink-subtle)',
+        },
+
+        // Bento Category Card Colors
+        bento: {
+          fiction: '#387A5B',
+          thriller: '#DE9F3F',
+          fantasy: '#207F8B',
+          nonfiction: '#E75837',
+          romance: '#7C67B6',
+        },
+
+        // Backward compatibility mappings
+        forest: {
+          950: 'var(--theme-dark)',
+          900: 'var(--theme-forest)',
+          800: '#0D382B',
+          700: '#145240',
+        },
+        gold: {
+          600: '#A37222',
+          500: '#C18B2F',
+          400: '#D4A44C',
+          300: '#DFC58E',
+          100: '#F8F1E3',
+        },
+        paper: {
+          DEFAULT: 'var(--theme-canvas)',
+          canvas: 'var(--theme-canvas)',
+          cream: 'var(--theme-cream)',
+          surface: 'var(--theme-surface)',
+          border: 'var(--theme-border)',
+        },
+        ink: {
+          DEFAULT: 'var(--theme-ink)',
+          muted: 'var(--theme-ink-muted)',
+          subtle: 'var(--theme-ink-subtle)',
+        },
+      },
+
+      fontFamily: {
+        sans: ['"IBM Plex Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['Fraunces', 'Georgia', 'serif'],
+        mono: ['"IBM Plex Mono"', 'monospace'],
+      },
+
+      boxShadow: {
+        'book': '-2px 0 6px -1px rgba(0, 0, 0, 0.08), 3px 6px 18px -2px rgba(8, 37, 27, 0.08)',
+        'book-hover': '-3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 14px 28px -3px rgba(8, 37, 27, 0.15)',
+        'soft': '0 2px 10px rgba(8, 37, 27, 0.03)',
+        'card': '0 4px 20px rgba(8, 37, 27, 0.05)',
+        'subtle': '0 1px 4px rgba(8, 37, 27, 0.04)',
+        'medium': '0 8px 24px rgba(8, 37, 27, 0.08)',
+      },
+
+      borderRadius: {
+        'book': '2px 8px 8px 2px',
+      },
+    },
+  },
+  plugins: [],
+};
+</file>
+
 <file path="assets/css/main.css">
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+/* flemela/assets/css/main.css */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --paper-canvas: #FBF9F5;
-  --paper-surface: #FFFFFF;
-  --paper-cream: #F4EFE6;
+  /* Dynamic Theme Variables (Modify here to re-theme in the future) */
+  --theme-dark: #08251B;        /* Deep Pine */
+  --theme-forest: #0D382B;      /* Secondary Dark Green */
+  --theme-coral: #FF6347;       /* Primary Action Coral */
+  --theme-coral-hover: #E85338; /* Coral Hover State */
+  --theme-turquoise: #20B2AA;   /* Vibrant Teal Accent */
+  --theme-sand: #F7F2E7;        /* Warm Deals Section */
+  --theme-canvas: #FCFAF6;      /* Background Paper Canvas */
+  --theme-surface: #FFFFFF;     /* Card Surface */
+  --theme-cream: #F4EFE6;       /* Neutral Accent / Badges */
+  --theme-border: rgba(8, 37, 27, 0.09);
+  --theme-border-strong: rgba(8, 37, 27, 0.16);
 
-  --forest-950: #062319;
-  --forest-900: #08281E;
-  --forest-800: #0D382B;
-  --forest-700: #145240;
-
-  --gold-600: #A37222;
-  --gold-500: #C18B2F;
-  --gold-300: #DFC58E;
-  --gold-100: #F8F1E3;
-
-  --ink: #141E1A;
-  --ink-muted: #5F6964;
-  --ink-subtle: #929B96;
+  --theme-ink: #141E1A;         /* Primary Dark Typography */
+  --theme-ink-muted: #5F6964;   /* Secondary Text */
+  --theme-ink-subtle: #929B96;  /* Placeholder / Muted */
 }
 
 @layer base {
   html {
-    background-color: var(--paper-canvas);
-    color: var(--ink);
+    background-color: var(--theme-canvas);
+    color: var(--theme-ink);
     font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -7754,12 +8690,12 @@ export default {
 
   body {
     min-height: 100vh;
-    background-color: var(--paper-canvas);
-    color: var(--ink);
+    background-color: var(--theme-canvas);
+    color: var(--theme-ink);
     overflow-x: hidden;
   }
 
-  h1, h2, h3, .font-display {
+  h1, h2, h3, h4, .font-display {
     font-family: 'Fraunces', Georgia, serif;
     letter-spacing: -0.02em;
   }
@@ -7774,7 +8710,7 @@ export default {
 .book-cover-3d {
   position: relative;
   border-radius: 2px 8px 8px 2px;
-  box-shadow: -2px 0 6px -1px rgba(0, 0, 0, 0.08), 3px 6px 18px -2px rgba(8, 40, 30, 0.10);
+  box-shadow: -2px 0 6px -1px rgba(0, 0, 0, 0.08), 3px 6px 18px -2px rgba(8, 37, 27, 0.10);
   transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -7786,7 +8722,7 @@ export default {
   left: 0;
   width: 4px;
   background: linear-gradient(to right, rgba(0,0,0,0.15) 0%, rgba(255,255,255,0.15) 50%, rgba(0,0,0,0.05) 100%);
-  pointer-events:none;
+  pointer-events: none;
 }
 
 .book-hover-lift {
@@ -7795,10 +8731,10 @@ export default {
 
 .book-hover-lift:hover {
   transform: translateY(-4px);
-  box-shadow: -3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 16px 30px -3px rgba(8, 40, 30, 0.14);
+  box-shadow: -3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 16px 30px -3px rgba(8, 37, 27, 0.14);
 }
 
-/* Smooth hidden scrollbar utility */
+/* Custom Scrollbar Utility */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

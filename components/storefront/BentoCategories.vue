@@ -9,55 +9,55 @@ const emit = defineEmits<{
 const bentoItems = [
   {
     name: 'Fiction & Literature',
-    shortName: 'Fiction',
-    count: 'Curated Editions',
+    shortName: 'FICTION',
+    count: '234 Books',
     bgClass: 'bg-bento-fiction',
     cover: 'https://covers.openlibrary.org/b/isbn/9780062315007-M.jpg',
   },
   {
     name: 'Psychology & Self-Help',
-    shortName: 'Self-Help',
-    count: 'Bestselling Titles',
+    shortName: 'THRILLER',
+    count: '189 Books',
     bgClass: 'bg-bento-thriller',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg',
-    isLarge: true,
+    isTall: true,
   },
   {
     name: 'Christian Books',
-    shortName: 'Christian',
-    count: 'Spiritual Wisdom',
+    shortName: 'FANTASY',
+    count: '142 Books',
     bgClass: 'bg-bento-fantasy',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780807014295-M.jpg',
+    cover: 'https://covers.openlibrary.org/b/isbn/9780547928227-M.jpg',
   },
   {
     name: 'Nonfiction',
-    shortName: 'Nonfiction',
-    count: 'History & Science',
+    shortName: 'NONFICTION',
+    count: '156 Books',
     bgClass: 'bg-bento-nonfiction',
     cover: 'https://covers.openlibrary.org/b/isbn/9780062316097-M.jpg',
   },
   {
     name: 'Business & Finance',
-    shortName: 'Finance',
-    count: 'Wealth & Strategy',
+    shortName: 'ROMANCE',
+    count: '210 Books',
     bgClass: 'bg-bento-romance',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780857197689-M.jpg',
+    cover: 'https://covers.openlibrary.org/b/isbn/9781501110368-M.jpg',
   },
 ];
 </script>
 
 <template>
-  <section class="py-14 px-4 max-w-6xl mx-auto space-y-6">
+  <section id="categories-bento" class="py-14 px-4 max-w-6xl mx-auto space-y-6">
     <div class="text-center space-y-1">
-      <span class="text-[10px] font-mono uppercase font-bold tracking-widest text-theme-coral block">Browse by Genre</span>
+      <span class="text-[10px] font-mono uppercase font-bold tracking-widest text-theme-coral block">BOOK CATEGORIES</span>
       <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-theme-ink tracking-tight uppercase">
         WHAT KIND OF STORY ARE YOU CRAVING TODAY?
       </h2>
     </div>
 
-    <!-- Bento Grid -->
+    <!-- 3-Column Asymmetric Bento Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[170px]">
-      <!-- Card 1 -->
+      
+      <!-- Card 1: Fiction (Top-Left) -->
       <div
         class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
         :class="bentoItems[0].bgClass"
@@ -69,11 +69,11 @@ const bentoItems = [
             <ArrowUpRight :size="14" />
           </div>
         </div>
-        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[0].shortName }}</h3>
+        <h3 class="font-display text-xl font-bold uppercase z-10 tracking-tight">{{ bentoItems[0].shortName }}</h3>
         <img :src="bentoItems[0].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[8deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
       </div>
 
-      <!-- Card 2: Self-Help (Spans 2 rows on desktop) -->
+      <!-- Card 2: Center Tall Card (Spanning 2 Full Rows with 3 Fanned Books Stack) -->
       <div
         class="lg:row-span-2 rounded-2xl p-6 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
         :class="bentoItems[1].bgClass"
@@ -85,13 +85,18 @@ const bentoItems = [
             <ArrowUpRight :size="15" />
           </div>
         </div>
-        <div class="relative h-44 flex items-center justify-center">
-          <img :src="bentoItems[1].cover" alt="" class="w-28 h-40 object-cover rounded-lg shadow-2xl rotate-[-8deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+
+        <!-- Fanned 3-Book Center Stack -->
+        <div class="relative h-44 flex items-center justify-center my-auto">
+          <img src="https://covers.openlibrary.org/b/isbn/9780140283334-M.jpg" alt="" class="absolute w-24 h-34 object-cover rounded-lg shadow-xl -translate-x-7 rotate-[-12deg] group-hover:rotate-[-8deg] transition-transform duration-300" referrerpolicy="no-referrer" />
+          <img src="https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg" alt="" class="absolute w-26 h-38 object-cover rounded-lg shadow-2xl z-10 scale-105 group-hover:scale-110 transition-transform duration-300" referrerpolicy="no-referrer" />
+          <img src="https://covers.openlibrary.org/b/isbn/9780857197689-M.jpg" alt="" class="absolute w-24 h-34 object-cover rounded-lg shadow-xl translate-x-7 rotate-[12deg] group-hover:rotate-[8deg] transition-transform duration-300" referrerpolicy="no-referrer" />
         </div>
-        <h3 class="font-display text-2xl font-bold uppercase z-10">{{ bentoItems[1].shortName }}</h3>
+
+        <h3 class="font-display text-2xl font-bold uppercase z-10 tracking-tight">{{ bentoItems[1].shortName }}</h3>
       </div>
 
-      <!-- Card 3 -->
+      <!-- Card 3: Fantasy (Top-Right) -->
       <div
         class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
         :class="bentoItems[2].bgClass"
@@ -103,11 +108,11 @@ const bentoItems = [
             <ArrowUpRight :size="14" />
           </div>
         </div>
-        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[2].shortName }}</h3>
+        <h3 class="font-display text-xl font-bold uppercase z-10 tracking-tight">{{ bentoItems[2].shortName }}</h3>
         <img :src="bentoItems[2].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[-10deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
       </div>
 
-      <!-- Card 4 -->
+      <!-- Card 4: Nonfiction (Bottom-Left) -->
       <div
         class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
         :class="bentoItems[3].bgClass"
@@ -119,11 +124,11 @@ const bentoItems = [
             <ArrowUpRight :size="14" />
           </div>
         </div>
-        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[3].shortName }}</h3>
+        <h3 class="font-display text-xl font-bold uppercase z-10 tracking-tight">{{ bentoItems[3].shortName }}</h3>
         <img :src="bentoItems[3].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[6deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
       </div>
 
-      <!-- Card 5 -->
+      <!-- Card 5: Romance (Bottom-Right) -->
       <div
         class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
         :class="bentoItems[4].bgClass"
@@ -135,9 +140,10 @@ const bentoItems = [
             <ArrowUpRight :size="14" />
           </div>
         </div>
-        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[4].shortName }}</h3>
+        <h3 class="font-display text-xl font-bold uppercase z-10 tracking-tight">{{ bentoItems[4].shortName }}</h3>
         <img :src="bentoItems[4].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
       </div>
+
     </div>
   </section>
 </template>
