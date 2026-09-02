@@ -85,42 +85,42 @@ function handleRequestSeed(title: string, author?: string): void {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col bg-theme-canvas text-theme-ink antialiased font-sans">
+  <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased font-sans">
     
     <!-- 1. Dark Pine Navbar (No Search Bar) -->
     <StoreNavbar />
 
-    <!-- 2. Pine Hero with Floating 8-Book Collage & The Single Search Pill -->
+    <!-- 2. Pine Hero with Straight Faded Books & 50/50 Overlapping Search Pill -->
     <HeroReference @search="handleSearch" @select-category="handleCategorySelect" />
 
-    <!-- Active Search / Filter Catalog Results (Smooth Scroll Target) -->
-    <section id="catalog-results" v-if="hasActiveFilter" class="py-12 px-4 max-w-6xl mx-auto w-full space-y-6">
-      <div class="flex items-center justify-between bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-card">
+    <!-- Active Search / Filter Catalog Results (Scroll Target) -->
+    <section id="catalog-results" v-if="hasActiveFilter" class="pt-16 sm:pt-20 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6">
+      <div class="flex items-center justify-between bg-[#F7F2E7] p-4 rounded-2xl border border-black/5 shadow-sm">
         <div class="space-y-0.5">
-          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-theme-coral">Filtered Catalog</span>
-          <p class="text-xs text-theme-ink font-medium">
+          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#F05A36]">Filtered Catalog</span>
+          <p class="text-xs text-slate-800 font-medium">
             Category: <strong>{{ activeCategoryFilter }}</strong>
             <template v-if="searchQuery"> • Search: "{{ searchQuery }}"</template>
           </p>
         </div>
         <button
           type="button"
-          class="text-xs font-bold text-theme-coral hover:underline px-3 py-1.5 bg-orange-50 rounded-xl cursor-pointer"
+          class="text-xs font-bold text-[#F05A36] hover:underline px-3 py-1.5 bg-white rounded-xl cursor-pointer"
           @click="activeCategoryFilter = 'ALL'; searchQuery = '';"
         >
           Reset Filter
         </button>
       </div>
 
-      <div v-if="filteredBooks.length === 0" class="bg-theme-surface rounded-2xl border border-theme-border p-12 text-center space-y-3 shadow-card">
-        <BookOpen :size="36" class="mx-auto text-theme-forest opacity-40" />
-        <h3 class="font-display font-bold text-base text-theme-ink">No exact matches in live inventory</h3>
-        <p class="text-xs text-theme-muted max-w-xs mx-auto">
+      <div v-if="filteredBooks.length === 0" class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm">
+        <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
+        <h3 class="font-display font-bold text-base text-slate-800">No exact matches in live inventory</h3>
+        <p class="text-xs text-slate-500 max-w-xs mx-auto">
           We can source this publication for you on request.
         </p>
         <button
           type="button"
-          class="bg-theme-coral text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer"
+          class="bg-[#F05A36] text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer"
           @click="handleRequestSeed(searchQuery)"
         >
           Submit Special Request
@@ -132,25 +132,27 @@ function handleRequestSeed(title: string, author?: string): void {
       </div>
     </section>
 
-    <!-- 3. Section: #1 Book of the Month You Can't Miss (4 Cards) -->
-    <FeaturedMonth :books="realBooks || []" @request-seed="handleRequestSeed" />
+    <!-- 3. Section 1: #1 Book of the Month (Includes pt-16 to receive 50% overlapping search bar) -->
+    <div :class="hasActiveFilter ? 'pt-6' : 'pt-14 sm:pt-20'">
+      <FeaturedMonth :books="realBooks || []" @request-seed="handleRequestSeed" />
+    </div>
 
-    <!-- 4. Section: Bento Category Grid (Exact 3-Col Layout) -->
+    <!-- 4. Section 2: Bento Category Grid -->
     <BentoCategories @select="handleCategorySelect" />
 
-    <!-- 5. Section: Deals of the Week (Warm Sand + Ripple BG + Live Countdown) -->
+    <!-- 5. Section 3: Deals of the Week (Warm Sand + Ripple BG + Live Countdown) -->
     <DealsWeek :books="realBooks || []" @request-seed="handleRequestSeed" />
 
-    <!-- 6. Section: Best Sellers of the Month (3x2 Grid + Vertical Promo Card) -->
+    <!-- 6. Section 4: Best Sellers of the Month (3x2 Grid + Vertical Promo Card) -->
     <BestsellersSection :books="realBooks || []" @request-seed="handleRequestSeed" @see-more="scrollToResults" />
 
-    <!-- 7. Section: Trust & Delivery Strip (3 Mint Circle Badges) -->
+    <!-- 7. Section 5: Trust & Delivery Strip -->
     <TrustStrip />
 
-    <!-- 8. Section: Newsletter Coupon Banner (Illustrated Hands Holding Books) -->
+    <!-- 8. Section 6: Newsletter Coupon Banner -->
     <NewsletterBanner />
 
-    <!-- 9. Section: Dark Pine Footer (4 Columns + Payments) -->
+    <!-- 9. Section 7: Dark Pine Footer -->
     <StoreFooter />
 
     <!-- Modals & Drawers -->
