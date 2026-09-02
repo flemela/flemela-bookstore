@@ -47,7 +47,7 @@ const navLinks = [
             />
           </svg>
           <span class="font-sans font-bold text-xl tracking-tight text-white">
-            Seller
+            Flemela
           </span>
         </NuxtLink>
       </div>
