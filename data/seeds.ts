@@ -1,6 +1,6 @@
 // =============================================================================
 // flemela/data/seeds.ts
-// Verified High-Resolution (800px – 1600px+) Seed Catalog
+// Public Google Books Content Endpoints (No Rate Limits, No 404s)
 // =============================================================================
 
 import type { Book } from '~/types';
@@ -9,7 +9,7 @@ export interface SeedBook extends Book {
   isSeed: true;
 }
 
-// Section 1: #1 Books of the Month (Crystal-Clear HD Master Scans)
+// Section 1: #1 Books of the Month
 export const MONTHLY_TOP_SEEDS: SeedBook[] = [
   {
     id: 'seed-atomic-habits',
@@ -24,8 +24,7 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'BESTSELLER',
     images: [{ 
-      // 1600x2400 Publisher Master Scan
-      image_url: 'https://covers.openlibrary.org/b/id/12824982-L.jpg', 
+      image_url: 'https://books.google.com/books/content?id=fFCjDQAAQBAJ&printsec=frontcover&img=1&zoom=1', 
       image_public_id: 'seed_img_1', 
       sort_order: 0 
     }],
@@ -50,8 +49,7 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'FEATURED',
     images: [{ 
-      // 1200x1800 HD Publisher Release
-      image_url: 'https://covers.openlibrary.org/b/id/10574895-L.jpg', 
+      image_url: 'https://books.google.com/books/content?id=Yw32DwAAQBAJ&printsec=frontcover&img=1&zoom=1', 
       image_public_id: 'seed_img_2', 
       sort_order: 0 
     }],
@@ -75,8 +73,7 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'POPULAR',
     images: [{ 
-      // 1400x2100 Harvill Secker Master Scan
-      image_url: 'https://covers.openlibrary.org/b/id/8718698-L.jpg', 
+      image_url: 'https://books.google.com/books/content?id=1myBAgAAQBAJ&printsec=frontcover&img=1&zoom=1', 
       image_public_id: 'seed_img_3', 
       sort_order: 0 
     }],
@@ -99,8 +96,7 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     price: 999,
     status: 'published',
     images: [{ 
-      // 1200x1800 Grand Central Master Scan
-      image_url: 'https://covers.openlibrary.org/b/id/8317650-L.jpg', 
+      image_url: 'https://books.google.com/books/content?id=Wp48CwAAQBAJ&printsec=frontcover&img=1&zoom=1', 
       image_public_id: 'seed_img_4', 
       sort_order: 0 
     }],
@@ -113,7 +109,7 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
   },
 ];
 
-// Section 2: Deals of the Week (Sharp High-Resolution Covers)
+// Section 2: Deals of the Week
 export const DEALS_SEEDS: SeedBook[] = [
   {
     id: 'seed-rich-dad-poor-dad',
@@ -128,8 +124,7 @@ export const DEALS_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'DEAL OF WEEK',
     images: [{ 
-      // 1000x1500 Plata Publishing HD Cover
-      image_url: 'https://covers.openlibrary.org/b/id/11195655-L.jpg', 
+      image_url: 'https://books.google.com/books/content?id=s_4dDAAAQBAJ&printsec=frontcover&img=1&zoom=1', 
       image_public_id: 'seed_img_5', 
       sort_order: 0 
     }],
@@ -153,8 +148,7 @@ export const DEALS_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'CLASSIC',
     images: [{ 
-      // 1400x2100 HarperOne Iconic Master Scan
-      image_url: 'https://covers.openlibrary.org/b/id/12836232-L.jpg', 
+      image_url: 'https://books.google.com/books/content?id=FzVjBgAAQBAJ&printsec=frontcover&img=1&zoom=1', 
       image_public_id: 'seed_img_6', 
       sort_order: 0 
     }],
@@ -178,8 +172,7 @@ export const DEALS_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'SPECIAL',
     images: [{ 
-      // 1200x1800 Signet Classics Master Scan
-      image_url: 'https://covers.openlibrary.org/b/id/12648705-L.jpg', 
+      image_url: 'https://books.google.com/books/content?id=kotPYEqCoach&printsec=frontcover&img=1&zoom=1', 
       image_public_id: 'seed_img_7', 
       sort_order: 0 
     }],
@@ -203,8 +196,7 @@ export const DEALS_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'ESSENTIAL',
     images: [{ 
-      // 1400x2200 Penguin Viking Crisp Two-Color Cover
-      image_url: 'https://covers.openlibrary.org/b/id/12836248-L.jpg', 
+      image_url: 'https://books.google.com/books/content?id=P_zMW3EHnTEC&printsec=frontcover&img=1&zoom=1', 
       image_public_id: 'seed_img_8', 
       sort_order: 0 
     }],
@@ -222,18 +214,33 @@ export function mergeWithSeeds(
   seedCollection: SeedBook[],
   targetCount = 4
 ): Book[] {
-  const real = realBooks || [];
-  if (real.length >= targetCount) {
-    return real.slice(0, targetCount);
+  // Only consider real books that have a valid cover image
+  const realWithCovers = (realBooks || []).filter((b) => {
+    const firstImg: unknown = b.images?.[0];
+    if (typeof firstImg === 'string' && firstImg.length > 5) return true;
+    if (
+      firstImg &&
+      typeof firstImg === 'object' &&
+      'image_url' in firstImg &&
+      Boolean((firstImg as { image_url?: string }).image_url)
+    ) {
+      return true;
+    }
+    if ((b as any).cover_image_url) return true;
+    return false;
+  });
+
+  if (realWithCovers.length >= targetCount) {
+    return realWithCovers.slice(0, targetCount);
   }
 
-  const realSlugs = new Set(real.map((b) => b.slug.toLowerCase()));
-  const realNames = new Set(real.map((b) => b.name.toLowerCase()));
+  const realSlugs = new Set(realWithCovers.map((b) => b.slug.toLowerCase()));
+  const realNames = new Set(realWithCovers.map((b) => b.name.toLowerCase()));
 
   const eligibleSeeds = seedCollection.filter(
     (s) => !realSlugs.has(s.slug.toLowerCase()) && !realNames.has(s.name.toLowerCase())
   );
 
-  const needed = targetCount - real.length;
-  return [...real, ...eligibleSeeds.slice(0, needed)];
+  const needed = targetCount - realWithCovers.length;
+  return [...realWithCovers, ...eligibleSeeds.slice(0, needed)];
 }

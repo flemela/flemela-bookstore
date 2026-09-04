@@ -17,21 +17,23 @@ const emit = defineEmits<{
   selectCategory: [category: string];
 }>();
 
-// 1. Fetch Dynamic Admin Banners from Public Proxy
+// 1. Remote Promotional Banners
 const { data: remoteBanners } = await useFetch<PublicBanner[]>('/api/banners');
 
-// Slide 0 is the permanent coded brand hero. Total slides = 1 + remote banners.
 const bannersList = computed(() => remoteBanners.value || []);
+// Slide 0 is the permanent brand hero poster. Total = 1 + remote banners.
 const totalSlides = computed(() => 1 + bannersList.value.length);
 
-// 2. Carousel Sliding & Timer State
+// 2. State Machine
 const activeIndex = ref(0);
 const isPaused = ref(false);
 let autoplayTimer: ReturnType<typeof setInterval> | undefined;
 
-// 3. Touch Gesture Swiping State
+// 3. Touch Gesture Physics
 const touchStartX = ref(0);
-const touchEndX = ref(0);
+const currentTouchX = ref(0);
+const isSwiping = ref(false);
+const dragOffset = ref(0);
 
 // 4. Search & Category Dropdown State
 const searchQuery = ref('');
@@ -49,6 +51,7 @@ const categories = [
   'Biographies & Memoir',
 ];
 
+// Navigation Actions
 function nextSlide(): void {
   if (totalSlides.value <= 1) return;
   activeIndex.value = (activeIndex.value + 1) % totalSlides.value;
@@ -62,17 +65,18 @@ function prevSlide(): void {
 }
 
 function goToSlide(index: number): void {
+  if (index === activeIndex.value) return;
   activeIndex.value = index;
   resetAutoplay();
 }
 
+// 5. Autoplay Engine
 function startAutoplay(): void {
   stopAutoplay();
-  // Only rotate if there is at least one promotional banner alongside the brand slide
   if (totalSlides.value > 1 && !isPaused.value) {
     autoplayTimer = setInterval(() => {
       nextSlide();
-    }, 5500);
+    }, 6000);
   }
 }
 
@@ -84,6 +88,7 @@ function stopAutoplay(): void {
 }
 
 function resetAutoplay(): void {
+  stopAutoplay();
   startAutoplay();
 }
 
@@ -97,28 +102,57 @@ function handleMouseLeave(): void {
   startAutoplay();
 }
 
-// Touch Swiping Handlers
+// Touch Event Handlers (Real-time finger tracking)
 function handleTouchStart(e: TouchEvent): void {
+  if (totalSlides.value <= 1) return;
   touchStartX.value = e.touches[0].clientX;
-  isPaused.value = true;
+  currentTouchX.value = e.touches[0].clientX;
+  isSwiping.value = true;
+  dragOffset.value = 0;
   stopAutoplay();
 }
 
-function handleTouchEnd(e: TouchEvent): void {
-  touchEndX.value = e.changedTouches[0].clientX;
-  const deltaX = touchStartX.value - touchEndX.value;
+function handleTouchMove(e: TouchEvent): void {
+  if (!isSwiping.value) return;
+  currentTouchX.value = e.touches[0].clientX;
+  const diff = currentTouchX.value - touchStartX.value;
 
-  if (Math.abs(deltaX) > 40) {
-    if (deltaX > 0) {
-      nextSlide();
-    } else {
-      prevSlide();
-    }
+  // Dampen edge dragging if at first/last slide
+  if ((activeIndex.value === 0 && diff > 0) || (activeIndex.value === totalSlides.value - 1 && diff < 0)) {
+    dragOffset.value = diff * 0.35;
+  } else {
+    dragOffset.value = diff;
+  }
+}
+
+function handleTouchEnd(): void {
+  if (!isSwiping.value) return;
+  isSwiping.value = false;
+
+  const threshold = 55; // minimum pixels to commit slide change
+  if (dragOffset.value < -threshold) {
+    nextSlide();
+  } else if (dragOffset.value > threshold) {
+    prevSlide();
   }
 
-  isPaused.value = false;
+  dragOffset.value = 0;
   startAutoplay();
 }
+
+// Fluid Track Transform Computation
+const trackTransformStyle = computed(() => {
+  if (isSwiping.value) {
+    return {
+      transform: `translate3d(calc(-${activeIndex.value * 100}% + ${dragOffset.value}px), 0, 0)`,
+      transition: 'none',
+    };
+  }
+  return {
+    transform: `translate3d(-${activeIndex.value * 100}%, 0, 0)`,
+    transition: 'transform 750ms cubic-bezier(0.22, 1, 0.36, 1)',
+  };
+});
 
 // Non-blocking Banner Click Telemetry & Navigation
 async function handleBannerClick(banner: PublicBanner): Promise<void> {
@@ -156,8 +190,6 @@ function handleOutsideClick(e: MouseEvent): void {
 onMounted(() => {
   if (process.client) {
     document.addEventListener('click', handleOutsideClick);
-
-    // WCAG 2.2.2: Disable autoplay if user prefers reduced motion
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       startAutoplay();
     }
@@ -174,238 +206,255 @@ onUnmounted(() => {
 
 <template>
   <section
-    class="relative select-none bg-[#052219] text-white pb-20 sm:pb-24"
+    class="relative select-none bg-[#052219] text-white pb-20 sm:pb-24 overflow-visible"
+    aria-roledescription="carousel"
+    aria-label="Bookstore Highlights & Promotions"
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
-    @touchstart="handleTouchStart"
-    @touchend="handleTouchEnd"
   >
-    <!-- Slide Deck Container -->
-    <div class="relative w-full overflow-hidden min-h-[460px] sm:min-h-[500px] lg:min-h-[540px]">
-      
-      <!-- ================================================================= -->
-      <!-- SLIDE 0: PERMANENT BRAND HERO POSTER (Always Present, Never Lost) -->
-      <!-- ================================================================= -->
+    <!-- Slide Viewport (Hides overflowing track) -->
+    <div
+      class="relative w-full overflow-hidden min-h-[480px] sm:min-h-[520px] lg:min-h-[560px]"
+      @touchstart.passive="handleTouchStart"
+      @touchmove.passive="handleTouchMove"
+      @touchend="handleTouchEnd"
+    >
+      <!-- Continuous Horizontal Sliding Flex Track -->
       <div
-        class="absolute inset-0 transition-opacity duration-700 ease-in-out bg-[#052219] flex items-center justify-center"
-        :class="activeIndex === 0 ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'"
+        class="flex w-full h-full will-change-transform"
+        :style="trackTransformStyle"
       >
-        <!-- LEFT 4-BOOK STACK (Faded Top Gradient Mask) -->
-        <div class="absolute left-2 sm:left-4 lg:left-8 top-0 bottom-0 hidden md:flex gap-2.5 lg:gap-3 pointer-events-none hero-faded-stack">
-          <div class="flex flex-col gap-2.5 -translate-y-6">
-            <img
-              src="https://covers.openlibrary.org/b/isbn/9781538724736-M.jpg"
-              alt=""
-              class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
-              referrerpolicy="no-referrer"
-            />
-            <img
-              src="https://covers.openlibrary.org/b/isbn/9780062316097-M.jpg"
-              alt=""
-              class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
-              referrerpolicy="no-referrer"
-            />
-          </div>
-          <div class="flex flex-col gap-2.5 translate-y-5">
-            <img
-              src="https://covers.openlibrary.org/b/isbn/9781250268822-M.jpg"
-              alt=""
-              class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
-              referrerpolicy="no-referrer"
-            />
-            <img
-              src="https://covers.openlibrary.org/b/isbn/9781501171345-M.jpg"
-              alt=""
-              class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
-              referrerpolicy="no-referrer"
-            />
-          </div>
-        </div>
-
-        <!-- CENTER TYPOGRAPHY & DOODLES -->
-        <div class="relative z-10 max-w-4xl mx-auto text-center px-4 py-8">
-          <div class="relative inline-block">
-            <!-- Flame Doodle on "C" -->
-            <svg
-              class="absolute -top-7 sm:-top-9 left-12 sm:left-18 w-6 sm:w-7 h-8 text-[#FF5722] pointer-events-none"
-              viewBox="0 0 24 32"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d="M12 0C12 0 16 6 16 11C16 13.5 14.5 15.5 12 16C9.5 15.5 8 13.5 8 11C8 6 12 0 12 0ZM12 18C16.5 18 20 21.5 20 26C20 29.5 16.5 32 12 32C7.5 32 4 29.5 4 26C4 21.5 7.5 18 12 18Z" />
-            </svg>
-
-            <!-- Asterisk Doodle on "NEXT" -->
-            <svg
-              class="absolute -top-3 right-10 sm:right-16 w-5 sm:w-6 h-5 sm:h-6 text-[#FFB300] pointer-events-none"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d="M12 0L14 8L22 6L16 12L22 18L14 16L12 24L10 16L2 18L8 12L2 6L10 8L12 0Z" />
-            </svg>
-
-            <!-- Main Bebas Poster Headline -->
-            <h1 class="font-poster text-5xl sm:text-7xl lg:text-[88px] leading-[0.93] tracking-wide uppercase text-white drop-shadow-sm">
-              THE NEXT <br />
-              <span class="text-[#2EE59D]">CHAPTER</span> IN <span class="text-[#FF8A00]">YOUR</span> <br />
-              READING 
-              <ReaderHeroIllustration />
-              JOURNEY
-            </h1>
-
-            <!-- Bottom Left Star Doodle -->
-            <svg
-              class="absolute -bottom-2 left-6 sm:left-12 w-5 sm:w-6 h-5 sm:h-6 text-[#FFB300] pointer-events-none"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
-            </svg>
-
-            <!-- Turquoise Sparkle on "JOURNEY" -->
-            <svg
-              class="absolute top-1/2 -right-4 sm:-right-8 w-5 sm:w-6 h-5 sm:h-6 text-[#2EE59D] pointer-events-none"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
-            </svg>
-          </div>
-
-          <!-- Muted Sage Subtitle -->
-          <p class="text-xs sm:text-sm text-[#8FA89B] max-w-lg mx-auto leading-relaxed font-sans pt-3">
-            Browse a curated collection of page-turners, slow burns, and life-changing reads crafted to match your unique taste.
-          </p>
-        </div>
-
-        <!-- RIGHT 4-BOOK STACK (Faded Top Gradient Mask) -->
-        <div class="absolute right-2 sm:right-4 lg:right-8 top-0 bottom-0 hidden md:flex gap-2.5 lg:gap-3 pointer-events-none hero-faded-stack">
-          <div class="flex flex-col gap-2.5 translate-y-5">
-            <img
-              src="https://covers.openlibrary.org/b/isbn/9780525536963-M.jpg"
-              alt=""
-              class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
-              referrerpolicy="no-referrer"
-            />
-            <img
-              src="https://covers.openlibrary.org/b/isbn/9780593300237-M.jpg"
-              alt=""
-              class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
-              referrerpolicy="no-referrer"
-            />
-          </div>
-          <div class="flex flex-col gap-2.5 -translate-y-6">
-            <img
-              src="https://covers.openlibrary.org/b/isbn/9781646220601-M.jpg"
-              alt=""
-              class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
-              referrerpolicy="no-referrer"
-            />
-            <img
-              src="https://covers.openlibrary.org/b/isbn/9780593135204-M.jpg"
-              alt=""
-              class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
-              referrerpolicy="no-referrer"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- ================================================================= -->
-      <!-- SLIDES 1..N: DYNAMIC PROMOTIONAL BANNERS FROM DATABASE            -->
-      <!-- ================================================================= -->
-      <div
-        v-for="(banner, index) in bannersList"
-        :key="banner.id"
-        class="absolute inset-0 transition-opacity duration-700 ease-in-out"
-        :class="activeIndex === index + 1 ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'"
-        :style="{ backgroundColor: banner.bg_color || '#052219' }"
-      >
-        <!-- Background Banner Image with Responsive Source -->
-        <picture>
-          <source
-            v-if="banner.mobile_image_url"
-            :srcset="banner.mobile_image_url"
-            media="(max-width: 640px)"
-          />
-          <img
-            :src="banner.image_url"
-            :alt="banner.title"
-            class="w-full h-full object-cover object-center brightness-75 scale-100 transition-transform duration-1000 ease-out"
-            :class="{ 'scale-105': activeIndex === index + 1 }"
-            loading="lazy"
-            referrerpolicy="no-referrer"
-          />
-        </picture>
-
-        <!-- Dark Contrast Overlay & Content -->
-        <div class="absolute inset-0 z-10 flex items-center bg-gradient-to-r from-forest-950/95 via-forest-950/60 to-transparent">
-          <div class="max-w-6xl mx-auto w-full px-6 sm:px-12 lg:px-16 space-y-4 text-left">
-            <!-- Badge -->
-            <div
-              v-if="banner.badge"
-              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-forest-950/80 border border-gold-500/60 text-xs font-mono font-bold text-gold-300 shadow-sm"
-            >
-              <Sparkles :size="12" class="text-gold-400" />
-              <span>{{ banner.badge }}</span>
+        <!-- =============================================================== -->
+        <!-- SLIDE 0: PERMANENT BRAND HERO POSTER (Coded, Never an Image)    -->
+        <!-- =============================================================== -->
+        <div
+          class="w-full flex-shrink-0 relative min-h-[480px] sm:min-h-[520px] lg:min-h-[560px] flex items-center justify-center bg-[#052219]"
+          role="group"
+          aria-roledescription="slide"
+          aria-label="1 of {{ totalSlides }}"
+        >
+          <!-- LEFT 4-BOOK STACK (Faded Top Gradient Mask) -->
+          <div class="absolute left-2 sm:left-4 lg:left-8 top-0 bottom-0 hidden md:flex gap-2.5 lg:gap-3 pointer-events-none hero-faded-stack">
+            <div class="flex flex-col gap-2.5 -translate-y-6">
+              <img
+                src="https://books.google.com/books/content?id=s_4dDAAAQBAJ&printsec=frontcover&img=1&zoom=1"
+                alt=""
+                class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+                referrerpolicy="no-referrer"
+              />
+              <img
+                src="https://books.google.com/books/content?id=1myBAgAAQBAJ&printsec=frontcover&img=1&zoom=1"
+                alt=""
+                class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+                referrerpolicy="no-referrer"
+              />
             </div>
+            <div class="flex flex-col gap-2.5 translate-y-5">
+              <img
+                src="https://books.google.com/books/content?id=kotPYEqCoach&printsec=frontcover&img=1&zoom=1"
+                alt=""
+                class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+                referrerpolicy="no-referrer"
+              />
+              <img
+                src="https://books.google.com/books/content?id=FzVjBgAAQBAJ&printsec=frontcover&img=1&zoom=1"
+                alt=""
+                class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+                referrerpolicy="no-referrer"
+              />
+            </div>
+          </div>
 
-            <!-- Headline -->
-            <h2 class="font-display text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight max-w-2xl drop-shadow-md">
-              {{ banner.title }}
-            </h2>
-
-            <!-- Subtitle -->
-            <p
-              v-if="banner.subtitle"
-              class="text-xs sm:text-sm lg:text-base text-white/80 max-w-lg leading-relaxed line-clamp-2"
-            >
-              {{ banner.subtitle }}
-            </p>
-
-            <!-- Action Button -->
-            <div class="pt-2">
-              <button
-                type="button"
-                class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs sm:text-sm font-bold uppercase tracking-wider px-6 py-3 rounded-full transition-all flex items-center gap-2 shadow-lg cursor-pointer active:scale-95"
-                @click="handleBannerClick(banner)"
+          <!-- CENTER HERO POSTER TYPOGRAPHY & DOODLES -->
+          <div class="relative z-10 max-w-4xl mx-auto text-center px-4 py-8">
+            <div class="relative inline-block">
+              <!-- Flame Doodle on "C" -->
+              <svg
+                class="absolute -top-7 sm:-top-9 left-12 sm:left-18 w-6 sm:w-7 h-8 text-[#FF5722] pointer-events-none"
+                viewBox="0 0 24 32"
+                fill="currentColor"
+                aria-hidden="true"
               >
-                <span>{{ banner.cta_label || 'Explore' }}</span>
-                <ArrowRight :size="15" />
-              </button>
+                <path d="M12 0C12 0 16 6 16 11C16 13.5 14.5 15.5 12 16C9.5 15.5 8 13.5 8 11C8 6 12 0 12 0ZM12 18C16.5 18 20 21.5 20 26C20 29.5 16.5 32 12 32C7.5 32 4 29.5 4 26C4 21.5 7.5 18 12 18Z" />
+              </svg>
+
+              <!-- Asterisk Doodle on "NEXT" -->
+              <svg
+                class="absolute -top-3 right-10 sm:right-16 w-5 sm:w-6 h-5 sm:h-6 text-[#FFB300] pointer-events-none"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M12 0L14 8L22 6L16 12L22 18L14 16L12 24L10 16L2 18L8 12L2 6L10 8L12 0Z" />
+              </svg>
+
+              <!-- Main Bebas Poster Headline -->
+              <h1 class="font-poster text-5xl sm:text-7xl lg:text-[88px] leading-[0.93] tracking-wide uppercase text-white drop-shadow-sm">
+                THE NEXT <br />
+                <span class="text-[#2EE59D]">CHAPTER</span> IN <span class="text-[#FF8A00]">YOUR</span> <br />
+                READING 
+                <ReaderHeroIllustration />
+                JOURNEY
+              </h1>
+
+              <!-- Bottom Left Star Doodle -->
+              <svg
+                class="absolute -bottom-2 left-6 sm:left-12 w-5 sm:w-6 h-5 sm:h-6 text-[#FFB300] pointer-events-none"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+              </svg>
+
+              <!-- Turquoise Sparkle on "JOURNEY" -->
+              <svg
+                class="absolute top-1/2 -right-4 sm:-right-8 w-5 sm:w-6 h-5 sm:h-6 text-[#2EE59D] pointer-events-none"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+              </svg>
+            </div>
+
+            <!-- Muted Sage Subtitle -->
+            <p class="text-xs sm:text-sm text-[#8FA89B] max-w-lg mx-auto leading-relaxed font-sans pt-3">
+              Browse a curated collection of page-turners, slow burns, and life-changing reads crafted to match your unique taste.
+            </p>
+          </div>
+
+          <!-- RIGHT 4-BOOK STACK (Faded Top Gradient Mask) -->
+          <div class="absolute right-2 sm:right-4 lg:right-8 top-0 bottom-0 hidden md:flex gap-2.5 lg:gap-3 pointer-events-none hero-faded-stack">
+            <div class="flex flex-col gap-2.5 translate-y-5">
+              <img
+                src="https://books.google.com/books/content?id=fFCjDQAAQBAJ&printsec=frontcover&img=1&zoom=1"
+                alt=""
+                class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+                referrerpolicy="no-referrer"
+              />
+              <img
+                src="https://books.google.com/books/content?id=Yw32DwAAQBAJ&printsec=frontcover&img=1&zoom=1"
+                alt=""
+                class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+                referrerpolicy="no-referrer"
+              />
+            </div>
+            <div class="flex flex-col gap-2.5 -translate-y-6">
+              <img
+                src="https://books.google.com/books/content?id=Wp48CwAAQBAJ&printsec=frontcover&img=1&zoom=1"
+                alt=""
+                class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+                referrerpolicy="no-referrer"
+              />
+              <img
+                src="https://books.google.com/books/content?id=P_zMW3EHnTEC&printsec=frontcover&img=1&zoom=1"
+                alt=""
+                class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+                referrerpolicy="no-referrer"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- =============================================================== -->
+        <!-- SLIDES 1..N: DYNAMIC PROMOTIONAL BANNERS                        -->
+        <!-- =============================================================== -->
+        <div
+          v-for="(banner, index) in bannersList"
+          :key="banner.id"
+          class="w-full flex-shrink-0 relative min-h-[480px] sm:min-h-[520px] lg:min-h-[560px] flex items-center overflow-hidden"
+          :style="{ backgroundColor: banner.bg_color || '#052219' }"
+          role="group"
+          aria-roledescription="slide"
+          :aria-label="`${index + 2} of ${totalSlides}`"
+        >
+          <!-- Background Banner Photo -->
+          <picture class="absolute inset-0 w-full h-full">
+            <source
+              v-if="banner.mobile_image_url"
+              :srcset="banner.mobile_image_url"
+              media="(max-width: 640px)"
+            />
+            <img
+              :src="banner.image_url"
+              :alt="banner.title"
+              class="w-full h-full object-cover object-center brightness-75 transition-transform duration-1000 ease-out"
+              :class="activeIndex === index + 1 ? 'scale-105' : 'scale-100'"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            />
+          </picture>
+
+          <!-- Contrast Scrim Layer & Staggered Typography -->
+          <div class="absolute inset-0 z-10 flex items-center bg-gradient-to-r from-[#052219]/95 via-[#052219]/65 to-transparent">
+            <div
+              class="max-w-6xl mx-auto w-full px-6 sm:px-12 lg:px-20 space-y-4 text-left transform transition-all duration-700 delay-150"
+              :class="activeIndex === index + 1 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'"
+            >
+              <!-- Badge -->
+              <div
+                v-if="banner.badge"
+                class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#052219]/85 border border-gold-400 text-xs font-mono font-bold text-gold-300 shadow-sm"
+              >
+                <Sparkles :size="12" class="text-gold-400" />
+                <span>{{ banner.badge }}</span>
+              </div>
+
+              <!-- Title -->
+              <h2 class="font-display text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight max-w-2xl drop-shadow-md">
+                {{ banner.title }}
+              </h2>
+
+              <!-- Subtitle -->
+              <p
+                v-if="banner.subtitle"
+                class="text-xs sm:text-sm lg:text-base text-white/85 max-w-lg leading-relaxed line-clamp-2"
+              >
+                {{ banner.subtitle }}
+              </p>
+
+              <!-- CTA Button -->
+              <div class="pt-2">
+                <button
+                  type="button"
+                  class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs sm:text-sm font-bold uppercase tracking-wider px-7 py-3.5 rounded-full transition-all flex items-center gap-2 shadow-lg cursor-pointer active:scale-95"
+                  @click="handleBannerClick(banner)"
+                >
+                  <span>{{ banner.cta_label || 'Explore' }}</span>
+                  <ArrowRight :size="16" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Navigation Arrows (Only rendered if > 1 slide) -->
+      <!-- Navigation Arrows (Only when > 1 slide) -->
       <div
         v-if="totalSlides > 1"
-        class="absolute inset-y-0 inset-x-4 z-20 flex items-center justify-between pointer-events-none"
+        class="absolute inset-y-0 inset-x-4 sm:inset-x-8 z-20 flex items-center justify-between pointer-events-none"
       >
         <button
           type="button"
-          class="w-10 h-10 rounded-full bg-forest-950/70 hover:bg-forest-950 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-95 cursor-pointer"
+          class="w-11 h-11 rounded-full bg-[#052219]/60 hover:bg-[#052219] text-white flex items-center justify-center pointer-events-auto backdrop-blur-md transition-all shadow-md active:scale-90 cursor-pointer border border-white/10"
           aria-label="Previous slide"
           @click="prevSlide"
         >
-          <ChevronLeft :size="18" />
+          <ChevronLeft :size="20" />
         </button>
 
         <button
           type="button"
-          class="w-10 h-10 rounded-full bg-forest-950/70 hover:bg-forest-950 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-95 cursor-pointer"
+          class="w-11 h-11 rounded-full bg-[#052219]/60 hover:bg-[#052219] text-white flex items-center justify-center pointer-events-auto backdrop-blur-md transition-all shadow-md active:scale-90 cursor-pointer border border-white/10"
           aria-label="Next slide"
           @click="nextSlide"
         >
-          <ChevronRight :size="18" />
+          <ChevronRight :size="20" />
         </button>
       </div>
 
-      <!-- Pagination Indicator Dots (Only rendered if > 1 slide) -->
+      <!-- Fluid Morphing Pagination Dots -->
       <div
         v-if="totalSlides > 1"
         class="absolute bottom-12 sm:bottom-14 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2"
@@ -414,20 +463,20 @@ onUnmounted(() => {
           v-for="(_, idx) in totalSlides"
           :key="idx"
           type="button"
-          class="h-2 rounded-full transition-all duration-300 cursor-pointer"
-          :class="idx === activeIndex ? 'w-6 bg-gold-500' : 'w-2 bg-white/40 hover:bg-white/70'"
+          class="h-2 rounded-full cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          :class="idx === activeIndex ? 'w-8 bg-gold-400 shadow-sm' : 'w-2.5 bg-white/30 hover:bg-white/60'"
           :aria-label="`Navigate to slide ${idx + 1}`"
           @click="goToSlide(idx)"
         />
       </div>
     </div>
 
-    <!-- ================================================================= -->
-    <!-- 50/50 OVERLAPPING FLOATING SEARCH PILL (Anchored on Every Slide)  -->
-    <!-- ================================================================= -->
+    <!-- =============================================================== -->
+    <!-- 50/50 OVERLAPPING FLOATING SEARCH PILL (Fixed on Every Slide)    -->
+    <!-- =============================================================== -->
     <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-full max-w-2xl px-4 z-30">
       <div class="bg-white rounded-full p-2 shadow-search-pill border border-black/5 flex items-center gap-1 sm:gap-2">
-        <!-- Category Dropdown Selector -->
+        <!-- Category Dropdown -->
         <div ref="dropdownRef" class="relative flex-shrink-0">
           <button
             type="button"
@@ -437,7 +486,7 @@ onUnmounted(() => {
             <span class="max-w-[110px] sm:max-w-[130px] truncate">{{ selectedCategory }}</span>
             <ChevronDown
               :size="13"
-              class="text-slate-500 transition-transform"
+              class="text-slate-500 transition-transform duration-300"
               :class="{ 'rotate-180': isDropdownOpen }"
             />
           </button>
@@ -460,7 +509,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Input Text -->
+        <!-- Search Input -->
         <input
           v-model="searchQuery"
           type="text"
@@ -469,7 +518,7 @@ onUnmounted(() => {
           @keyup.enter="handleSearch"
         />
 
-        <!-- Coral Pill Search Button -->
+        <!-- Coral Submit Button -->
         <button
           type="button"
           class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase tracking-wider px-5 sm:px-7 py-2.5 sm:py-3 rounded-full transition-all flex items-center gap-1.5 shadow-md cursor-pointer flex-shrink-0 active:scale-95"

@@ -1,7 +1,7 @@
 <!-- components/storefront/BookCard.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { ShoppingBag, Truck, Download, MessageSquare } from 'lucide-vue-next';
+import { ShoppingBag, Truck, Download, MessageSquare, BookOpen } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat } from '~/types';
@@ -18,13 +18,44 @@ const emit = defineEmits<{
 const { addItem, openDrawer } = useCart();
 const { push: pushToast } = useToast();
 
+const imageFailed = ref(false);
+
+// Reset image error state if book changes
+watch(
+  () => props.book,
+  () => {
+    imageFailed.value = false;
+  }
+);
+
+
 const coverImage = computed(() => {
-  if (!props.book) return '/images/book-placeholder.svg';
-  const rawImg = props.book.images?.[0];
-  if (!rawImg) return (props.book as any).cover_image_url || '/images/book-placeholder.svg';
-  if (typeof rawImg === 'string') return rawImg;
-  return rawImg.image_url || (props.book as any).cover_image_url || '/images/book-placeholder.svg';
+  if (!props.book) return null;
+  
+  // Cast to unknown so TS safely permits runtime string / object inspection
+  const rawImg: unknown = props.book.images?.[0];
+  
+  if (typeof rawImg === 'string' && rawImg.trim().length > 5) {
+    return rawImg.trim();
+  }
+  
+  if (rawImg && typeof rawImg === 'object' && 'image_url' in rawImg) {
+    const url = (rawImg as { image_url?: string }).image_url;
+    if (typeof url === 'string' && url.trim().length > 5) {
+      return url.trim();
+    }
+  }
+  
+  const fallback = (props.book as any).cover_image_url;
+  if (typeof fallback === 'string' && fallback.trim().length > 5) {
+    return fallback.trim();
+  }
+  
+  return null;
 });
+function handleImageError() {
+  imageFailed.value = true;
+}
 
 const selectedFormatId = ref<string>('');
 
@@ -39,7 +70,6 @@ watch(
   { immediate: true }
 );
 
-// 1. Resolve Active Format safely
 const activeFormat = computed<ProductFormat | undefined>(() => {
   if (!props.book.formats || props.book.formats.length === 0) return undefined;
   return (
@@ -48,43 +78,35 @@ const activeFormat = computed<ProductFormat | undefined>(() => {
   );
 });
 
-// 2. Format-Isolated Current Selling Price
 const currentPrice = computed<number>(() => {
   if (activeFormat.value) return activeFormat.value.price;
   return props.book.price ?? 0;
 });
 
-// 3. Format-Isolated Original Price (Fixes Edge Case: Prevents physical discount leaking to eBook)
 const originalPrice = computed<number | null>(() => {
   if (activeFormat.value?.compare_at_price) {
     return activeFormat.value.compare_at_price;
   }
-  // Only fall back to parent compare_at_price if there's only 1 format in total
   if (!props.book.formats || props.book.formats.length <= 1) {
     return props.book.compare_at_price || null;
   }
   return null;
 });
 
-// 4. Safe Discount Percentage (Guards against inverted prices, zero-division, and trivial <5% discounts)
 const discountPercentage = computed<number>(() => {
   const orig = originalPrice.value;
   const curr = currentPrice.value;
-
   if (!orig || orig <= 0 || curr <= 0) return 0;
   if (orig <= curr) return 0;
-
   const percent = Math.round(((orig - curr) / orig) * 100);
   return percent >= 5 ? percent : 0;
 });
 
-// 5. Promo Expiration Check (Guards against perpetual flash sales)
 const isPromoExpired = computed<boolean>(() => {
   if (!props.book.sale_ends_at) return false;
   return new Date(props.book.sale_ends_at).getTime() < Date.now();
 });
 
-// 6. Promotional Badge Resolution
 const activeBadge = computed<string | null>(() => {
   if (isPromoExpired.value) return null;
   return props.book.badge || null;
@@ -158,21 +180,45 @@ function handleAction(event: Event): void {
       <!-- 3D Book Cover Frame -->
       <NuxtLink
         :to="book.isSeed ? '#' : `/book/${book.slug}`"
-        class="block relative aspect-[3/4] bg-theme-cream rounded-book overflow-hidden book-cover-3d"
+        class="block relative aspect-[3/4] rounded-book overflow-hidden book-cover-3d shadow-sm"
         @click="book.isSeed ? handleAction($event) : null"
       >
+        <!-- 1. BULLETPROOF INLINE FALLBACK (Renders if image is missing or failed to load) -->
+        <div
+          v-if="imageFailed || !coverImage"
+          class="w-full h-full flex flex-col justify-between p-4 bg-gradient-to-br from-[#052219] via-[#0C3A2B] to-[#041d15] text-white text-left select-none border-l-4 border-l-white/20"
+        >
+          <div class="space-y-1.5">
+            <span class="text-[9px] font-mono uppercase tracking-widest text-[#2EE59D] font-bold block truncate">
+              {{ book.category_name || 'Flemela Edition' }}
+            </span>
+            <h4 class="font-display font-bold text-xs sm:text-sm leading-snug text-white line-clamp-3">
+              {{ book.name }}
+            </h4>
+            <p class="text-[10px] text-white/70 italic line-clamp-1">
+              {{ book.author ? `By ${book.author}` : '' }}
+            </p>
+          </div>
+
+          <div class="pt-2 border-t border-white/10 flex items-center justify-between">
+            <span class="text-[8px] font-mono tracking-wider uppercase text-gold-400 font-bold">Flemela Bookstore</span>
+            <BookOpen :size="12" class="text-[#2EE59D] opacity-70" />
+          </div>
+        </div>
+
+        <!-- 2. ACTUAL IMAGE ELEMENT -->
         <img
+          v-else
           :src="coverImage"
           :alt="`Cover for ${book.name}`"
           class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           loading="lazy"
-          referrerpolicy="no-referrer"
           width="260"
           height="346"
-          @error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'"
+          @error="handleImageError"
         />
 
-        <!-- Top Left: Category / Promotional Badge -->
+        <!-- Badges -->
         <div v-if="activeBadge" class="absolute top-2.5 left-2.5 z-10">
           <span
             class="text-[8px] sm:text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm"
@@ -182,7 +228,6 @@ function handleAction(event: Event): void {
           </span>
         </div>
 
-        <!-- Top Right: Discount Percentage Badge -->
         <div v-if="discountPercentage > 0" class="absolute top-2.5 right-2.5 z-10">
           <span class="text-[9px] font-mono font-extrabold bg-red-600 text-white px-1.5 py-0.5 rounded shadow-sm">
             -{{ discountPercentage }}%
@@ -229,7 +274,7 @@ function handleAction(event: Event): void {
       </div>
     </div>
 
-    <!-- Pricing Area with Strike-Through -->
+    <!-- Pricing Area -->
     <div class="pt-3 mt-3 border-t border-theme-border/80 space-y-2">
       <div class="flex items-baseline justify-between">
         <span class="text-[11px] text-theme-muted font-medium">
@@ -237,7 +282,6 @@ function handleAction(event: Event): void {
         </span>
 
         <div class="flex items-baseline gap-1.5">
-          <!-- Strike-through Original Price -->
           <span
             v-if="originalPrice && originalPrice > currentPrice"
             class="text-xs text-theme-muted line-through font-mono tabular-figure opacity-70"
@@ -245,7 +289,6 @@ function handleAction(event: Event): void {
             {{ formatCurrency(originalPrice) }}
           </span>
 
-          <!-- Selling Price -->
           <span
             class="text-sm sm:text-base font-bold font-mono text-theme-ink tabular-figure"
             :class="{ 'text-red-700 font-extrabold': discountPercentage > 0 }"
