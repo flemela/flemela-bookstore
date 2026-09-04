@@ -1,8 +1,17 @@
 <!-- components/storefront/BookstoreHeader.vue -->
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Search, ShoppingBag, Menu, X, ChevronDown } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
+import type { Book } from '~/types';
+
+interface Props {
+  customCategories?: string[];
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  customCategories: () => [],
+});
 
 const emit = defineEmits<{
   search: [query: string, category: string];
@@ -14,16 +23,40 @@ const searchInput = ref('');
 const selectedCategory = ref('All Categories');
 const isCategoryDropdownOpen = ref(false);
 const isMobileMenuOpen = ref(false);
+const dropdownContainerRef = ref<HTMLElement | null>(null);
 
-const categories = [
-  'All Categories',
-  'Fiction & Literature',
-  'Psychology & Self-Help',
-  'Business & Finance',
-  'Christian Books',
-  'Education & Textbooks',
-  'Biographies & Memoir',
-];
+// Dynamic Category Sync: Extracts live categories from catalog with fallback
+const { data: catalogBooks } = await useFetch<Book[]>('/api/products');
+
+const categories = computed<string[]>(() => {
+  if (props.customCategories && props.customCategories.length > 0) {
+    return ['All Categories', ...props.customCategories];
+  }
+
+  const liveCategories = new Set<string>();
+  if (catalogBooks.value) {
+    for (const book of catalogBooks.value) {
+      if (book.category_name && book.category_name.trim()) {
+        liveCategories.add(book.category_name.trim());
+      }
+    }
+  }
+
+  if (liveCategories.size > 0) {
+    return ['All Categories', ...Array.from(liveCategories).sort()];
+  }
+
+  // Graceful baseline fallback
+  return [
+    'All Categories',
+    'Fiction & Literature',
+    'Psychology & Self-Help',
+    'Business & Finance',
+    'Christian Books',
+    'Education & Textbooks',
+    'Biographies & Memoir',
+  ];
+});
 
 function handleSearch(): void {
   emit('search', searchInput.value.trim(), selectedCategory.value);
@@ -40,6 +73,28 @@ function clearSearch(): void {
   searchInput.value = '';
   emit('search', '', selectedCategory.value);
 }
+
+// Close dropdown on outside click
+function handleDocumentClick(event: MouseEvent): void {
+  if (
+    dropdownContainerRef.value &&
+    !dropdownContainerRef.value.contains(event.target as Node)
+  ) {
+    isCategoryDropdownOpen.value = false;
+  }
+}
+
+onMounted(() => {
+  if (process.client) {
+    document.addEventListener('click', handleDocumentClick);
+  }
+});
+
+onUnmounted(() => {
+  if (process.client) {
+    document.removeEventListener('click', handleDocumentClick);
+  }
+});
 </script>
 
 <template>
@@ -73,26 +128,30 @@ function clearSearch(): void {
       <div class="hidden md:flex items-center flex-1 max-w-xl mx-2 bg-paper-canvas rounded-full border border-paper-border focus-within:border-forest-800/40 focus-within:bg-white focus-within:ring-2 focus-within:ring-forest-900/5 transition-all shadow-subtle">
         
         <!-- Category Dropdown Trigger -->
-        <div class="relative flex-shrink-0">
+        <div ref="dropdownContainerRef" class="relative flex-shrink-0">
           <button
             type="button"
             class="px-3.5 py-2 text-[11px] font-sans font-semibold text-forest-950 hover:text-gold-600 flex items-center gap-1 border-r border-paper-border cursor-pointer select-none"
-            @click="isCategoryDropdownOpen = !isCategoryDropdownOpen"
+            @click.stop="isCategoryDropdownOpen = !isCategoryDropdownOpen"
           >
             <span class="max-w-[110px] truncate">{{ selectedCategory }}</span>
-            <ChevronDown :size="12" class="text-ink-muted transition-transform" :class="{ 'rotate-180': isCategoryDropdownOpen }" />
+            <ChevronDown
+              :size="12"
+              class="text-ink-muted transition-transform"
+              :class="{ 'rotate-180': isCategoryDropdownOpen }"
+            />
           </button>
 
-          <!-- Dropdown Menu -->
+          <!-- Dropdown Menu with Max-Height Scrolling -->
           <div
             v-if="isCategoryDropdownOpen"
-            class="absolute top-full left-0 mt-1.5 w-52 bg-white border border-paper-border rounded-xl shadow-medium py-1.5 z-50 text-xs font-medium text-forest-950"
+            class="absolute top-full left-0 mt-1.5 w-56 max-h-72 overflow-y-auto bg-white border border-paper-border rounded-xl shadow-medium py-1.5 z-50 text-xs font-medium text-forest-950 divide-y divide-paper-border/30"
           >
             <button
               v-for="cat in categories"
               :key="cat"
               type="button"
-              class="w-full text-left px-3.5 py-2 hover:bg-paper-cream transition-colors text-xs font-semibold cursor-pointer"
+              class="w-full text-left px-3.5 py-2 hover:bg-paper-cream transition-colors text-xs font-semibold cursor-pointer truncate"
               :class="{ 'text-forest-950 font-bold bg-paper-cream/80': selectedCategory === cat }"
               @click="handleCategoryClick(cat)"
             >
@@ -161,7 +220,7 @@ function clearSearch(): void {
       </div>
     </div>
 
-    <!-- Mobile Search Bar (Sticky Sub-Bar) -->
+    <!-- Mobile Search Bar -->
     <div class="md:hidden px-4 pb-2.5">
       <div class="flex items-center bg-paper-canvas rounded-full border border-paper-border px-3 py-1.5 shadow-subtle">
         <Search :size="13" class="text-ink-muted mr-2 flex-shrink-0" />
@@ -190,7 +249,7 @@ function clearSearch(): void {
         <button type="button" class="text-xs text-ink-muted" @click="isMobileMenuOpen = false">Close</button>
       </div>
 
-      <div class="grid grid-cols-2 gap-2 text-xs">
+      <div class="grid grid-cols-2 gap-2 text-xs max-h-60 overflow-y-auto pr-1">
         <button
           v-for="cat in categories"
           :key="cat"

@@ -12,8 +12,13 @@ import {
   Sparkles,
   Link as LinkIcon,
   RefreshCw,
+  ShieldCheck,
+  CheckCircle2,
+  FolderPlus,
+  X,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
+import AddCategoryModal from '~/components/admin/AddCategoryModal.vue';
 import { useToast } from '~/composables/useToast';
 import type { Book, BookFormatType } from '~/types';
 
@@ -28,26 +33,24 @@ const bookId = computed(() => route.params.id as string);
 const { data: categories } = await useFetch<Array<{ id: string; name: string }>>('/api/admin/categories');
 const { data: book, refresh } = await useFetch<Book>(`/api/admin/books/${bookId.value}`);
 
-// Base Form Fields
+// Dynamic Inline Category State
+const showAddCategoryModal = ref(false);
+
 const name = ref('');
 const author = ref('');
 const categoryId = ref('');
 const description = ref('');
 const price = ref(999);
 const compareAtPrice = ref<number | null>(null);
-const badge = ref<
-  'BESTSELLER' | 'FLASH_SALE' | 'NO1_PICK' | 'DEAL_OF_WEEK' | 'LIMITED_TIME' | null
->(null);
+const badge = ref<'BESTSELLER' | 'FLASH_SALE' | 'NO1_PICK' | 'DEAL_OF_WEEK' | 'LIMITED_TIME' | null>(null);
 const saleEndsAt = ref<string>('');
 const status = ref<'draft' | 'published' | 'archived'>('published');
 
-// Cover art state
 const coverUrl = ref('');
 const coverPublicId = ref('');
 const isUploadingCover = ref(false);
 const isSearchingCover = ref(false);
 
-// New Format State
 const newFormatType = ref<BookFormatType>('pdf');
 const newFormatPrice = ref(149);
 const newFormatCompareAtPrice = ref<number | null>(null);
@@ -55,6 +58,16 @@ const newFormatStock = ref<number | null>(null);
 const newFormatFileKey = ref<string | null>(null);
 const newFormatFileSize = ref<number | null>(null);
 const isUploadingNewEbook = ref(false);
+const newEbookUploadProgress = ref(0);
+
+// Modal State: Cloudflare R2 Upload Confirmation Dialog
+const showR2SuccessModal = ref(false);
+const r2ConfirmedAsset = ref<{
+  fileName: string;
+  format: string;
+  fileSizeMb: string;
+  key: string;
+} | null>(null);
 
 const isSaving = ref(false);
 const formError = ref<string | null>(null);
@@ -78,6 +91,13 @@ onMounted(() => {
     coverPublicId.value = typeof firstImg === 'object' ? firstImg?.image_public_id || '' : '';
   }
 });
+
+function handleCategoryCreated(newCat: { id: string; name: string; slug: string }): void {
+  if (categories.value) {
+    categories.value.push({ id: newCat.id, name: newCat.name });
+  }
+  categoryId.value = newCat.id;
+}
 
 async function handleAutoFindCover(): Promise<void> {
   if (!name.value.trim()) {
@@ -162,33 +182,59 @@ async function handleNewEbookUpload(event: Event): Promise<void> {
   if (!file) return;
 
   isUploadingNewEbook.value = true;
-  try {
-    const presigned = await $fetch<{ uploadUrl: string; key: string }>(
-      '/api/admin/books/upload-url',
-      {
-        method: 'POST',
-        body: {
-          filename: file.name,
-          format: newFormatType.value,
-          contentType: file.type || 'application/pdf',
-        },
-      }
-    );
+  newEbookUploadProgress.value = 0;
 
-    const uploadRes = await fetch(presigned.uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type || 'application/pdf' },
-      body: file,
+  try {
+    const mimeType = file.type || (newFormatType.value === 'pdf' ? 'application/pdf' : 'application/epub+zip');
+
+    const presigned = await $fetch<{ uploadUrl: string; key: string }>('/api/admin/books/upload-url', {
+      method: 'POST',
+      body: {
+        filename: file.name,
+        format: newFormatType.value,
+        contentType: mimeType,
+      },
     });
 
-    if (!uploadRes.ok) throw new Error('R2 upload failed');
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', presigned.uploadUrl);
+      xhr.setRequestHeader('Content-Type', mimeType);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          newEbookUploadProgress.value = Math.round((e.loaded / e.total) * 100);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Cloudflare R2 returned HTTP ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Network error or CORS failure communicating with Cloudflare R2'));
+      };
+
+      xhr.send(file);
+    });
 
     newFormatFileKey.value = presigned.key;
     newFormatFileSize.value = file.size;
 
-    pushToast({ message: `Uploaded ${file.name} to Cloudflare R2!`, variant: 'success' });
-  } catch {
-    pushToast({ message: 'eBook upload to Cloudflare R2 failed', variant: 'error' });
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+    r2ConfirmedAsset.value = {
+      fileName: file.name,
+      format: newFormatType.value.toUpperCase(),
+      fileSizeMb: `${sizeMb} MB`,
+      key: presigned.key,
+    };
+    showR2SuccessModal.value = true;
+  } catch (err: any) {
+    pushToast({ message: err.message || 'eBook upload to Cloudflare R2 failed', variant: 'error' });
   } finally {
     isUploadingNewEbook.value = false;
   }
@@ -213,7 +259,7 @@ async function handleUpdateBook(): Promise<void> {
       body: {
         name: name.value.trim(),
         author: author.value.trim() || null,
-        category_id: categoryId.value || undefined,
+        category_id: categoryId.value || null,
         description: formattedDescription,
         price: Number(price.value),
         compare_at_price: compareAtPrice.value || null,
@@ -304,7 +350,7 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
             Edit Book: {{ book?.name }}
           </h1>
           <p class="text-xs text-ink-muted">
-            Update metadata, strike-through pricing, promotional badges, and reading editions.
+            Update metadata, dynamic category, strike-through pricing, promotional badges, and reading editions.
           </p>
         </div>
 
@@ -344,13 +390,24 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
           </div>
 
           <div class="grid sm:grid-cols-2 gap-4">
+            <!-- Dynamic Category Selector with Inline + New Category Trigger -->
             <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-forest-950">Category</label>
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-semibold text-forest-950">Category</label>
+                <button
+                  type="button"
+                  class="text-[11px] font-bold text-forest-900 hover:text-gold-600 flex items-center gap-1 cursor-pointer"
+                  @click="showAddCategoryModal = true"
+                >
+                  <FolderPlus :size="12" />
+                  <span>+ New Category</span>
+                </button>
+              </div>
               <select
                 v-model="categoryId"
                 class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
               >
-                <option value="">Select category...</option>
+                <option value="">Select category (or leave for default)...</option>
                 <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
               </select>
             </div>
@@ -485,7 +542,7 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
             <button
               type="submit"
               class="bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold uppercase tracking-wider px-6 py-3 rounded-xl shadow-medium cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
-              :disabled="isSaving"
+              :disabled="isSaving || isUploadingNewEbook"
             >
               {{ isSaving ? 'Saving...' : 'Save Book Details' }}
             </button>
@@ -592,20 +649,43 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
                 />
               </div>
 
+              <!-- Upload File Picker with Real-Time Progress -->
               <div v-else class="sm:col-span-3 space-y-1">
                 <label class="text-[10px] text-ink-muted font-semibold">
                   File (Cloudflare R2)
                 </label>
+                
+                <div v-if="isUploadingNewEbook" class="space-y-1">
+                  <div class="flex justify-between text-[10px] font-mono text-forest-950 font-bold">
+                    <span>Uploading...</span>
+                    <span>{{ newEbookUploadProgress }}%</span>
+                  </div>
+                  <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                    <div
+                      class="bg-forest-950 h-full transition-all duration-150 rounded-full"
+                      :style="{ width: `${newEbookUploadProgress}%` }"
+                    />
+                  </div>
+                </div>
+
+                <div v-else-if="newFormatFileKey" class="flex items-center justify-between bg-emerald-50 border border-emerald-300 px-2.5 py-1.5 rounded-xl text-[11px]">
+                  <span class="text-emerald-900 font-semibold truncate flex items-center gap-1">
+                    <ShieldCheck :size="13" class="text-emerald-700" /> R2 Asset Verified
+                  </span>
+                  <button
+                    type="button"
+                    class="text-ink-muted hover:text-red-700 text-[10px] font-mono underline ml-1 cursor-pointer"
+                    @click="newFormatFileKey = null"
+                  >
+                    Clear
+                  </button>
+                </div>
+
                 <label
-                  class="w-full bg-white border border-paper-border text-forest-950 text-[11px] font-medium px-3 py-2 rounded-xl flex items-center justify-between cursor-pointer"
+                  v-else
+                  class="w-full bg-white border border-paper-border text-forest-950 text-[11px] font-medium px-3 py-2 rounded-xl flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
                 >
-                  <span class="truncate">{{
-                    newFormatFileKey
-                      ? 'R2 File Ready âœ“'
-                      : isUploadingNewEbook
-                      ? 'Uploading...'
-                      : 'Upload'
-                  }}</span>
+                  <span class="truncate">Upload {{ newFormatType.toUpperCase() }}</span>
                   <input
                     type="file"
                     :accept="newFormatType === 'pdf' ? '.pdf' : '.epub'"
@@ -619,7 +699,8 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
               <div class="sm:col-span-2">
                 <button
                   type="button"
-                  class="w-full bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold py-2.5 rounded-xl shadow-subtle cursor-pointer transition-all active:scale-[0.98]"
+                  class="w-full bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold py-2.5 rounded-xl shadow-subtle cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+                  :disabled="isUploadingNewEbook"
                   @click="handleAddFormat"
                 >
                   + Add
@@ -630,5 +711,71 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
         </div>
       </div>
     </div>
+
+    <!-- DIALOGUE MODAL: Cloudflare R2 Upload Verification -->
+    <Teleport to="body">
+      <div
+        v-if="showR2SuccessModal"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      >
+        <div class="bg-white rounded-2xl shadow-2xl border border-paper-border max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+          <div class="flex items-start justify-between pb-2 border-b border-paper-border">
+            <div class="flex items-center gap-2 text-emerald-800 font-display font-bold text-base">
+              <CheckCircle2 :size="20" class="text-emerald-600" />
+              <span>Cloudflare R2 Asset Verified</span>
+            </div>
+            <button
+              type="button"
+              class="text-ink-muted hover:text-ink p-1 cursor-pointer"
+              @click="showR2SuccessModal = false"
+            >
+              <X :size="16" />
+            </button>
+          </div>
+
+          <div class="p-4 bg-paper-cream/60 rounded-xl border border-gold-300 space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-ink-muted">File:</span>
+              <strong class="text-forest-950 font-mono truncate max-w-[200px]">{{ r2ConfirmedAsset?.fileName }}</strong>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-ink-muted">Format:</span>
+              <span class="font-mono font-bold text-forest-950">{{ r2ConfirmedAsset?.format }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-ink-muted">Payload Size:</span>
+              <span class="font-mono font-bold text-forest-950">{{ r2ConfirmedAsset?.fileSizeMb }}</span>
+            </div>
+            <div class="pt-2 border-t border-paper-border/60">
+              <span class="text-[10px] text-ink-muted block">Storage Key:</span>
+              <code class="text-[10px] font-mono text-forest-950 break-all bg-white px-2 py-1 rounded block mt-0.5 border border-ink-border">
+                {{ r2ConfirmedAsset?.key }}
+              </code>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-ink-muted leading-relaxed">
+            This digital file is confirmed in your private R2 bucket. Saving this book makes it ready for customer purchase and signed token delivery.
+          </p>
+
+          <div class="flex justify-end pt-2">
+            <button
+              type="button"
+              class="bg-forest-950 text-paper text-xs font-bold uppercase px-5 py-2.5 rounded-xl hover:bg-forest-900 cursor-pointer transition-colors shadow-sm"
+              @click="showR2SuccessModal = false"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- INLINE MODAL: Create New Category on the fly -->
+    <AddCategoryModal
+      :open="showAddCategoryModal"
+      @close="showAddCategoryModal = false"
+      @created="handleCategoryCreated"
+    />
   </AdminLayout>
 </template>

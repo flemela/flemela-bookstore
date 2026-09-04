@@ -9,6 +9,7 @@ import {
   ExternalLink,
   LogOut,
   Zap,
+  Images,
 } from 'lucide-vue-next';
 import { useAdminAuth } from '~/composables/useAdminAuth';
 
@@ -52,6 +53,16 @@ const route = useRoute();
           >
             <span class="hidden sm:inline">Catalog</span>
             <BookOpen :size="15" class="sm:hidden" />
+          </NuxtLink>
+
+          <!-- Promotional Hero Banners Manager Link -->
+          <NuxtLink
+            to="/admin/banners"
+            class="px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1"
+            :class="route.path.includes('banners') ? 'bg-white/15 text-paper font-bold shadow-2xs' : 'text-paper/70 hover:text-paper hover:bg-white/5'"
+          >
+            <Images :size="13" class="text-gold-300" />
+            <span class="hidden sm:inline">Banners</span>
           </NuxtLink>
 
           <NuxtLink

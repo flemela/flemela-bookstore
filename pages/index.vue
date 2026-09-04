@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import StoreNavbar from '~/components/storefront/StoreNavbar.vue';
-import HeroReference from '~/components/storefront/HeroReference.vue';
+import HeroCarousel from '~/components/storefront/HeroCarousel.vue';
 import FeaturedMonth from '~/components/storefront/FeaturedMonth.vue';
 import BentoCategories from '~/components/storefront/BentoCategories.vue';
 import DealsWeek from '~/components/storefront/DealsWeek.vue';
@@ -36,25 +36,7 @@ const filteredBooks = computed(() => {
     const filterKey = activeCategoryFilter.value.toLowerCase().trim();
     result = result.filter((b) => {
       const cat = (b.category_name || '').toLowerCase().trim();
-      if (cat === filterKey) return true;
-      if (cat.includes(filterKey) || filterKey.includes(cat)) return true;
-      if (filterKey.includes('fiction') && cat.includes('fiction')) return true;
-      if (
-        (filterKey.includes('finance') || filterKey.includes('business')) &&
-        (cat.includes('finance') || cat.includes('business'))
-      )
-        return true;
-      if (
-        (filterKey.includes('religious') || filterKey.includes('christian')) &&
-        (cat.includes('religious') || cat.includes('christian'))
-      )
-        return true;
-      if (
-        filterKey.includes('self-help') &&
-        (cat.includes('self') || cat.includes('psychology'))
-      )
-        return true;
-      return false;
+      return cat === filterKey || cat.includes(filterKey) || filterKey.includes(cat);
     });
   }
 
@@ -75,30 +57,32 @@ const hasActiveFilter = computed(() => {
   return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
 });
 
-// Merchandising Sections with Grid Padding (Guards against grid collapse when tagging is sparse)
+// Real Merchant Books Take Priority Over Seeds in All Sections
 const no1Picks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'NO1_PICK');
-  return mergeWithSeeds(tagged, MONTHLY_TOP_SEEDS, 4);
+  const source = tagged.length > 0 ? tagged : books;
+  return mergeWithSeeds(source, MONTHLY_TOP_SEEDS, 4);
 });
 
 const dealBooks = computed<Book[]>(() => {
   const books = realBooks.value || [];
-  const now = Date.now();
-  const deals = books.filter((b) => {
-    const isPromo = b.badge === 'DEAL_OF_WEEK' || b.badge === 'FLASH_SALE';
-    const isDiscounted = b.compare_at_price && b.compare_at_price > b.price;
-    const notExpired = !b.sale_ends_at || new Date(b.sale_ends_at).getTime() > now;
-    return (isPromo || isDiscounted) && notExpired;
-  });
-  return mergeWithSeeds(deals, DEALS_SEEDS, 4);
+  const deals = books.filter(
+    (b) =>
+      b.badge === 'DEAL_OF_WEEK' ||
+      b.badge === 'FLASH_SALE' ||
+      (b.compare_at_price && b.compare_at_price > b.price)
+  );
+  const source = deals.length > 0 ? deals : books;
+  return mergeWithSeeds(source, DEALS_SEEDS, 4);
 });
 
 const bestsellers = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'BESTSELLER');
+  const source = tagged.length > 0 ? tagged : books;
   const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
-  return mergeWithSeeds(tagged, combinedSeeds, 6);
+  return mergeWithSeeds(source, combinedSeeds, 6);
 });
 
 function handleSearch(query: string, category: string): void {
@@ -128,63 +112,44 @@ function handleRequestSeed(title: string, author?: string): void {
 
 <template>
   <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased">
-    <!-- Store Navbar -->
     <StoreNavbar />
 
-    <!-- Poster Bebas Neue Hero with 50% Overlapping Search Bar -->
-    <HeroReference @search="handleSearch" @select-category="handleCategorySelect" />
+    <!-- Hero Section: Dynamic Carousel with Automatic Poster Fallback -->
+    <HeroCarousel
+      @search="handleSearch"
+      @select-category="handleCategorySelect"
+    />
 
-    <!-- Filtered Search Results (Active when searching or picking a category) -->
+    <!-- Main Catalog Section -->
     <section
       id="catalog-results"
-      v-if="hasActiveFilter"
-      class="pt-16 sm:pt-20 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"
+      class="pt-14 sm:pt-16 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"
     >
-      <div
-        class="flex items-center justify-between bg-[#F7F2E7] p-4 rounded-2xl border border-black/5 shadow-sm"
-      >
-        <div class="space-y-0.5">
-          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#F05A36]">
-            Filtered Catalog
+      <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+        <div>
+          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
+            {{ hasActiveFilter ? 'Filtered Search Results' : 'Bookstore Inventory' }}
           </span>
-          <p class="text-xs text-slate-800 font-medium">
-            Category: <strong>{{ activeCategoryFilter }}</strong>
-            <template v-if="searchQuery"> • Search: "{{ searchQuery }}"</template>
-          </p>
+          <h2 class="font-display text-xl sm:text-2xl font-extrabold uppercase text-theme-ink tracking-tight">
+            {{ hasActiveFilter ? `Showing: ${activeCategoryFilter}` : 'Browse All Books' }}
+          </h2>
         </div>
+
         <button
+          v-if="hasActiveFilter"
           type="button"
-          class="text-xs font-bold text-[#F05A36] hover:underline px-3 py-1.5 bg-white rounded-xl cursor-pointer"
+          class="text-xs font-bold text-[#F05A36] hover:underline px-3 py-1.5 bg-theme-sand rounded-xl cursor-pointer"
           @click="
             activeCategoryFilter = 'ALL';
             searchQuery = '';
           "
         >
-          Reset Filter
+          Reset Filters
         </button>
       </div>
 
-      <div
-        v-if="filteredBooks.length === 0"
-        class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm"
-      >
-        <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
-        <h3 class="font-display font-bold text-base text-slate-800">
-          No exact matches in live inventory
-        </h3>
-        <p class="text-xs text-slate-500 max-w-xs mx-auto">
-          We can source this publication for you on request.
-        </p>
-        <button
-          type="button"
-          class="bg-[#F05A36] text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer"
-          @click="handleRequestSeed(searchQuery)"
-        >
-          Submit Special Request
-        </button>
-      </div>
-
-      <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <!-- Real books grid -->
+      <div v-if="filteredBooks.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         <BookCard
           v-for="book in filteredBooks"
           :key="book.id"
@@ -192,12 +157,28 @@ function handleRequestSeed(title: string, author?: string): void {
           @request-seed="handleRequestSeed"
         />
       </div>
+
+      <!-- Fallback empty state -->
+      <div v-else class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm">
+        <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
+        <h3 class="font-display font-bold text-base text-slate-800">
+          No books found matching this filter
+        </h3>
+        <p class="text-xs text-slate-500 max-w-xs mx-auto">
+          We can source this title for you directly via WhatsApp.
+        </p>
+        <button
+          type="button"
+          class="bg-[#F05A36] text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer"
+          @click="handleRequestSeed(searchQuery)"
+        >
+          Submit Book Request
+        </button>
+      </div>
     </section>
 
-    <!-- Curated Merchandised Sections with Guaranteed Padding -->
-    <div :class="hasActiveFilter ? 'pt-6' : 'pt-16 sm:pt-20'">
-      <FeaturedMonth :books="no1Picks" @request-seed="handleRequestSeed" />
-    </div>
+    <!-- Curated Sections -->
+    <FeaturedMonth :books="no1Picks" @request-seed="handleRequestSeed" />
 
     <BentoCategories @select="handleCategorySelect" />
 
@@ -215,7 +196,6 @@ function handleRequestSeed(title: string, author?: string): void {
 
     <StoreFooter />
 
-    <!-- Modals & Cart Drawer -->
     <BookRequestModal
       :open="showRequestModal"
       :initial-title="modalInitialTitle"

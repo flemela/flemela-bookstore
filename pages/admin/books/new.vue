@@ -1,6 +1,6 @@
 <!-- pages/admin/books/new.vue -->
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import {
   ArrowLeft,
   Trash2,
@@ -10,8 +10,13 @@ import {
   Sparkles,
   Link as LinkIcon,
   RefreshCw,
+  ShieldCheck,
+  CheckCircle2,
+  FolderPlus,
+  X,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
+import AddCategoryModal from '~/components/admin/AddCategoryModal.vue';
 import { useToast } from '~/composables/useToast';
 import type { BookFormatType } from '~/types';
 
@@ -24,16 +29,17 @@ const { push: pushToast } = useToast();
 
 const { data: categories } = await useFetch<Array<{ id: string; name: string }>>('/api/admin/categories');
 
+// Dynamic Inline Category State
+const showAddCategoryModal = ref(false);
+
 // Book base fields
 const name = ref('');
 const author = ref('');
 const categoryId = ref('');
 const description = ref('');
 const price = ref(999);
-const compareAtPrice = ref<number | null>(1200);
-const badge = ref<
-  'BESTSELLER' | 'FLASH_SALE' | 'NO1_PICK' | 'DEAL_OF_WEEK' | 'LIMITED_TIME' | null
->(null);
+const compareAtPrice = ref<number | null>(null);
+const badge = ref<'BESTSELLER' | 'FLASH_SALE' | 'NO1_PICK' | 'DEAL_OF_WEEK' | 'LIMITED_TIME' | null>(null);
 const saleEndsAt = ref<string>('');
 const status = ref<'draft' | 'published'>('published');
 
@@ -52,18 +58,21 @@ interface FormatDraft {
   file_public_id: string | null;
   file_size_bytes: number | null;
   uploading: boolean;
+  uploadProgress: number;
+  fileName?: string;
 }
 
 const formats = ref<FormatDraft[]>([
   {
     format: 'hardcopy',
     price: 999,
-    compare_at_price: 1200,
+    compare_at_price: null,
     stock: 25,
     file_url: null,
     file_public_id: null,
     file_size_bytes: null,
     uploading: false,
+    uploadProgress: 0,
   },
   {
     format: 'pdf',
@@ -74,11 +83,32 @@ const formats = ref<FormatDraft[]>([
     file_public_id: null,
     file_size_bytes: null,
     uploading: false,
+    uploadProgress: 0,
   },
 ]);
 
+// Modal State: Cloudflare R2 Upload Confirmation Dialog
+const showR2SuccessModal = ref(false);
+const r2ConfirmedAsset = ref<{
+  fileName: string;
+  format: string;
+  fileSizeMb: string;
+  key: string;
+} | null>(null);
+
 const isSubmitting = ref(false);
 const formError = ref<string | null>(null);
+
+const isAnyUploadInProgress = computed(() => {
+  return isUploadingCover.value || formats.value.some((f) => f.uploading);
+});
+
+function handleCategoryCreated(newCat: { id: string; name: string; slug: string }): void {
+  if (categories.value) {
+    categories.value.push({ id: newCat.id, name: newCat.name });
+  }
+  categoryId.value = newCat.id;
+}
 
 function addFormatRow(type: BookFormatType): void {
   if (formats.value.some((f) => f.format === type)) return;
@@ -91,11 +121,20 @@ function addFormatRow(type: BookFormatType): void {
     file_public_id: null,
     file_size_bytes: null,
     uploading: false,
+    uploadProgress: 0,
   });
 }
 
 function removeFormatRow(index: number): void {
   formats.value.splice(index, 1);
+}
+
+function removeFormatFile(index: number): void {
+  formats.value[index].file_url = null;
+  formats.value[index].file_public_id = null;
+  formats.value[index].file_size_bytes = null;
+  formats.value[index].fileName = undefined;
+  formats.value[index].uploadProgress = 0;
 }
 
 async function handleAutoFindCover(): Promise<void> {
@@ -120,22 +159,14 @@ async function handleAutoFindCover(): Promise<void> {
       coverUrl.value = res.coverUrl;
       coverPublicId.value = `auto_${res.source || 'web'}`;
       pushToast({
-        message: `Discovered cover art from ${
-          res.source === 'googlebooks' ? 'Google Books' : 'Open Library'
-        }!`,
+        message: `Discovered cover art from ${res.source === 'googlebooks' ? 'Google Books' : 'Open Library'}!`,
         variant: 'success',
       });
     } else {
-      pushToast({
-        message: 'No online cover found. You can upload or paste an image link.',
-        variant: 'info',
-      });
+      pushToast({ message: 'No online cover found. You can upload or paste an image link.', variant: 'info' });
     }
   } catch {
-    pushToast({
-      message: 'Auto-discovery timed out. You can upload a photo directly.',
-      variant: 'error',
-    });
+    pushToast({ message: 'Auto-discovery timed out. You can upload an image directly.', variant: 'error' });
   } finally {
     isSearchingCover.value = false;
   }
@@ -186,47 +217,87 @@ async function handleEbookUpload(event: Event, index: number): Promise<void> {
   const file = target.files?.[0];
   if (!file) return;
 
-  formats.value[index].uploading = true;
-  try {
-    const presigned = await $fetch<{ uploadUrl: string; key: string }>(
-      '/api/admin/books/upload-url',
-      {
-        method: 'POST',
-        body: {
-          filename: file.name,
-          format: formats.value[index].format,
-          contentType: file.type || 'application/pdf',
-        },
-      }
-    );
+  const currentFmt = formats.value[index];
+  currentFmt.uploading = true;
+  currentFmt.uploadProgress = 0;
+  currentFmt.fileName = file.name;
 
-    const uploadRes = await fetch(presigned.uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type || 'application/pdf' },
-      body: file,
+  try {
+    const mimeType = file.type || (currentFmt.format === 'pdf' ? 'application/pdf' : 'application/epub+zip');
+
+    const presigned = await $fetch<{ uploadUrl: string; key: string }>('/api/admin/books/upload-url', {
+      method: 'POST',
+      body: {
+        filename: file.name,
+        format: currentFmt.format,
+        contentType: mimeType,
+      },
     });
 
-    if (!uploadRes.ok) throw new Error('R2 upload failed');
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', presigned.uploadUrl);
+      xhr.setRequestHeader('Content-Type', mimeType);
 
-    formats.value[index].file_url = presigned.key;
-    formats.value[index].file_public_id = presigned.key;
-    formats.value[index].file_size_bytes = file.size;
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          currentFmt.uploadProgress = Math.round((e.loaded / e.total) * 100);
+        }
+      };
 
-    pushToast({ message: `Uploaded ${file.name} to Cloudflare R2!`, variant: 'success' });
-  } catch {
-    pushToast({ message: 'eBook upload to Cloudflare R2 failed', variant: 'error' });
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Cloudflare R2 returned HTTP ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Network error or CORS failure communicating with Cloudflare R2'));
+      };
+
+      xhr.send(file);
+    });
+
+    currentFmt.file_url = presigned.key;
+    currentFmt.file_public_id = presigned.key;
+    currentFmt.file_size_bytes = file.size;
+
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+
+    r2ConfirmedAsset.value = {
+      fileName: file.name,
+      format: currentFmt.format.toUpperCase(),
+      fileSizeMb: `${sizeMb} MB`,
+      key: presigned.key,
+    };
+    showR2SuccessModal.value = true;
+  } catch (err: any) {
+    pushToast({
+      message: err.message || 'eBook upload to Cloudflare R2 failed',
+      variant: 'error',
+    });
+    removeFormatFile(index);
   } finally {
-    formats.value[index].uploading = false;
+    currentFmt.uploading = false;
   }
 }
 
 async function handleSubmit(): Promise<void> {
   if (!name.value.trim() || formats.value.length === 0) return;
 
-  // Validate format-level compare-at price to avoid inverted discounts
+  if (isAnyUploadInProgress.value) {
+    pushToast({
+      message: 'Please wait for file uploads to complete before saving.',
+      variant: 'error',
+    });
+    return;
+  }
+
   for (const f of formats.value) {
     if (f.compare_at_price !== null && f.compare_at_price <= f.price) {
-      formError.value = `Compare-at price for ${f.format.toUpperCase()} must be strictly greater than its selling price.`;
+      formError.value = `Strike-through price for ${f.format.toUpperCase()} must be greater than its selling price.`;
       return;
     }
   }
@@ -240,7 +311,7 @@ async function handleSubmit(): Promise<void> {
       body: {
         name: name.value.trim(),
         author: author.value.trim() || undefined,
-        category_id: categoryId.value || undefined,
+        category_id: categoryId.value || null,
         description: description.value.trim() || undefined,
         price: formats.value[0]?.price || price.value,
         compare_at_price: compareAtPrice.value || null,
@@ -249,7 +320,7 @@ async function handleSubmit(): Promise<void> {
         cover_image_url: coverUrl.value.trim() || undefined,
         cover_image_public_id: coverPublicId.value || undefined,
         status: status.value,
-        formats: formats.value.map((f: FormatDraft) => ({
+        formats: formats.value.map((f) => ({
           format: f.format,
           price: Number(f.price),
           compare_at_price: f.compare_at_price ? Number(f.compare_at_price) : null,
@@ -264,7 +335,7 @@ async function handleSubmit(): Promise<void> {
     pushToast({ message: `Book "${name.value}" created and published!`, variant: 'success' });
     router.push('/admin/books');
   } catch (err: any) {
-    formError.value = err.data?.message || err.statusMessage || 'Failed to save book';
+    formError.value = err.data?.message || err.data?.statusMessage || err.statusMessage || 'Failed to save book';
   } finally {
     isSubmitting.value = false;
   }
@@ -274,10 +345,7 @@ async function handleSubmit(): Promise<void> {
 <template>
   <AdminLayout>
     <div class="max-w-4xl mx-auto space-y-6">
-      <NuxtLink
-        to="/admin/books"
-        class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline"
-      >
+      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline">
         <ArrowLeft :size="14" /> Back to Books
       </NuxtLink>
 
@@ -285,7 +353,7 @@ async function handleSubmit(): Promise<void> {
         <div class="pb-4 border-b border-ink-border">
           <h1 class="font-display text-2xl font-bold text-forest-950">Add New Book</h1>
           <p class="text-xs text-ink-muted">
-            Configure catalog details, strike-through discounts, and automated homepage merchandising.
+            Configure catalog details, custom categories, strike-through discounts, and verified Cloudflare R2 digital storage.
           </p>
         </div>
 
@@ -337,13 +405,24 @@ async function handleSubmit(): Promise<void> {
             </div>
 
             <div class="grid sm:grid-cols-2 gap-4">
+              <!-- Category Selector with Inline + New Category Trigger -->
               <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Category</label>
+                <div class="flex justify-between items-center">
+                  <label class="text-xs font-semibold text-forest-950">Category</label>
+                  <button
+                    type="button"
+                    class="text-[11px] font-bold text-forest-900 hover:text-gold-600 flex items-center gap-1 cursor-pointer"
+                    @click="showAddCategoryModal = true"
+                  >
+                    <FolderPlus :size="12" />
+                    <span>+ New Category</span>
+                  </button>
+                </div>
                 <select
                   v-model="categoryId"
                   class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 bg-white"
                 >
-                  <option value="">Select category...</option>
+                  <option value="">Select category (or leave for default)...</option>
                   <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
                 </select>
               </div>
@@ -360,10 +439,8 @@ async function handleSubmit(): Promise<void> {
               </div>
             </div>
 
-            <!-- Promotion & Badge Merchandising -->
-            <div
-              class="p-4 bg-paper-cream/60 rounded-xl border border-ink-border grid sm:grid-cols-2 gap-4"
-            >
+            <!-- Merchandising & Compare-at Price -->
+            <div class="p-4 bg-paper-cream/60 rounded-xl border border-ink-border grid sm:grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-xs font-semibold text-forest-950">
                   Promotional Badge / Placement
@@ -382,16 +459,14 @@ async function handleSubmit(): Promise<void> {
               </div>
 
               <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">
-                  Sale Expiration (Optional)
-                </label>
+                <label class="text-xs font-semibold text-forest-950">Sale Expiration (Optional)</label>
                 <input
                   v-model="saleEndsAt"
                   type="datetime-local"
                   class="w-full px-3 py-1.5 bg-white border border-ink-border rounded text-xs font-mono outline-none focus:border-forest-900"
                 />
                 <span class="text-[10px] text-ink-muted">
-                  Auto-removes flash sale badge once passed to prevent perpetual sales.
+                  Auto-removes flash sale badge once passed.
                 </span>
               </div>
             </div>
@@ -407,7 +482,7 @@ async function handleSubmit(): Promise<void> {
             </div>
           </div>
 
-          <!-- 2. Cover Art Preview -->
+          <!-- 2. Cover Art -->
           <div class="space-y-3 pt-4 border-t border-ink-border">
             <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
               Cover Art
@@ -465,15 +540,15 @@ async function handleSubmit(): Promise<void> {
             </div>
           </div>
 
-          <!-- 3. Formats Repeater (With Format-Specific Compare-at Price) -->
-          <div class="space-y-4 pt-4 border-t border-ink-border">
+          <!-- 3. Formats & Verified Cloudflare R2 Uploads -->
+        	<div class="space-y-4 pt-4 border-t border-ink-border">
             <div class="flex justify-between items-center">
               <div>
                 <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
-                  Reading Formats &amp; Discounts
+                  Reading Formats &amp; Digital Assets
                 </h3>
                 <p class="text-[11px] text-ink-muted">
-                  Set individual sale prices and optional strike-through regular prices per format.
+                  Stream files directly into private Cloudflare R2 storage buckets.
                 </p>
               </div>
               <div class="flex gap-2">
@@ -505,12 +580,10 @@ async function handleSubmit(): Promise<void> {
               <div
                 v-for="(fmt, idx) in formats"
                 :key="fmt.format"
-                class="p-4 bg-slate-50 border border-ink-border rounded-lg grid sm:grid-cols-12 gap-3 items-center"
+                class="p-4 bg-slate-50 border border-ink-border rounded-xl grid sm:grid-cols-12 gap-3 items-center"
               >
                 <div class="sm:col-span-2">
-                  <span class="text-xs font-bold uppercase text-forest-950 font-mono">{{
-                    fmt.format
-                  }}</span>
+                  <span class="text-xs font-bold uppercase text-forest-950 font-mono">{{ fmt.format }}</span>
                 </div>
 
                 <div class="sm:col-span-2 space-y-1">
@@ -524,9 +597,7 @@ async function handleSubmit(): Promise<void> {
                 </div>
 
                 <div class="sm:col-span-3 space-y-1">
-                  <label class="text-[10px] text-ink-muted font-semibold">
-                    Strike-through (KSh)
-                  </label>
+                  <label class="text-[10px] text-ink-muted font-semibold">Strike-through (KSh)</label>
                   <input
                     v-model.number="fmt.compare_at_price"
                     type="number"
@@ -546,16 +617,41 @@ async function handleSubmit(): Promise<void> {
                   />
                 </div>
 
+                <!-- Digital Format File Picker with Real-Time Progress -->
                 <div v-else class="sm:col-span-4 space-y-1">
-                  <label class="text-[10px] text-ink-muted font-semibold">
-                    Digital File (Cloudflare R2)
-                  </label>
+                  <label class="text-[10px] text-ink-muted font-semibold">Digital File (Cloudflare R2)</label>
+                  
+                  <div v-if="fmt.uploading" class="space-y-1">
+                    <div class="flex justify-between text-[10px] font-mono text-forest-950 font-bold">
+                      <span>Uploading to R2...</span>
+                      <span>{{ fmt.uploadProgress }}%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                      <div
+                        class="bg-forest-950 h-full transition-all duration-150 rounded-full"
+                        :style="{ width: `${fmt.uploadProgress}%` }"
+                      />
+                    </div>
+                  </div>
+
+                  <div v-else-if="fmt.file_public_id" class="flex items-center justify-between bg-emerald-50 border border-emerald-300 px-2.5 py-1 rounded-lg text-[11px]">
+                    <span class="text-emerald-900 font-semibold truncate flex items-center gap-1">
+                      <ShieldCheck :size="13" class="text-emerald-700" /> R2 Asset Verified
+                    </span>
+                    <button
+                      type="button"
+                      class="text-ink-muted hover:text-red-700 text-[10px] font-mono underline ml-2"
+                      @click="removeFormatFile(idx)"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
                   <label
-                    class="w-full bg-white border border-ink-border text-forest-950 text-[11px] font-medium px-2 py-1.5 rounded flex items-center justify-between cursor-pointer"
+                    v-else
+                    class="w-full bg-white border border-ink-border text-forest-950 text-[11px] font-medium px-2 py-1.5 rounded flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
                   >
-                    <span class="truncate">{{
-                      fmt.file_public_id ? 'R2 File Ready âœ“' : 'Upload to R2'
-                    }}</span>
+                    <span class="truncate">Upload {{ fmt.format.toUpperCase() }} to R2</span>
                     <input
                       type="file"
                       :accept="fmt.format === 'pdf' ? '.pdf' : '.epub'"
@@ -596,14 +692,81 @@ async function handleSubmit(): Promise<void> {
             </NuxtLink>
             <button
               type="submit"
-              class="bg-forest-900 text-white text-xs font-bold uppercase px-6 py-2.5 rounded hover:bg-forest-800 transition-colors shadow cursor-pointer disabled:opacity-50"
-              :disabled="isSubmitting"
+              class="bg-forest-900 text-white text-xs font-bold uppercase px-6 py-2.5 rounded hover:bg-forest-800 transition-colors shadow cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              :disabled="isSubmitting || isAnyUploadInProgress"
             >
-              {{ isSubmitting ? 'Saving Book...' : 'Save &amp; Publish Book' }}
+              <RefreshCw v-if="isSubmitting || isAnyUploadInProgress" :size="14" class="animate-spin" />
+              <span>{{ isAnyUploadInProgress ? 'Upload in Progress...' : (isSubmitting ? 'Saving Book...' : 'Save & Publish Book') }}</span>
             </button>
           </div>
         </form>
       </div>
     </div>
+
+    <!-- DIALOGUE MODAL: Cloudflare R2 Upload Verification -->
+    <Teleport to="body">
+      <div
+        v-if="showR2SuccessModal"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      >
+        <div class="bg-white rounded-2xl shadow-2xl border border-paper-border max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+          <div class="flex items-start justify-between pb-2 border-b border-paper-border">
+            <div class="flex items-center gap-2 text-emerald-800 font-display font-bold text-base">
+              <CheckCircle2 :size="20" class="text-emerald-600" />
+              <span>Cloudflare R2 Asset Verified</span>
+            </div>
+            <button
+              type="button"
+              class="text-ink-muted hover:text-ink p-1 cursor-pointer"
+              @click="showR2SuccessModal = false"
+            >
+              <X :size="16" />
+            </button>
+          </div>
+
+          <div class="p-4 bg-paper-cream/60 rounded-xl border border-gold-300 space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-ink-muted">File:</span>
+              <strong class="text-forest-950 font-mono truncate max-w-[200px]">{{ r2ConfirmedAsset?.fileName }}</strong>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-ink-muted">Format:</span>
+              <span class="font-mono font-bold text-forest-950">{{ r2ConfirmedAsset?.format }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-ink-muted">Payload Size:</span>
+              <span class="font-mono font-bold text-forest-950">{{ r2ConfirmedAsset?.fileSizeMb }}</span>
+            </div>
+            <div class="pt-2 border-t border-paper-border/60">
+              <span class="text-[10px] text-ink-muted block">Storage Key:</span>
+              <code class="text-[10px] font-mono text-forest-950 break-all bg-white px-2 py-1 rounded block mt-0.5 border border-ink-border">
+                {{ r2ConfirmedAsset?.key }}
+              </code>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-ink-muted leading-relaxed">
+            This digital file is now stored in your private R2 bucket. Customers who purchase this edition will receive verified, expiring signed tokens.
+          </p>
+
+          <div class="flex justify-end pt-2">
+            <button
+              type="button"
+              class="bg-forest-950 text-paper text-xs font-bold uppercase px-5 py-2.5 rounded-xl hover:bg-forest-900 cursor-pointer transition-colors shadow-sm"
+              @click="showR2SuccessModal = false"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- INLINE MODAL: Create New Category on the fly -->
+    <AddCategoryModal
+      :open="showAddCategoryModal"
+      @close="showAddCategoryModal = false"
+      @created="handleCategoryCreated"
+    />
   </AdminLayout>
 </template>
