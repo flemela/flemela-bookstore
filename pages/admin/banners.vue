@@ -21,13 +21,13 @@ definePageMeta({
 
 interface StoreBanner {
   id: string;
-  title: string;
+  title: string | null;
   subtitle: string | null;
   badge: string | null;
   image_url: string;
   mobile_image_url: string | null;
-  cta_label: string;
-  cta_link: string;
+  cta_label: string | null;
+  cta_link: string | null;
   bg_color: string;
   sort_order: number;
   is_active: boolean;
@@ -46,11 +46,11 @@ const editingBannerId = ref<string | null>(null);
 const form = ref({
   title: '',
   subtitle: '',
-  badge: 'SPECIAL OFFER',
+  badge: '',
   image_url: '',
   mobile_image_url: '',
-  cta_label: 'Explore Collection',
-  cta_link: '/#catalog-results',
+  cta_label: '',
+  cta_link: '',
   bg_color: '#052219',
   is_active: true,
   starts_at: '',
@@ -66,11 +66,11 @@ function openCreateModal(): void {
   form.value = {
     title: '',
     subtitle: '',
-    badge: 'SPECIAL OFFER',
+    badge: '',
     image_url: '',
     mobile_image_url: '',
-    cta_label: 'Explore Collection',
-    cta_link: '/#catalog-results',
+    cta_label: '',
+    cta_link: '',
     bg_color: '#052219',
     is_active: true,
     starts_at: '',
@@ -82,13 +82,13 @@ function openCreateModal(): void {
 function openEditModal(banner: StoreBanner): void {
   editingBannerId.value = banner.id;
   form.value = {
-    title: banner.title,
+    title: banner.title || '',
     subtitle: banner.subtitle || '',
     badge: banner.badge || '',
     image_url: banner.image_url,
     mobile_image_url: banner.mobile_image_url || '',
-    cta_label: banner.cta_label,
-    cta_link: banner.cta_link,
+    cta_label: banner.cta_label || '',
+    cta_link: banner.cta_link || '',
     bg_color: banner.bg_color || '#052219',
     is_active: banner.is_active,
     starts_at: banner.starts_at ? new Date(banner.starts_at).toISOString().slice(0, 16) : '',
@@ -137,21 +137,22 @@ async function handleImageUpload(event: Event, targetField: 'image_url' | 'mobil
 }
 
 async function handleSave(): Promise<void> {
-  if (!form.value.title.trim() || !form.value.image_url.trim()) {
-    pushToast({ message: 'Title and banner image are required', variant: 'error' });
+  // ONLY image_url is required! Everything else is completely optional.
+  if (!form.value.image_url.trim()) {
+    pushToast({ message: 'Banner image is required', variant: 'error' });
     return;
   }
 
   isSaving.value = true;
   try {
     const payload = {
-      title: form.value.title.trim(),
+      title: form.value.title.trim() || null,
       subtitle: form.value.subtitle.trim() || null,
       badge: form.value.badge.trim() || null,
       image_url: form.value.image_url.trim(),
       mobile_image_url: form.value.mobile_image_url.trim() || null,
-      cta_label: form.value.cta_label.trim() || 'Explore',
-      cta_link: form.value.cta_link.trim() || '/#catalog-results',
+      cta_label: form.value.cta_label.trim() || null,
+      cta_link: form.value.cta_link.trim() || null,
       bg_color: form.value.bg_color.trim() || '#052219',
       is_active: form.value.is_active,
       starts_at: form.value.starts_at ? new Date(form.value.starts_at).toISOString() : null,
@@ -246,7 +247,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
             Hero Carousel Banners
           </h1>
           <p class="text-xs text-ink-muted mt-0.5">
-            Add, reorder, and schedule rotating hero advertisements with custom call-to-actions.
+            Add full photo banners or custom promotional slides. Everything except the image is optional.
           </p>
         </div>
 
@@ -283,7 +284,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
           </div>
           <h3 class="font-display font-bold text-sm text-forest-950">No Promotional Banners Yet</h3>
           <p class="text-xs text-ink-muted max-w-sm mx-auto">
-            When you create banners, they rotate in an infinite carousel at the top of your storefront. If none are active, your default Bebas poster hero displays automatically.
+            Upload custom graphics or photo advertisements. If none exist, your permanent signature brand poster displays cleanly.
           </p>
           <button
             type="button"
@@ -302,7 +303,6 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
           >
             <!-- Left: Reorder Arrows & Image Thumbnail -->
             <div class="flex items-center gap-3 w-full sm:w-auto">
-              <!-- Reorder Buttons -->
               <div class="flex flex-col gap-1 text-ink-muted">
                 <button
                   type="button"
@@ -326,7 +326,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
 
               <!-- Banner Thumbnail -->
               <div class="w-28 sm:w-36 aspect-[21/9] rounded-lg border border-paper-border overflow-hidden bg-forest-950 flex-shrink-0 shadow-xs relative">
-                <img :src="banner.image_url" :alt="banner.title" class="w-full h-full object-cover" />
+                <img :src="banner.image_url" :alt="banner.title || 'Banner'" class="w-full h-full object-cover" />
                 <span
                   v-if="banner.badge"
                   class="absolute top-1 left-1 bg-black/70 text-white font-mono text-[8px] font-bold px-1 rounded uppercase"
@@ -338,7 +338,9 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               <!-- Details -->
               <div class="space-y-1 min-w-0 flex-1">
                 <div class="flex items-center gap-2">
-                  <h4 class="text-xs sm:text-sm font-bold text-forest-950 truncate">{{ banner.title }}</h4>
+                  <h4 class="text-xs sm:text-sm font-bold text-forest-950 truncate">
+                    {{ banner.title || '(Photo Only Banner)' }}
+                  </h4>
                   <span
                     class="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded"
                     :class="banner.is_active ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-100 text-slate-700'"
@@ -348,7 +350,8 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
                 </div>
                 <p v-if="banner.subtitle" class="text-[11px] text-ink-muted line-clamp-1">{{ banner.subtitle }}</p>
                 <div class="flex items-center gap-3 text-[10px] text-ink-subtle font-mono">
-                  <span>CTA: <strong>{{ banner.cta_label }}</strong> ➔ {{ banner.cta_link }}</span>
+                  <span v-if="banner.cta_link">Target: <strong>{{ banner.cta_link }}</strong></span>
+                  <span v-else class="italic">No target link</span>
                   <span>•</span>
                   <span class="flex items-center gap-1">
                     <MousePointerClick :size="11" /> {{ banner.click_count }} clicks
@@ -396,67 +399,24 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
       >
         <div class="bg-white rounded-2xl shadow-2xl border border-paper-border max-w-lg w-full p-6 sm:p-7 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between pb-3 border-b border-paper-border">
-            <h3 class="font-display font-bold text-base text-forest-950">
-              {{ editingBannerId ? 'Edit Hero Banner' : 'New Promotional Hero Banner' }}
-            </h3>
+            <div>
+              <h3 class="font-display font-bold text-base text-forest-950">
+                {{ editingBannerId ? 'Edit Hero Banner' : 'New Promotional Hero Banner' }}
+              </h3>
+              <p class="text-[11px] text-ink-muted">Only the image is required. Leave text empty for clean full-bleed photos.</p>
+            </div>
             <button type="button" class="text-ink-muted hover:text-ink p-1 cursor-pointer" @click="showModal = false">
               <X :size="16" />
             </button>
           </div>
 
           <form class="space-y-4" @submit.prevent="handleSave">
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">Headline / Main Text *</label>
-              <input
-                v-model="form.title"
-                type="text"
-                placeholder="e.g. GET 20% OFF ALL BESTSELLERS THIS WEEK"
-                class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs font-semibold outline-none focus:border-forest-900"
-                required
-              />
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">Subheadline / Supporting Copy</label>
-              <textarea
-                v-model="form.subtitle"
-                rows="2"
-                placeholder="e.g. Handpicked psychology, finance, and classics on sale for a limited time."
-                class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 resize-none"
-              />
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Badge Tag</label>
-                <input
-                  v-model="form.badge"
-                  type="text"
-                  placeholder="e.g. LIMITED TIME, FLASH SALE"
-                  class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs font-mono uppercase outline-none focus:border-forest-900"
-                />
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Background Color</label>
-                <div class="flex items-center gap-2">
-                  <input
-                    v-model="form.bg_color"
-                    type="color"
-                    class="w-8 h-8 rounded border border-paper-border cursor-pointer"
-                  />
-                  <input
-                    v-model="form.bg_color"
-                    type="text"
-                    class="w-full px-2 py-1.5 border border-paper-border rounded-xl text-xs font-mono outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- Image Upload & URL -->
-            <div class="space-y-1.5 pt-2 border-t border-paper-border">
-              <label class="text-xs font-semibold text-forest-950">Desktop Banner Image (1920x600 recommended) *</label>
+            <!-- 1. Image Upload (The only required field) -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-forest-950 flex justify-between">
+                <span>Desktop Banner Image (1920x600 recommended) *</span>
+                <span class="text-[10px] text-gold-600 font-bold uppercase">Required</span>
+              </label>
               <div class="flex gap-2 items-center">
                 <input
                   v-model="form.image_url"
@@ -479,20 +439,94 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               </div>
             </div>
 
-            <!-- CTA Configuration -->
-            <div class="grid grid-cols-2 gap-3 pt-2 border-t border-paper-border">
+            <!-- Optional Mobile Image -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-forest-950">
+                Mobile Image (Optional portrait cut, max 640px)
+              </label>
+              <div class="flex gap-2 items-center">
+                <input
+                  v-model="form.mobile_image_url"
+                  type="url"
+                  placeholder="https://..."
+                  class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
+                />
+                <label class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0">
+                  <Upload :size="13" />
+                  <span>Upload</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="handleImageUpload($event, 'mobile_image_url')"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <!-- Optional Text Fields -->
+            <div class="space-y-1 pt-2 border-t border-paper-border">
+              <label class="text-xs font-semibold text-forest-950">Headline (Optional)</label>
+              <input
+                v-model="form.title"
+                type="text"
+                placeholder="Leave blank for an image-only banner"
+                class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs font-semibold outline-none focus:border-forest-900"
+              />
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-semibold text-forest-950">Subheadline (Optional)</label>
+              <textarea
+                v-model="form.subtitle"
+                rows="2"
+                placeholder="Leave blank if not needed"
+                class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 resize-none"
+              />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
               <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Button Label</label>
+                <label class="text-xs font-semibold text-forest-950">Badge Tag (Optional)</label>
+                <input
+                  v-model="form.badge"
+                  type="text"
+                  placeholder="e.g. FLASH SALE"
+                  class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs font-mono uppercase outline-none focus:border-forest-900"
+                />
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-forest-950">Background Fallback</label>
+                <div class="flex items-center gap-2">
+                  <input
+                    v-model="form.bg_color"
+                    type="color"
+                    class="w-8 h-8 rounded border border-paper-border cursor-pointer"
+                  />
+                  <input
+                    v-model="form.bg_color"
+                    type="text"
+                    class="w-full px-2 py-1.5 border border-paper-border rounded-xl text-xs font-mono outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Optional Link & Button -->
+        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-paper-border">
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-forest-950">Button Label (Optional)</label>
                 <input
                   v-model="form.cta_label"
                   type="text"
-                  placeholder="e.g. Shop Now"
+                  placeholder="e.g. Shop Now (or leave empty)"
                   class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
                 />
               </div>
 
               <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Button Target Route / URL</label>
+                <label class="text-xs font-semibold text-forest-950">Target Link / URL (Optional)</label>
                 <input
                   v-model="form.cta_link"
                   type="text"
@@ -543,5 +577,5 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
         </div>
       </div>
     </Teleport>
-  </AdminLayout>
-</template>
+  </AdminLayout></template>
+   

@@ -22,22 +22,22 @@ const bestsellerBooks = computed(() => {
 </script>
 
 <template>
-  <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
-    <!-- Header with Subtitle and "See More" Button on Right -->
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-theme-border pb-4">
+  <section class="py-12 sm:py-16 px-4 max-w-6xl mx-auto w-full space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-stone-200 pb-3">
       <div>
-        <h2 class="font-display text-xl sm:text-2xl font-extrabold uppercase text-theme-ink tracking-tight">
+        <h2 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase text-[#141E1A] tracking-wide">
           BEST SELLERS OF THE MONTH
         </h2>
       </div>
       
-      <div class="flex items-center gap-4">
-        <p class="text-xs text-theme-muted hidden md:inline">
+      <div class="flex items-center gap-3">
+        <p class="text-xs text-[#5F6964] hidden md:inline">
           Explore the best books our readers are loving and reading right now.
         </p>
         <button
           type="button"
-          class="bg-theme-coral hover:bg-theme-coral-hover text-white text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full transition-all shadow-xs cursor-pointer flex-shrink-0"
+          class="bg-[#F05A36] hover:bg-[#D94827] text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full transition-all shadow-xs cursor-pointer flex-shrink-0"
           @click="emit('seeMore')"
         >
           See More
@@ -45,11 +45,11 @@ const bestsellerBooks = computed(() => {
       </div>
     </div>
 
-    <!-- Layout: 3x2 Grid (8 Cols) + Vertical Dark Pine Promo Card (4 Cols) -->
-    <div class="grid lg:grid-cols-12 gap-6 items-stretch">
+    <!-- Grid Layout: 6 Books (2x3 or 3x2) + Dark Promo Card -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
       
-      <!-- 6 Books (3 Columns x 2 Rows) -->
-      <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <!-- 6 Books: 3 Columns x 2 Rows -->
+      <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-6">
         <BookCard
           v-for="book in bestsellerBooks"
           :key="book.id"
@@ -58,29 +58,29 @@ const bestsellerBooks = computed(() => {
         />
       </div>
 
-      <!-- Tall Vertical Dark Pine Promo Card with Arched Illustration -->
-      <div class="lg:col-span-4 bg-theme-dark text-white rounded-2xl p-7 flex flex-col justify-between items-center text-center shadow-card relative overflow-hidden">
+      <!-- Reference Dark Pine Promo Card (Spans 4 columns) -->
+      <div class="lg:col-span-4 bg-[#052219] text-white rounded-2xl p-6 sm:p-8 flex flex-col justify-between items-center text-center shadow-md relative overflow-hidden">
         
-        <!-- Top Arched Window Illustration Motif -->
-        <div class="w-24 h-32 rounded-t-full bg-theme-turquoise/20 border-2 border-theme-turquoise/40 flex items-center justify-center p-3 shadow-inner my-2">
-          <div class="w-16 h-22 bg-white/10 rounded-t-full flex items-center justify-center">
-            <span class="text-2xl">📚</span>
+        <!-- Arched Window Frame with Books Graphic -->
+        <div class="w-28 h-36 rounded-t-full bg-[#2CD4BF]/20 border-2 border-[#2CD4BF]/40 flex items-center justify-center p-3 shadow-inner my-2">
+          <div class="w-20 h-28 bg-white/10 rounded-t-full flex items-center justify-center text-3xl">
+            📚
           </div>
         </div>
 
         <div class="space-y-2 py-4">
-          <h3 class="font-display text-2xl sm:text-3xl font-extrabold uppercase leading-tight tracking-tight">
-            GET <span class="text-theme-coral">20% OFF</span> BESTSELLERS
+          <h3 class="font-poster text-3xl sm:text-4xl font-extrabold uppercase leading-tight tracking-wide text-white">
+            GET <span class="text-[#F05A36]">20% OFF</span> BESTSELLERS
           </h3>
           <p class="text-xs text-white/70 leading-relaxed max-w-xs mx-auto">
             This week only — pick the stories everyone is talking about at a lower price.
           </p>
         </div>
 
-        <!-- Full-Width Coral CTA Button -->
+        <!-- Coral CTA Button -->
         <button
           type="button"
-          class="w-full bg-theme-coral hover:bg-theme-coral-hover text-white text-xs font-bold uppercase tracking-wider py-3.5 rounded-xl transition-all shadow-md cursor-pointer active:scale-95"
+          class="w-full bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase tracking-wider py-3.5 rounded-xl transition-all shadow-md cursor-pointer active:scale-95"
           @click="emit('seeMore')"
         >
           Get This Offer

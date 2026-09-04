@@ -102,7 +102,7 @@ function handleMouseLeave(): void {
   startAutoplay();
 }
 
-// Touch Event Handlers (Real-time finger tracking)
+// Touch Event Handlers
 function handleTouchStart(e: TouchEvent): void {
   if (totalSlides.value <= 1) return;
   touchStartX.value = e.touches[0].clientX;
@@ -117,7 +117,6 @@ function handleTouchMove(e: TouchEvent): void {
   currentTouchX.value = e.touches[0].clientX;
   const diff = currentTouchX.value - touchStartX.value;
 
-  // Dampen edge dragging if at first/last slide
   if ((activeIndex.value === 0 && diff > 0) || (activeIndex.value === totalSlides.value - 1 && diff < 0)) {
     dragOffset.value = diff * 0.35;
   } else {
@@ -129,7 +128,7 @@ function handleTouchEnd(): void {
   if (!isSwiping.value) return;
   isSwiping.value = false;
 
-  const threshold = 55; // minimum pixels to commit slide change
+  const threshold = 55;
   if (dragOffset.value < -threshold) {
     nextSlide();
   } else if (dragOffset.value > threshold) {
@@ -140,7 +139,6 @@ function handleTouchEnd(): void {
   startAutoplay();
 }
 
-// Fluid Track Transform Computation
 const trackTransformStyle = computed(() => {
   if (isSwiping.value) {
     return {
@@ -154,11 +152,10 @@ const trackTransformStyle = computed(() => {
   };
 });
 
-// Non-blocking Banner Click Telemetry & Navigation
 async function handleBannerClick(banner: PublicBanner): Promise<void> {
-  $fetch(`/api/banners/${banner.id}/click`, { method: 'POST' }).catch(() => {});
-
   if (!banner.cta_link) return;
+
+  $fetch(`/api/banners/${banner.id}/click`, { method: 'POST' }).catch(() => {});
 
   if (banner.cta_link.startsWith('http')) {
     window.open(banner.cta_link, '_blank', 'noopener,noreferrer');
@@ -170,7 +167,6 @@ async function handleBannerClick(banner: PublicBanner): Promise<void> {
   }
 }
 
-// Search Actions
 function handleSearch(): void {
   emit('search', searchQuery.value.trim(), selectedCategory.value);
 }
@@ -212,7 +208,7 @@ onUnmounted(() => {
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
   >
-    <!-- Slide Viewport (Hides overflowing track) -->
+    <!-- Slide Viewport -->
     <div
       class="relative w-full overflow-hidden min-h-[480px] sm:min-h-[520px] lg:min-h-[560px]"
       @touchstart.passive="handleTouchStart"
@@ -225,7 +221,7 @@ onUnmounted(() => {
         :style="trackTransformStyle"
       >
         <!-- =============================================================== -->
-        <!-- SLIDE 0: PERMANENT BRAND HERO POSTER (Coded, Never an Image)    -->
+        <!-- SLIDE 0: PERMANENT BRAND HERO POSTER                            -->
         <!-- =============================================================== -->
         <div
           class="w-full flex-shrink-0 relative min-h-[480px] sm:min-h-[520px] lg:min-h-[560px] flex items-center justify-center bg-[#052219]"
@@ -233,7 +229,7 @@ onUnmounted(() => {
           aria-roledescription="slide"
           aria-label="1 of {{ totalSlides }}"
         >
-          <!-- LEFT 4-BOOK STACK (Faded Top Gradient Mask) -->
+          <!-- LEFT 4-BOOK STACK -->
           <div class="absolute left-2 sm:left-4 lg:left-8 top-0 bottom-0 hidden md:flex gap-2.5 lg:gap-3 pointer-events-none hero-faded-stack">
             <div class="flex flex-col gap-2.5 -translate-y-6">
               <img
@@ -318,13 +314,13 @@ onUnmounted(() => {
               </svg>
             </div>
 
-            <!-- Muted Sage Subtitle -->
+            <!-- Subtitle -->
             <p class="text-xs sm:text-sm text-[#8FA89B] max-w-lg mx-auto leading-relaxed font-sans pt-3">
               Browse a curated collection of page-turners, slow burns, and life-changing reads crafted to match your unique taste.
             </p>
           </div>
 
-          <!-- RIGHT 4-BOOK STACK (Faded Top Gradient Mask) -->
+          <!-- RIGHT 4-BOOK STACK -->
           <div class="absolute right-2 sm:right-4 lg:right-8 top-0 bottom-0 hidden md:flex gap-2.5 lg:gap-3 pointer-events-none hero-faded-stack">
             <div class="flex flex-col gap-2.5 translate-y-5">
               <img
@@ -358,18 +354,20 @@ onUnmounted(() => {
         </div>
 
         <!-- =============================================================== -->
-        <!-- SLIDES 1..N: DYNAMIC PROMOTIONAL BANNERS                        -->
+        <!-- SLIDES 1..N: FULL-QUALITY BANNERS (NO OVERLAY / NO DIMMING)     -->
         <!-- =============================================================== -->
         <div
           v-for="(banner, index) in bannersList"
           :key="banner.id"
           class="w-full flex-shrink-0 relative min-h-[480px] sm:min-h-[520px] lg:min-h-[560px] flex items-center overflow-hidden"
+          :class="{ 'cursor-pointer': Boolean(banner.cta_link) }"
           :style="{ backgroundColor: banner.bg_color || '#052219' }"
           role="group"
           aria-roledescription="slide"
           :aria-label="`${index + 2} of ${totalSlides}`"
+          @click="handleBannerClick(banner)"
         >
-          <!-- Background Banner Photo -->
+          <!-- 100% Full-Color Pure Photo (No brightness dimming) -->
           <picture class="absolute inset-0 w-full h-full">
             <source
               v-if="banner.mobile_image_url"
@@ -378,50 +376,53 @@ onUnmounted(() => {
             />
             <img
               :src="banner.image_url"
-              :alt="banner.title"
-              class="w-full h-full object-cover object-center brightness-75 transition-transform duration-1000 ease-out"
-              :class="activeIndex === index + 1 ? 'scale-105' : 'scale-100'"
+              :alt="banner.title || 'Promotional Banner'"
+              class="w-full h-full object-cover object-center scale-100"
               loading="lazy"
               referrerpolicy="no-referrer"
             />
           </picture>
 
-          <!-- Contrast Scrim Layer & Staggered Typography -->
-          <div class="absolute inset-0 z-10 flex items-center bg-gradient-to-r from-[#052219]/95 via-[#052219]/65 to-transparent">
-            <div
-              class="max-w-6xl mx-auto w-full px-6 sm:px-12 lg:px-20 space-y-4 text-left transform transition-all duration-700 delay-150"
-              :class="activeIndex === index + 1 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'"
-            >
-              <!-- Badge -->
+          <!-- Optional Typography (Only rendered if admin provided text/button) -->
+          <div
+            v-if="banner.title || banner.subtitle || banner.badge || banner.cta_label"
+            class="absolute inset-0 z-10 flex items-center pointer-events-none"
+          >
+            <div class="max-w-6xl mx-auto w-full px-6 sm:px-12 lg:px-20 space-y-4 text-left pointer-events-auto">
+              
+              <!-- Optional Badge -->
               <div
                 v-if="banner.badge"
-                class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#052219]/85 border border-gold-400 text-xs font-mono font-bold text-gold-300 shadow-sm"
+                class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#052219]/90 border border-gold-400 text-xs font-mono font-bold text-gold-300 shadow-md backdrop-blur-xs"
               >
                 <Sparkles :size="12" class="text-gold-400" />
                 <span>{{ banner.badge }}</span>
               </div>
 
-              <!-- Title -->
-              <h2 class="font-display text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight max-w-2xl drop-shadow-md">
+              <!-- Optional Title -->
+              <h2
+                v-if="banner.title"
+                class="font-display text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight max-w-2xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]"
+              >
                 {{ banner.title }}
               </h2>
 
-              <!-- Subtitle -->
+              <!-- Optional Subtitle -->
               <p
                 v-if="banner.subtitle"
-                class="text-xs sm:text-sm lg:text-base text-white/85 max-w-lg leading-relaxed line-clamp-2"
+                class="text-xs sm:text-sm lg:text-base text-white font-medium max-w-lg leading-relaxed line-clamp-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
               >
                 {{ banner.subtitle }}
               </p>
 
-              <!-- CTA Button -->
-              <div class="pt-2">
+              <!-- Optional Button -->
+              <div v-if="banner.cta_label" class="pt-2">
                 <button
                   type="button"
-                  class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs sm:text-sm font-bold uppercase tracking-wider px-7 py-3.5 rounded-full transition-all flex items-center gap-2 shadow-lg cursor-pointer active:scale-95"
-                  @click="handleBannerClick(banner)"
+                  class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs sm:text-sm font-bold uppercase tracking-wider px-7 py-3.5 rounded-full transition-all flex items-center gap-2 shadow-xl cursor-pointer active:scale-95"
+                  @click.stop="handleBannerClick(banner)"
                 >
-                  <span>{{ banner.cta_label || 'Explore' }}</span>
+                  <span>{{ banner.cta_label }}</span>
                   <ArrowRight :size="16" />
                 </button>
               </div>
@@ -437,7 +438,7 @@ onUnmounted(() => {
       >
         <button
           type="button"
-          class="w-11 h-11 rounded-full bg-[#052219]/60 hover:bg-[#052219] text-white flex items-center justify-center pointer-events-auto backdrop-blur-md transition-all shadow-md active:scale-90 cursor-pointer border border-white/10"
+          class="w-11 h-11 rounded-full bg-[#052219]/70 hover:bg-[#052219] text-white flex items-center justify-center pointer-events-auto backdrop-blur-md transition-all shadow-md active:scale-90 cursor-pointer border border-white/10"
           aria-label="Previous slide"
           @click="prevSlide"
         >
@@ -446,7 +447,7 @@ onUnmounted(() => {
 
         <button
           type="button"
-          class="w-11 h-11 rounded-full bg-[#052219]/60 hover:bg-[#052219] text-white flex items-center justify-center pointer-events-auto backdrop-blur-md transition-all shadow-md active:scale-90 cursor-pointer border border-white/10"
+          class="w-11 h-11 rounded-full bg-[#052219]/70 hover:bg-[#052219] text-white flex items-center justify-center pointer-events-auto backdrop-blur-md transition-all shadow-md active:scale-90 cursor-pointer border border-white/10"
           aria-label="Next slide"
           @click="nextSlide"
         >
@@ -464,7 +465,7 @@ onUnmounted(() => {
           :key="idx"
           type="button"
           class="h-2 rounded-full cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
-          :class="idx === activeIndex ? 'w-8 bg-gold-400 shadow-sm' : 'w-2.5 bg-white/30 hover:bg-white/60'"
+          :class="idx === activeIndex ? 'w-8 bg-gold-400 shadow-sm' : 'w-2.5 bg-white/40 hover:bg-white/70 shadow-xs'"
           :aria-label="`Navigate to slide ${idx + 1}`"
           @click="goToSlide(idx)"
         />
@@ -472,7 +473,7 @@ onUnmounted(() => {
     </div>
 
     <!-- =============================================================== -->
-    <!-- 50/50 OVERLAPPING FLOATING SEARCH PILL (Fixed on Every Slide)    -->
+    <!-- 50/50 OVERLAPPING FLOATING SEARCH PILL                          -->
     <!-- =============================================================== -->
     <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-full max-w-2xl px-4 z-30">
       <div class="bg-white rounded-full p-2 shadow-search-pill border border-black/5 flex items-center gap-1 sm:gap-2">
