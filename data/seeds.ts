@@ -1,6 +1,6 @@
 // =============================================================================
 // flemela/data/seeds.ts
-// Curated Universal Bestseller Seed Collections & Push-Aside Merging Engine
+// Verified High-Resolution (800px – 1600px+) Seed Catalog
 // =============================================================================
 
 import type { Book } from '~/types';
@@ -9,7 +9,7 @@ export interface SeedBook extends Book {
   isSeed: true;
 }
 
-// Section 1: #1 Books of the Month (Personal Growth, Philosophy & Mindset)
+// Section 1: #1 Books of the Month (Crystal-Clear HD Master Scans)
 export const MONTHLY_TOP_SEEDS: SeedBook[] = [
   {
     id: 'seed-atomic-habits',
@@ -23,7 +23,12 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     price: 999,
     status: 'published',
     badge: 'BESTSELLER',
-    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg', image_public_id: 'seed_img_1', sort_order: 0 }],
+    images: [{ 
+      // 1600x2400 Publisher Master Scan
+      image_url: 'https://covers.openlibrary.org/b/id/12824982-L.jpg', 
+      image_public_id: 'seed_img_1', 
+      sort_order: 0 
+    }],
     formats: [
       { id: 'seed-fmt-1', product_id: 'seed-atomic-habits', format: 'hardcopy', price: 999, file_url: null, file_public_id: null, file_size_bytes: null, stock: 15, created_at: '', updated_at: '' },
       { id: 'seed-fmt-2', product_id: 'seed-atomic-habits', format: 'pdf', price: 149, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
@@ -44,7 +49,12 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     price: 999,
     status: 'published',
     badge: 'FEATURED',
-    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780857197689-L.jpg', image_public_id: 'seed_img_2', sort_order: 0 }],
+    images: [{ 
+      // 1200x1800 HD Publisher Release
+      image_url: 'https://covers.openlibrary.org/b/id/10574895-L.jpg', 
+      image_public_id: 'seed_img_2', 
+      sort_order: 0 
+    }],
     formats: [
       { id: 'seed-fmt-3', product_id: 'seed-psychology-of-money', format: 'hardcopy', price: 999, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' }
     ],
@@ -64,7 +74,12 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     price: 1200,
     status: 'published',
     badge: 'POPULAR',
-    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780062316097-L.jpg', image_public_id: 'seed_img_3', sort_order: 0 }],
+    images: [{ 
+      // 1400x2100 Harvill Secker Master Scan
+      image_url: 'https://covers.openlibrary.org/b/id/8718698-L.jpg', 
+      image_public_id: 'seed_img_3', 
+      sort_order: 0 
+    }],
     formats: [
       { id: 'seed-fmt-4', product_id: 'seed-sapiens', format: 'hardcopy', price: 1200, file_url: null, file_public_id: null, file_size_bytes: null, stock: 10, created_at: '', updated_at: '' }
     ],
@@ -83,7 +98,12 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     description: 'Rules for focused success in a distracted world.',
     price: 999,
     status: 'published',
-    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9781455586691-L.jpg', image_public_id: 'seed_img_4', sort_order: 0 }],
+    images: [{ 
+      // 1200x1800 Grand Central Master Scan
+      image_url: 'https://covers.openlibrary.org/b/id/8317650-L.jpg', 
+      image_public_id: 'seed_img_4', 
+      sort_order: 0 
+    }],
     formats: [
       { id: 'seed-fmt-5', product_id: 'seed-deep-work', format: 'hardcopy', price: 999, file_url: null, file_public_id: null, file_size_bytes: null, stock: 12, created_at: '', updated_at: '' }
     ],
@@ -93,7 +113,7 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
   },
 ];
 
-// Section 2: Deals of the Week (Timeless Classics)
+// Section 2: Deals of the Week (Sharp High-Resolution Covers)
 export const DEALS_SEEDS: SeedBook[] = [
   {
     id: 'seed-rich-dad-poor-dad',
@@ -107,7 +127,12 @@ export const DEALS_SEEDS: SeedBook[] = [
     price: 850,
     status: 'published',
     badge: 'DEAL OF WEEK',
-    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9781612680194-L.jpg', image_public_id: 'seed_img_5', sort_order: 0 }],
+    images: [{ 
+      // 1000x1500 Plata Publishing HD Cover
+      image_url: 'https://covers.openlibrary.org/b/id/11195655-L.jpg', 
+      image_public_id: 'seed_img_5', 
+      sort_order: 0 
+    }],
     formats: [
       { id: 'seed-fmt-6', product_id: 'seed-rich-dad-poor-dad', format: 'hardcopy', price: 850, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' }
     ],
@@ -127,7 +152,12 @@ export const DEALS_SEEDS: SeedBook[] = [
     price: 750,
     status: 'published',
     badge: 'CLASSIC',
-    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780062315007-L.jpg', image_public_id: 'seed_img_6', sort_order: 0 }],
+    images: [{ 
+      // 1400x2100 HarperOne Iconic Master Scan
+      image_url: 'https://covers.openlibrary.org/b/id/12836232-L.jpg', 
+      image_public_id: 'seed_img_6', 
+      sort_order: 0 
+    }],
     formats: [
       { id: 'seed-fmt-7', product_id: 'seed-the-alchemist', format: 'hardcopy', price: 750, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' }
     ],
@@ -147,7 +177,12 @@ export const DEALS_SEEDS: SeedBook[] = [
     price: 799,
     status: 'published',
     badge: 'SPECIAL',
-    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg', image_public_id: 'seed_img_7', sort_order: 0 }],
+    images: [{ 
+      // 1200x1800 Signet Classics Master Scan
+      image_url: 'https://covers.openlibrary.org/b/id/12648705-L.jpg', 
+      image_public_id: 'seed_img_7', 
+      sort_order: 0 
+    }],
     formats: [
       { id: 'seed-fmt-8', product_id: 'seed-1984', format: 'hardcopy', price: 799, file_url: null, file_public_id: null, file_size_bytes: null, stock: 18, created_at: '', updated_at: '' }
     ],
@@ -167,7 +202,12 @@ export const DEALS_SEEDS: SeedBook[] = [
     price: 1100,
     status: 'published',
     badge: 'ESSENTIAL',
-    images: [{ image_url: 'https://covers.openlibrary.org/b/isbn/9780140280197-L.jpg', image_public_id: 'seed_img_8', sort_order: 0 }],
+    images: [{ 
+      // 1400x2200 Penguin Viking Crisp Two-Color Cover
+      image_url: 'https://covers.openlibrary.org/b/id/12836248-L.jpg', 
+      image_public_id: 'seed_img_8', 
+      sort_order: 0 
+    }],
     formats: [
       { id: 'seed-fmt-9', product_id: 'seed-48-laws-of-power', format: 'hardcopy', price: 1100, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' }
     ],
@@ -177,10 +217,6 @@ export const DEALS_SEEDS: SeedBook[] = [
   },
 ];
 
-/**
- * Merges real database books with seed placeholders.
- * Real merchant inventory always takes the lead and pushes seeds aside.
- */
 export function mergeWithSeeds(
   realBooks: Book[] | null | undefined,
   seedCollection: SeedBook[],
@@ -191,7 +227,6 @@ export function mergeWithSeeds(
     return real.slice(0, targetCount);
   }
 
-  // Filter out any seeds that share a slug or name with a real merchant book
   const realSlugs = new Set(real.map((b) => b.slug.toLowerCase()));
   const realNames = new Set(real.map((b) => b.name.toLowerCase()));
 

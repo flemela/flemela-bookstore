@@ -3,6 +3,7 @@
 import { ref, computed } from 'vue';
 import StoreNavbar from '~/components/storefront/StoreNavbar.vue';
 import HeroCarousel from '~/components/storefront/HeroCarousel.vue';
+import FlashSaleStrip from '~/components/storefront/FlashSaleStrip.vue';
 import FeaturedMonth from '~/components/storefront/FeaturedMonth.vue';
 import BentoCategories from '~/components/storefront/BentoCategories.vue';
 import DealsWeek from '~/components/storefront/DealsWeek.vue';
@@ -27,7 +28,7 @@ const showRequestModal = ref(false);
 const modalInitialTitle = ref('');
 const modalInitialAuthor = ref('');
 
-// Dynamic filter engine
+// Dynamic Filter Engine for Main Catalog Grid
 const filteredBooks = computed(() => {
   const books = realBooks.value || [];
   let result = [...books];
@@ -57,14 +58,22 @@ const hasActiveFilter = computed(() => {
   return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
 });
 
-// Real Merchant Books Take Priority Over Seeds in All Sections
+// 1. Flash Sale Strip: Specific badge filter for discounted books right under the hero
+const flashSaleBooks = computed<Book[]>(() => {
+  const books = realBooks.value || [];
+  return books.filter(
+    (b) => b.badge === 'FLASH_SALE' || (b.compare_at_price && b.compare_at_price > b.price)
+  );
+});
+
+// 2. #1 Picks: ONLY books tagged with NO1_PICK take priority over monthly top seeds
 const no1Picks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'NO1_PICK');
-  const source = tagged.length > 0 ? tagged : books;
-  return mergeWithSeeds(source, MONTHLY_TOP_SEEDS, 4);
+  return mergeWithSeeds(tagged, MONTHLY_TOP_SEEDS, 4);
 });
 
+// 3. Deals of the Week: Books with DEAL_OF_WEEK or active discounts merge with deal seeds
 const dealBooks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const deals = books.filter(
@@ -73,16 +82,15 @@ const dealBooks = computed<Book[]>(() => {
       b.badge === 'FLASH_SALE' ||
       (b.compare_at_price && b.compare_at_price > b.price)
   );
-  const source = deals.length > 0 ? deals : books;
-  return mergeWithSeeds(source, DEALS_SEEDS, 4);
+  return mergeWithSeeds(deals, DEALS_SEEDS, 4);
 });
 
+// 4. Bestsellers: ONLY books tagged BESTSELLER take priority over combined seeds
 const bestsellers = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'BESTSELLER');
-  const source = tagged.length > 0 ? tagged : books;
   const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
-  return mergeWithSeeds(source, combinedSeeds, 6);
+  return mergeWithSeeds(tagged, combinedSeeds, 6);
 });
 
 function handleSearch(query: string, category: string): void {
@@ -114,16 +122,23 @@ function handleRequestSeed(title: string, author?: string): void {
   <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased">
     <StoreNavbar />
 
-    <!-- Hero Section: Dynamic Carousel with Automatic Poster Fallback -->
+    <!-- 1. Hero Carousel: Slide 0 is the permanent brand hero poster, followed by dynamic banners -->
     <HeroCarousel
       @search="handleSearch"
       @select-category="handleCategorySelect"
     />
 
-    <!-- Main Catalog Section -->
+    <!-- 2. Single-Row Scrollable Brand Orange Flash Sale Strip -->
+    <FlashSaleStrip
+      :books="flashSaleBooks"
+      title="FLASH SALE DEALS"
+      badge-label="LIMITED TIME"
+    />
+
+    <!-- 3. Main Catalog Section -->
     <section
       id="catalog-results"
-      class="pt-14 sm:pt-16 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"
+      class="pt-12 sm:pt-16 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"
     >
       <div class="flex items-center justify-between pb-3 border-b border-theme-border">
         <div>
@@ -138,7 +153,7 @@ function handleRequestSeed(title: string, author?: string): void {
         <button
           v-if="hasActiveFilter"
           type="button"
-          class="text-xs font-bold text-[#F05A36] hover:underline px-3 py-1.5 bg-theme-sand rounded-xl cursor-pointer"
+          class="text-xs font-bold text-[#F05A36] hover:underline px-3 py-1.5 bg-theme-sand rounded-xl cursor-pointer transition-colors"
           @click="
             activeCategoryFilter = 'ALL';
             searchQuery = '';
@@ -148,7 +163,7 @@ function handleRequestSeed(title: string, author?: string): void {
         </button>
       </div>
 
-      <!-- Real books grid -->
+      <!-- Real Books Grid -->
       <div v-if="filteredBooks.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         <BookCard
           v-for="book in filteredBooks"
@@ -158,18 +173,18 @@ function handleRequestSeed(title: string, author?: string): void {
         />
       </div>
 
-      <!-- Fallback empty state -->
+      <!-- Fallback Empty State -->
       <div v-else class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm">
         <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
         <h3 class="font-display font-bold text-base text-slate-800">
           No books found matching this filter
         </h3>
         <p class="text-xs text-slate-500 max-w-xs mx-auto">
-          We can source this title for you directly via WhatsApp.
+          We can source this title for you directly via WhatsApp concierge.
         </p>
         <button
           type="button"
-          class="bg-[#F05A36] text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer"
+          class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95"
           @click="handleRequestSeed(searchQuery)"
         >
           Submit Book Request
@@ -177,7 +192,7 @@ function handleRequestSeed(title: string, author?: string): void {
       </div>
     </section>
 
-    <!-- Curated Sections -->
+    <!-- 4. Curated Sections -->
     <FeaturedMonth :books="no1Picks" @request-seed="handleRequestSeed" />
 
     <BentoCategories @select="handleCategorySelect" />
@@ -202,7 +217,9 @@ function handleRequestSeed(title: string, author?: string): void {
       :initial-author="modalInitialAuthor"
       @close="showRequestModal = false"
     />
+
     <CartDrawer />
+    
     <ToastContainer />
   </div>
 </template>
