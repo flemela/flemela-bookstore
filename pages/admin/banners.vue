@@ -9,7 +9,6 @@ import {
   ArrowUp,
   ArrowDown,
   RefreshCw,
-  Eye,
   MousePointerClick,
   X,
 } from 'lucide-vue-next';

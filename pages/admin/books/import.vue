@@ -13,7 +13,6 @@ import {
   Layers,
   CopyCheck,
   PlusCircle,
-  ExternalLink,
   ShieldCheck,
   X,
   Search,
