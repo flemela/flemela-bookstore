@@ -1,6 +1,6 @@
 // =============================================================================
 // composables/useCart.ts
-// Session-persisted cart state with multi-format item isolation.
+// Session-persisted cart state with multi-format item isolation & compare-at pricing.
 // =============================================================================
 
 import type { CartItem, BookFormatType, DeliveryMethodType } from '~/types';
@@ -19,11 +19,16 @@ export function useCart() {
   });
 
   const hasDigitalItems = computed(() => {
-    return items.value.some((item) => item.deliveryMethod === 'digital' || item.format === 'pdf' || item.format === 'epub');
+    return items.value.some(
+      (item) =>
+        item.deliveryMethod === 'digital' || item.format === 'pdf' || item.format === 'epub'
+    );
   });
 
   const hasPhysicalItems = computed(() => {
-    return items.value.some((item) => item.deliveryMethod !== 'digital' && item.format === 'hardcopy');
+    return items.value.some(
+      (item) => item.deliveryMethod !== 'digital' && item.format === 'hardcopy'
+    );
   });
 
   function addItem(item: {
@@ -32,13 +37,15 @@ export function useCart() {
     title: string;
     format: BookFormatType;
     price: number;
+    compare_at_price?: number | null;
     quantity?: number;
     deliveryMethod?: DeliveryMethodType;
     coverUrl?: string | null;
     author?: string | null;
   }): void {
     const qty = item.quantity && item.quantity > 0 ? item.quantity : 1;
-    const method: DeliveryMethodType = item.deliveryMethod || (item.format === 'hardcopy' ? 'delivery' : 'digital');
+    const method: DeliveryMethodType =
+      item.deliveryMethod || (item.format === 'hardcopy' ? 'delivery' : 'digital');
 
     const existingIndex = items.value.findIndex(
       (i) => i.productId === item.productId && i.formatId === item.formatId
@@ -53,6 +60,7 @@ export function useCart() {
         title: item.title,
         format: item.format,
         price: item.price,
+        compare_at_price: item.compare_at_price ?? null,
         quantity: qty,
         deliveryMethod: method,
         coverUrl: item.coverUrl ?? null,

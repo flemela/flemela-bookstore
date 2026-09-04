@@ -1,6 +1,6 @@
 // =============================================================================
 // server/api/checkout.post.ts
-// Proxies order placement with centralized phone validation & dynamic store slug.
+// Proxies order placement with support for manual M-Pesa references and STK push.
 // =============================================================================
 
 import { z } from 'zod';
@@ -24,7 +24,13 @@ const CheckoutBodySchema = z.object({
     .transform((v) => (v === '' ? null : v)),
   deliveryType: z.enum(['delivery', 'pickup']).default('delivery'),
   deliveryLocation: z.string().min(1, 'Delivery location or address is required'),
-  paymentMethod: z.enum(['mpesa', 'mpesa_cash']).default('mpesa'),
+  paymentMethod: z.enum(['mpesa_manual', 'mpesa', 'mpesa_cash']).default('mpesa_manual'),
+  mpesaCode: z
+    .string()
+    .max(50)
+    .nullable()
+    .optional()
+    .transform((v) => (v ? v.trim().toUpperCase() : null)),
   notes: z.string().max(1000).nullable().optional(),
   customerLat: z.number().nullable().optional(),
   customerLng: z.number().nullable().optional(),
@@ -63,6 +69,7 @@ export default defineEventHandler(async (event) => {
     deliveryLocation: parsed.data.deliveryLocation.trim(),
     deliveryType: parsed.data.deliveryType,
     paymentMethod: parsed.data.paymentMethod,
+    mpesaCode: parsed.data.mpesaCode,
     notes: parsed.data.notes?.trim() || null,
     customerLat: parsed.data.customerLat ?? null,
     customerLng: parsed.data.customerLng ?? null,

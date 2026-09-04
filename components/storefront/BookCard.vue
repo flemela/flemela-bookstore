@@ -7,7 +7,7 @@ import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat } from '~/types';
 
 interface Props {
-  book: Book & { isSeed?: boolean };
+  book: Book;
 }
 
 const props = defineProps<Props>();
@@ -39,6 +39,7 @@ watch(
   { immediate: true }
 );
 
+// 1. Resolve Active Format safely
 const activeFormat = computed<ProductFormat | undefined>(() => {
   if (!props.book.formats || props.book.formats.length === 0) return undefined;
   return (
@@ -47,9 +48,63 @@ const activeFormat = computed<ProductFormat | undefined>(() => {
   );
 });
 
-const currentPrice = computed(() => {
+// 2. Format-Isolated Current Selling Price
+const currentPrice = computed<number>(() => {
   if (activeFormat.value) return activeFormat.value.price;
   return props.book.price ?? 0;
+});
+
+// 3. Format-Isolated Original Price (Fixes Edge Case: Prevents physical discount leaking to eBook)
+const originalPrice = computed<number | null>(() => {
+  if (activeFormat.value?.compare_at_price) {
+    return activeFormat.value.compare_at_price;
+  }
+  // Only fall back to parent compare_at_price if there's only 1 format in total
+  if (!props.book.formats || props.book.formats.length <= 1) {
+    return props.book.compare_at_price || null;
+  }
+  return null;
+});
+
+// 4. Safe Discount Percentage (Guards against inverted prices, zero-division, and trivial <5% discounts)
+const discountPercentage = computed<number>(() => {
+  const orig = originalPrice.value;
+  const curr = currentPrice.value;
+
+  if (!orig || orig <= 0 || curr <= 0) return 0;
+  if (orig <= curr) return 0;
+
+  const percent = Math.round(((orig - curr) / orig) * 100);
+  return percent >= 5 ? percent : 0;
+});
+
+// 5. Promo Expiration Check (Guards against perpetual flash sales)
+const isPromoExpired = computed<boolean>(() => {
+  if (!props.book.sale_ends_at) return false;
+  return new Date(props.book.sale_ends_at).getTime() < Date.now();
+});
+
+// 6. Promotional Badge Resolution
+const activeBadge = computed<string | null>(() => {
+  if (isPromoExpired.value) return null;
+  return props.book.badge || null;
+});
+
+const badgeStyle = computed(() => {
+  switch (activeBadge.value) {
+    case 'FLASH_SALE':
+      return { class: 'bg-red-600 text-white animate-pulse', label: '⚡ Flash Sale' };
+    case 'NO1_PICK':
+      return { class: 'bg-[#2EE59D] text-[#052219] font-extrabold', label: '⭐ #1 Pick' };
+    case 'BESTSELLER':
+      return { class: 'bg-[#FF8A00] text-white font-bold', label: '🔥 Bestseller' };
+    case 'DEAL_OF_WEEK':
+      return { class: 'bg-purple-700 text-white font-bold', label: '🏷️ Deal of Week' };
+    case 'LIMITED_TIME':
+      return { class: 'bg-rose-600 text-white font-bold', label: '⏳ Limited Time' };
+    default:
+      return { class: 'bg-theme-coral text-white', label: activeBadge.value || '' };
+  }
 });
 
 function formatCurrency(val: number): string {
@@ -66,13 +121,11 @@ function handleAction(event: Event): void {
   event.preventDefault();
   event.stopPropagation();
 
-  // Edge Case: If seed book is clicked, route to custom procurement modal
   if (props.book.isSeed) {
     emit('requestSeed', props.book.name, props.book.author || undefined);
     return;
   }
 
-  // Real merchant book: Add to cart
   const fmt = activeFormat.value;
   const priceToUse = fmt ? fmt.price : props.book.price;
   const formatType = fmt ? fmt.format : 'hardcopy';
@@ -84,6 +137,7 @@ function handleAction(event: Event): void {
     title: props.book.name,
     format: formatType,
     price: priceToUse,
+    compare_at_price: originalPrice.value,
     quantity: 1,
     coverUrl: coverImage.value,
     author: props.book.author,
@@ -102,7 +156,11 @@ function handleAction(event: Event): void {
   <div class="bg-theme-surface rounded-2xl border border-theme-border hover:border-theme-forest/30 p-3.5 sm:p-4 flex flex-col justify-between book-hover-lift group shadow-soft transition-all duration-300">
     <div class="space-y-3">
       <!-- 3D Book Cover Frame -->
-      <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block relative aspect-[3/4] bg-theme-cream rounded-book overflow-hidden book-cover-3d" @click="book.isSeed ? handleAction($event) : null">
+      <NuxtLink
+        :to="book.isSeed ? '#' : `/book/${book.slug}`"
+        class="block relative aspect-[3/4] bg-theme-cream rounded-book overflow-hidden book-cover-3d"
+        @click="book.isSeed ? handleAction($event) : null"
+      >
         <img
           :src="coverImage"
           :alt="`Cover for ${book.name}`"
@@ -114,14 +172,25 @@ function handleAction(event: Event): void {
           @error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'"
         />
 
-        <div v-if="book.badge" class="absolute top-2.5 left-2.5 z-10">
-          <span class="text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-theme-coral text-white shadow-sm">
-            {{ book.badge }}
+        <!-- Top Left: Category / Promotional Badge -->
+        <div v-if="activeBadge" class="absolute top-2.5 left-2.5 z-10">
+          <span
+            class="text-[8px] sm:text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm"
+            :class="badgeStyle.class"
+          >
+            {{ badgeStyle.label }}
+          </span>
+        </div>
+
+        <!-- Top Right: Discount Percentage Badge -->
+        <div v-if="discountPercentage > 0" class="absolute top-2.5 right-2.5 z-10">
+          <span class="text-[9px] font-mono font-extrabold bg-red-600 text-white px-1.5 py-0.5 rounded shadow-sm">
+            -{{ discountPercentage }}%
           </span>
         </div>
       </NuxtLink>
 
-      <!-- Details -->
+      <!-- Book Details -->
       <div class="space-y-1 text-left pt-0.5">
         <span class="text-[9px] sm:text-[10px] uppercase font-mono font-bold tracking-widest text-theme-coral block truncate">
           {{ book.category_name || 'General' }}
@@ -160,15 +229,30 @@ function handleAction(event: Event): void {
       </div>
     </div>
 
-    <!-- Pricing & Action Button -->
+    <!-- Pricing Area with Strike-Through -->
     <div class="pt-3 mt-3 border-t border-theme-border/80 space-y-2">
       <div class="flex items-baseline justify-between">
         <span class="text-[11px] text-theme-muted font-medium">
           {{ book.isSeed ? 'Available to Order' : (activeFormat?.format === 'hardcopy' ? 'Physical Copy' : 'Instant eBook') }}
         </span>
-        <span class="text-sm sm:text-base font-bold font-mono text-theme-ink tabular-figure">
-          {{ formatCurrency(currentPrice) }}
-        </span>
+
+        <div class="flex items-baseline gap-1.5">
+          <!-- Strike-through Original Price -->
+          <span
+            v-if="originalPrice && originalPrice > currentPrice"
+            class="text-xs text-theme-muted line-through font-mono tabular-figure opacity-70"
+          >
+            {{ formatCurrency(originalPrice) }}
+          </span>
+
+          <!-- Selling Price -->
+          <span
+            class="text-sm sm:text-base font-bold font-mono text-theme-ink tabular-figure"
+            :class="{ 'text-red-700 font-extrabold': discountPercentage > 0 }"
+          >
+            {{ formatCurrency(currentPrice) }}
+          </span>
+        </div>
       </div>
 
       <button

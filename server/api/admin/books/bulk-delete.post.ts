@@ -1,6 +1,6 @@
 // =============================================================================
-// flemela/server/api/admin/books/bulk-delete.post.ts
-// Proxy endpoint allowing bulk deletion of selected books.
+// server/api/admin/books/bulk-delete.post.ts
+// Proxy endpoint for smart bulk deletion.
 // =============================================================================
 
 import { sokoClient } from '../../../utils/sokoClient';
@@ -8,8 +8,20 @@ import { sokoClient } from '../../../utils/sokoClient';
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
 
-  return sokoClient('/products/bulk-delete', {
-    method: 'POST',
-    body,
-  });
+  try {
+    return await sokoClient<{
+      deleted: boolean;
+      count: number;
+      softDeleted: number;
+      hardDeleted: number;
+    }>('/products/bulk-delete', {
+      method: 'POST',
+      body,
+    });
+  } catch (err: any) {
+    throw createError({
+      statusCode: err.statusCode || 500,
+      statusMessage: err.statusMessage || 'Failed to execute bulk deletion',
+    });
+  }
 });

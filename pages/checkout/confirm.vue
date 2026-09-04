@@ -1,4 +1,4 @@
-<!-- flemela/pages/checkout/confirm.vue -->
+<!-- pages/checkout/confirm.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
@@ -13,7 +13,8 @@ import {
   ArrowRight,
   KeyRound,
   RefreshCw,
-  Clock
+  Clock,
+  Lock,
 } from 'lucide-vue-next';
 import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
 import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
@@ -31,10 +32,8 @@ const phoneParam = computed(() => (route.query.phone as string) || '');
 const verifyPhoneInput = ref(phoneParam.value);
 const orderData = ref<OrderStatusResponse | null>(null);
 
-const countdownSeconds = ref(60);
-const timerExpired = ref(false);
 const isManualChecking = ref(false);
-let timerInterval: ReturnType<typeof setInterval> | undefined;
+const isVerifyingPhone = ref(false);
 let pollInterval: ReturnType<typeof setInterval> | undefined;
 
 const pollAttempts = ref(0);
@@ -68,13 +67,30 @@ async function fetchStatus(phoneToUse = verifyPhoneInput.value): Promise<void> {
       stopTimers();
     } else if (pollAttempts.value >= MAX_POLL_ATTEMPTS) {
       stopTimers();
-      timerExpired.value = true;
     }
   } catch {
     if (pollAttempts.value >= MAX_POLL_ATTEMPTS) {
       stopTimers();
-      timerExpired.value = true;
     }
+  }
+}
+
+async function handleUnlockDownloads(): Promise<void> {
+  if (!verifyPhoneInput.value.trim()) {
+    pushToast({ message: 'Please enter your mobile phone number', variant: 'error' });
+    return;
+  }
+
+  isVerifyingPhone.value = true;
+  try {
+    await fetchStatus(verifyPhoneInput.value.trim());
+    if (orderData.value?.isVerifiedCustomer) {
+      pushToast({ message: 'Identity verified! Downloads unlocked.', variant: 'success' });
+    } else {
+      pushToast({ message: 'Phone number did not match order details.', variant: 'error' });
+    }
+  } finally {
+    isVerifyingPhone.value = false;
   }
 }
 
@@ -83,7 +99,7 @@ async function handleManualCheckStatus(): Promise<void> {
   try {
     await fetchStatus();
     if (orderData.value?.paymentStatus === 'paid') {
-      pushToast({ message: 'Payment approved! Digital eBook links unlocked.', variant: 'success' });
+      pushToast({ message: 'Payment confirmed! Downloads released.', variant: 'success' });
       stopTimers();
     } else {
       pushToast({ message: 'Payment verification in progress. Please wait a moment.', variant: 'info' });
@@ -95,26 +111,15 @@ async function handleManualCheckStatus(): Promise<void> {
 
 function startTimers(): void {
   stopTimers();
-  countdownSeconds.value = 60;
-  timerExpired.value = false;
   pollAttempts.value = 0;
-
-  timerInterval = setInterval(() => {
-    if (countdownSeconds.value > 0) {
-      countdownSeconds.value--;
-    } else {
-      timerExpired.value = true;
-      clearInterval(timerInterval);
-    }
-  }, 1000);
-
-  // Poll status every 3 seconds
   pollInterval = setInterval(() => fetchStatus(), 3000);
 }
 
 function stopTimers(): void {
-  if (timerInterval) clearInterval(timerInterval);
-  if (pollInterval) clearInterval(pollInterval);
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = undefined;
+  }
 }
 
 onMounted(() => {
@@ -163,11 +168,10 @@ const whatsappShareUrl = computed(() => {
     <main class="max-w-3xl mx-auto w-full py-10 sm:py-14 px-4 sm:px-6 flex-1">
       <div class="bg-paper-surface rounded-2xl shadow-card border border-paper-border p-6 sm:p-10 space-y-7">
         
-        <!-- 1. MANUAL M-PESA PENDING VERIFICATION STATE (BREATHING RADAR PULSE) -->
+        <!-- 1. Manual M-Pesa Pending State -->
         <div v-if="isManualPending" class="space-y-5">
           <div class="bg-paper-cream/70 border border-gold-400/50 rounded-2xl p-6 sm:p-7 space-y-4 shadow-soft">
             <div class="flex items-start gap-4">
-              <!-- Radar Pulse Animation -->
               <div class="relative w-10 h-10 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span class="absolute w-full h-full rounded-full bg-gold-400/30 animate-ping" />
                 <div class="w-9 h-9 rounded-full bg-gold-500 text-forest-950 flex items-center justify-center shadow-xs">
@@ -185,7 +189,6 @@ const whatsappShareUrl = computed(() => {
               </div>
             </div>
 
-            <!-- Order Badge Overview -->
             <div class="bg-white rounded-xl p-4 border border-paper-border text-xs text-forest-950 space-y-1.5 shadow-2xs">
               <div class="flex justify-between items-center text-ink-muted">
                 <span>Order Reference:</span>
@@ -197,7 +200,6 @@ const whatsappShareUrl = computed(() => {
               </div>
             </div>
 
-            <!-- Polling Indicator -->
             <div class="flex items-center justify-between pt-1">
               <div class="flex items-center gap-2 text-[11px] font-semibold text-gold-600">
                 <span class="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
@@ -217,7 +219,7 @@ const whatsappShareUrl = computed(() => {
           </div>
         </div>
 
-        <!-- 2. AUTOMATED STK PENDING PROMPT -->
+        <!-- 2. Automated STK Pending Prompt -->
         <div v-else-if="!isPaymentPaid && !isPaymentFailed" class="space-y-6">
           <div class="bg-paper-cream/60 border border-gold-400/40 rounded-2xl p-6 sm:p-7 flex items-start gap-4 shadow-soft">
             <div class="space-y-1.5 flex-1">
@@ -236,7 +238,7 @@ const whatsappShareUrl = computed(() => {
           </div>
         </div>
 
-        <!-- 3. PAYMENT FAILED -->
+        <!-- 3. Payment Failed -->
         <div v-else-if="isPaymentFailed" class="bg-red-50 border border-red-200 rounded-2xl p-6 sm:p-7 flex items-start gap-4 shadow-soft">
           <AlertTriangle :size="24" class="text-red-600 flex-shrink-0 mt-0.5" />
           <div class="space-y-2 flex-1">
@@ -250,7 +252,7 @@ const whatsappShareUrl = computed(() => {
           </div>
         </div>
 
-        <!-- 4. PAYMENT CONFIRMED / DOWNLOADS RELEASED -->
+        <!-- 4. Payment Confirmed / Fulfillment -->
         <div v-if="isPaymentPaid || orderData?.status === 'confirmed' || orderData?.status === 'delivered'" class="space-y-7">
           
           <!-- Celebration Header -->
@@ -266,11 +268,51 @@ const whatsappShareUrl = computed(() => {
             </p>
           </div>
 
-          <!-- DIGITAL EBOOK DOWNLOAD CARDS -->
+          <!-- SECURITY SHIELD GATE: Prompt Phone Verification if User Arrived Unauthenticated -->
+          <div
+            v-if="isPaymentPaid && !orderData?.isVerifiedCustomer"
+            class="p-6 bg-paper-cream/60 border border-gold-400 rounded-2xl space-y-4 shadow-soft"
+          >
+            <div class="flex items-start gap-3.5">
+              <div class="w-9 h-9 rounded-full bg-forest-950 text-gold-300 flex items-center justify-center flex-shrink-0">
+                <Lock :size="18" />
+              </div>
+              <div class="space-y-1">
+                <h3 class="font-display font-bold text-sm text-forest-950">Unlock Digital Downloads</h3>
+                <p class="text-xs text-ink-muted leading-relaxed">
+                  For your privacy, enter the mobile phone number used during checkout to reveal your download links.
+                </p>
+              </div>
+            </div>
+
+            <form class="flex gap-2.5 pt-1" @submit.prevent="handleUnlockDownloads">
+              <input
+                v-model="verifyPhoneInput"
+                type="tel"
+                placeholder="e.g. 07XXXXXXXX"
+                class="flex-1 px-3.5 py-2 bg-white border border-paper-border rounded-xl text-xs font-mono outline-none focus:border-forest-900"
+                required
+              />
+              <button
+                type="submit"
+                class="bg-forest-950 text-paper hover:bg-forest-900 text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-subtle cursor-pointer disabled:opacity-50"
+                :disabled="isVerifyingPhone"
+              >
+                {{ isVerifyingPhone ? 'Verifying...' : 'Unlock Downloads' }}
+              </button>
+            </form>
+          </div>
+
+          <!-- Digital eBook Download Cards (Revealed once verified) -->
           <div v-if="hasDigitalDownloads" class="space-y-3.5">
-            <h3 class="font-display font-bold text-sm text-forest-950 uppercase tracking-wider flex items-center gap-2">
-              <Download :size="16" class="text-gold-600" /> Your Digital Editions (Cloudflare R2)
-            </h3>
+            <div class="flex items-center justify-between">
+              <h3 class="font-display font-bold text-sm text-forest-950 uppercase tracking-wider flex items-center gap-2">
+                <Download :size="16" class="text-gold-600" /> Your Digital Editions (Cloudflare R2)
+              </h3>
+              <span class="text-[10px] text-emerald-800 font-mono font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                Access Valid: 90 Days
+              </span>
+            </div>
 
             <div class="grid sm:grid-cols-2 gap-3.5">
               <div
@@ -283,7 +325,7 @@ const whatsappShareUrl = computed(() => {
                     {{ dl.format.toUpperCase() }} EBOOK
                   </span>
                   <h4 class="text-xs sm:text-sm font-bold text-forest-950 mt-1 line-clamp-1">{{ dl.bookTitle }}</h4>
-                  <p class="text-[11px] text-ink-muted">Access valid for 7 days • Remaining: {{ dl.maxDownloads - dl.downloadCount }}</p>
+                  <p class="text-[11px] text-ink-muted">Downloads remaining: {{ dl.maxDownloads - dl.downloadCount }}</p>
                 </div>
 
                 <a
@@ -298,7 +340,7 @@ const whatsappShareUrl = computed(() => {
             </div>
           </div>
 
-          <!-- PHYSICAL DELIVERY HANDOVER CODE -->
+          <!-- Physical Delivery Handover Code -->
           <div
             v-if="orderData?.deliveryConfirmationCode"
             class="p-6 bg-paper-cream/50 border-2 border-dashed border-gold-500/60 rounded-2xl text-center space-y-2.5 shadow-soft"

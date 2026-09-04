@@ -1,7 +1,17 @@
-<!-- flemela/pages/admin/books/index.vue -->
+<!-- pages/admin/books/index.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Plus, Search, Trash2, Edit2, BookOpen, Download, Truck, ExternalLink } from 'lucide-vue-next';
+import {
+  Plus,
+  Search,
+  Trash2,
+  Edit2,
+  BookOpen,
+  Download,
+  Truck,
+  ExternalLink,
+  Loader2,
+} from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import { useToast } from '~/composables/useToast';
 import type { Book } from '~/types';
@@ -16,7 +26,8 @@ const { data: books, refresh, status: fetchStatus } = await useFetch<Book[]>('/a
 const searchQuery = ref('');
 const selectedCategory = ref('');
 const selectedBookIds = ref<string[]>([]);
-const isDeleting = ref(false);
+const deletingBookId = ref<string | null>(null);
+const isDeletingBulk = ref(false);
 
 const filteredBooks = computed(() => {
   if (!books.value) return [];
@@ -53,49 +64,79 @@ function resolveCoverUrl(book: Book): string {
   return firstImg.image_url || (book as any).cover_image_url || '';
 }
 
-// Immediate Single Delete (No Dialogue)
+// Server-Confirmed Single Delete (No ghosting, no optimistic race condition)
 async function handleDeleteBook(id: string, name: string): Promise<void> {
+  deletingBookId.value = id;
+
   try {
+    const res = await $fetch<{ deleted: boolean; action: 'hard_deleted' | 'soft_deleted' }>(
+      `/api/admin/books/${id}`,
+      { method: 'DELETE' }
+    );
+
+    // Update local state ONLY after the database commits
     if (books.value) {
       books.value = books.value.filter((b) => b.id !== id);
     }
     selectedBookIds.value = selectedBookIds.value.filter((bId) => bId !== id);
 
-    await $fetch(`/api/admin/books/${id}`, { method: 'DELETE' });
-    pushToast({ message: `"${name}" deleted from catalog`, variant: 'success' });
-    await refresh();
+    const message = res?.action === 'soft_deleted'
+      ? `"${name}" removed from catalog (historical orders & customer downloads preserved)`
+      : `"${name}" permanently deleted`;
+
+    pushToast({ message, variant: 'success' });
   } catch (err: any) {
-    pushToast({ message: err.statusMessage || 'Failed to delete book', variant: 'error' });
+    const errorMsg =
+      err.data?.message ||
+      err.data?.error?.message ||
+      err.statusMessage ||
+      'Failed to delete book';
+    pushToast({ message: errorMsg, variant: 'error' });
     await refresh();
+  } finally {
+    deletingBookId.value = null;
   }
 }
 
-// Immediate Bulk Delete (No Dialogue)
+// Server-Confirmed Bulk Delete
 async function handleBulkDelete(): Promise<void> {
-  if (selectedBookIds.value.length === 0 || isDeleting.value) return;
+  if (selectedBookIds.value.length === 0 || isDeletingBulk.value) return;
 
   const count = selectedBookIds.value.length;
   const idsToDelete = [...selectedBookIds.value];
-  isDeleting.value = true;
+  isDeletingBulk.value = true;
 
   try {
+    const res = await $fetch<{
+      deleted: boolean;
+      count: number;
+      softDeleted: number;
+      hardDeleted: number;
+    }>('/api/admin/books/bulk-delete', {
+      method: 'POST',
+      body: { productIds: idsToDelete },
+    });
+
     if (books.value) {
       books.value = books.value.filter((b) => !idsToDelete.includes(b.id));
     }
     selectedBookIds.value = [];
 
-    await $fetch('/api/admin/books/bulk-delete', {
-      method: 'POST',
-      body: { productIds: idsToDelete },
-    });
+    const details = res?.softDeleted > 0
+      ? `(${res.hardDeleted} purged, ${res.softDeleted} archived with active orders)`
+      : '';
 
-    pushToast({ message: `Deleted ${count} book(s) from catalog`, variant: 'success' });
-    await refresh();
+    pushToast({ message: `Successfully deleted ${count} book(s) ${details}`, variant: 'success' });
   } catch (err: any) {
-    pushToast({ message: err.statusMessage || 'Bulk delete failed', variant: 'error' });
+    const errorMsg =
+      err.data?.message ||
+      err.data?.error?.message ||
+      err.statusMessage ||
+      'Bulk deletion failed';
+    pushToast({ message: errorMsg, variant: 'error' });
     await refresh();
   } finally {
-    isDeleting.value = false;
+    isDeletingBulk.value = false;
   }
 }
 </script>
@@ -116,12 +157,13 @@ async function handleBulkDelete(): Promise<void> {
           <button
             v-if="selectedBookIds.length > 0"
             type="button"
-            class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-[0.98]"
-            :disabled="isDeleting"
+            class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-[0.98] disabled:opacity-50"
+            :disabled="isDeletingBulk"
             @click="handleBulkDelete"
           >
-            <Trash2 :size="14" />
-            <span>Delete Selected ({{ selectedBookIds.length }})</span>
+            <Loader2 v-if="isDeletingBulk" :size="14" class="animate-spin" />
+            <Trash2 v-else :size="14" />
+            <span>{{ isDeletingBulk ? 'Deleting...' : `Delete Selected (${selectedBookIds.length})` }}</span>
           </button>
 
           <NuxtLink
@@ -155,7 +197,6 @@ async function handleBulkDelete(): Promise<void> {
         <table class="w-full text-left text-xs border-collapse">
           <thead>
             <tr class="bg-paper-cream/40 border-b border-paper-border text-ink-subtle uppercase tracking-wider font-mono text-[9px]">
-              <!-- Select All Checkbox -->
               <th class="py-3 px-4 w-10">
                 <input
                   type="checkbox"
@@ -282,14 +323,16 @@ async function handleBulkDelete(): Promise<void> {
                     <Edit2 :size="14" />
                   </NuxtLink>
 
-                  <!-- Immediate Single Delete -->
+                  <!-- Server-Confirmed Single Delete Button -->
                   <button
                     type="button"
-                    class="p-1.5 rounded-lg hover:bg-red-50 text-ink-muted hover:text-red-700 transition-colors cursor-pointer"
-                    title="Delete book immediately"
+                    class="p-1.5 rounded-lg hover:bg-red-50 text-ink-muted hover:text-red-700 transition-colors cursor-pointer disabled:opacity-50"
+                    :disabled="deletingBookId === book.id"
+                    title="Delete book"
                     @click="handleDeleteBook(book.id, book.name)"
                   >
-                    <Trash2 :size="14" />
+                    <Loader2 v-if="deletingBookId === book.id" :size="14" class="animate-spin text-red-700" />
+                    <Trash2 v-else :size="14" />
                   </button>
                 </div>
               </td>

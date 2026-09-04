@@ -1,5 +1,6 @@
 <!-- pages/admin/books/import.vue -->
 <script setup lang="ts">
+import { ref, onUnmounted } from 'vue';
 import {
   FileSpreadsheet,
   Download,
@@ -55,21 +56,18 @@ async function handleFileUpload(file: File): Promise<void> {
     formData.append('file', file);
 
     const res = await $fetch<{ success: boolean; data: { jobId: string; status: string } }>(
-      'http://localhost:3000/api/v1/books/import/excel',
+      '/api/admin/books/import/excel',
       {
         method: 'POST',
         body: formData,
-        headers: {
-          Authorization: `Bearer ${useCookie('flemela_admin_session').value}`,
-        },
       }
     );
 
     activeJobId.value = res.data.jobId;
-    pushToast({ message: 'File accepted. Ingestion started in background!', variant: 'info' });
+    pushToast({ message: 'Spreadsheet accepted. Processing in background!', variant: 'info' });
     startPollingJob(res.data.jobId);
   } catch (err: any) {
-    pushToast({ message: err.data?.error?.message || 'Failed to upload spreadsheet', variant: 'error' });
+    pushToast({ message: err.data?.message || err.statusMessage || 'Failed to upload spreadsheet', variant: 'error' });
   } finally {
     isUploading.value = false;
   }
@@ -82,22 +80,19 @@ async function handleGoogleSheetSubmit(): Promise<void> {
   jobData.value = null;
 
   try {
-    const res = await $fetch<{ success: boolean; data: { jobId: string; status: string } }>(
-      'http://localhost:3000/api/v1/books/import/google-sheet',
+    const res = await $fetch<{ jobId: string; status: string }>(
+      '/api/admin/books/import',
       {
         method: 'POST',
         body: { sheetUrl: googleSheetUrl.value.trim() },
-        headers: {
-          Authorization: `Bearer ${useCookie('flemela_admin_session').value}`,
-        },
       }
     );
 
-    activeJobId.value = res.data.jobId;
-    pushToast({ message: 'Google Sheet import enqueued!', variant: 'info' });
-    startPollingJob(res.data.jobId);
+    activeJobId.value = res.jobId;
+    pushToast({ message: 'Google Sheet import queued!', variant: 'info' });
+    startPollingJob(res.jobId);
   } catch (err: any) {
-    pushToast({ message: err.data?.error?.message || 'Failed to import Google Sheet', variant: 'error' });
+    pushToast({ message: err.data?.message || err.statusMessage || 'Failed to import Google Sheet', variant: 'error' });
   } finally {
     isSubmittingSheet.value = false;
   }
@@ -108,27 +103,20 @@ function startPollingJob(jobId: string): void {
 
   pollTimer = setInterval(async () => {
     try {
-      const res = await $fetch<{ success: boolean; data: any }>(
-        `http://localhost:3000/api/v1/books/import/${jobId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${useCookie('flemela_admin_session').value}`,
-          },
-        }
-      );
-      jobData.value = res.data;
+      const res = await $fetch<any>(`/api/admin/books/import/${jobId}`);
+      jobData.value = res;
 
-      if (res.data.status === 'done' || res.data.status === 'failed') {
+      if (res.status === 'done' || res.status === 'failed') {
         stopPolling();
-        if (res.data.status === 'done') {
+        if (res.status === 'done') {
           pushToast({
-            message: `Import complete! Ingested ${res.data.processed_rows} titles successfully.`,
+            message: `Import complete! Successfully added ${res.processed_rows} books.`,
             variant: 'success',
           });
         }
       }
     } catch {
-      stopPolling();
+      // Allow minor transient network delays without halting poll
     }
   }, 2500);
 }
@@ -160,16 +148,14 @@ function onFileSelect(e: Event): void {
 <template>
   <AdminLayout>
     <div class="max-w-4xl mx-auto space-y-6">
-      <!-- Back Link -->
-      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-bold text-brand-green hover:underline">
+      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline">
         <ArrowLeft :size="14" /> Back to Books Catalog
       </NuxtLink>
 
-      <!-- Main Import Container -->
       <div class="bg-white rounded-xl shadow-card border border-ink-border p-6 sm:p-8 space-y-6">
         <div class="flex flex-wrap justify-between items-start gap-4 pb-4 border-b border-ink-border">
           <div>
-            <h1 class="font-display text-2xl font-bold text-brand-green">Bulk Excel / CSV Importer</h1>
+            <h1 class="font-display text-2xl font-bold text-forest-950">Bulk Excel / CSV Importer</h1>
             <p class="text-xs text-ink-muted">
               Ingest hundreds of book titles, stream PDFs directly into Cloudflare R2, and sync covers to Cloudinary.
             </p>
@@ -177,7 +163,7 @@ function onFileSelect(e: Event): void {
 
           <button
             type="button"
-            class="bg-brand-cream border border-brand-gold text-brand-gold-hover text-xs font-bold px-3.5 py-2 rounded hover:bg-amber-100 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+            class="bg-paper-cream border border-gold-400 text-forest-950 text-xs font-bold px-3.5 py-2 rounded hover:bg-amber-100 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
             @click="downloadSampleTemplate"
           >
             <Download :size="14" /> Download Sample Template
@@ -190,18 +176,18 @@ function onFileSelect(e: Event): void {
 
           <div
             class="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer bg-slate-50 flex flex-col items-center justify-center gap-3"
-            :class="isDragging ? 'border-brand-green bg-emerald-50' : 'border-slate-300 hover:border-brand-green'"
+            :class="isDragging ? 'border-forest-900 bg-emerald-50' : 'border-slate-300 hover:border-forest-900'"
             @dragover.prevent="isDragging = true"
             @dragleave.prevent="isDragging = false"
             @drop.prevent="onDrop"
           >
-            <div class="w-12 h-12 rounded-full bg-emerald-100 text-brand-green flex items-center justify-center">
+            <div class="w-12 h-12 rounded-full bg-emerald-100 text-forest-900 flex items-center justify-center">
               <Upload :size="24" />
             </div>
 
             <div class="space-y-1">
               <p class="text-xs font-bold text-ink">
-                Drag &amp; drop your workbook here, or <span class="text-brand-green underline">browse files</span>
+                Drag &amp; drop your workbook here, or <span class="text-forest-900 underline">browse files</span>
               </p>
               <p class="text-[11px] text-ink-muted">
                 Supports .xlsx and .csv files matching the Flemela format (up to 50MB)
@@ -218,7 +204,7 @@ function onFileSelect(e: Event): void {
             />
             <label
               for="excel-file-picker"
-              class="bg-brand-green text-white text-xs font-bold uppercase px-4 py-2 rounded hover:bg-brand-green-hover cursor-pointer shadow-sm inline-block"
+              class="bg-forest-950 text-white text-xs font-bold uppercase px-4 py-2 rounded hover:bg-forest-900 cursor-pointer shadow-sm inline-block"
             >
               {{ isUploading ? 'Uploading...' : 'Choose File' }}
             </label>
@@ -234,12 +220,12 @@ function onFileSelect(e: Event): void {
               v-model="googleSheetUrl"
               type="url"
               placeholder="https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"
-              class="flex-1 px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-brand-green"
+              class="flex-1 px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
               :disabled="isSubmittingSheet"
             />
             <button
               type="submit"
-              class="bg-brand-green text-white text-xs font-bold uppercase px-5 py-2 rounded hover:bg-brand-green-hover disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              class="bg-forest-950 text-white text-xs font-bold uppercase px-5 py-2 rounded hover:bg-forest-900 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
               :disabled="!googleSheetUrl || isSubmittingSheet"
             >
               <RefreshCw v-if="isSubmittingSheet" :size="13" class="animate-spin" />
@@ -252,12 +238,12 @@ function onFileSelect(e: Event): void {
         </div>
 
         <!-- 3. Real-Time Import Progress Status Card -->
-        <div v-if="jobData" class="p-5 bg-brand-cream border border-brand-gold/50 rounded-xl space-y-4">
+        <div v-if="jobData" class="p-5 bg-paper-cream border border-gold-300 rounded-xl space-y-4">
           <div class="flex justify-between items-center">
             <div class="flex items-center gap-2">
-              <FileSpreadsheet :size="18" class="text-brand-green" />
+              <FileSpreadsheet :size="18" class="text-forest-900" />
               <h3 class="font-display font-bold text-sm text-ink">
-                Import Job Status: <span class="uppercase text-brand-green font-mono">{{ jobData.status }}</span>
+                Import Job Status: <span class="uppercase text-forest-900 font-mono">{{ jobData.status }}</span>
               </h3>
             </div>
             <span class="text-xs font-mono font-bold text-ink tabular-figure">
@@ -265,17 +251,15 @@ function onFileSelect(e: Event): void {
             </span>
           </div>
 
-          <!-- Progress Bar -->
           <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
             <div
-              class="bg-brand-green h-full transition-all duration-300 rounded-full"
+              class="bg-forest-900 h-full transition-all duration-300 rounded-full"
               :style="{
                 width: `${jobData.total_rows ? Math.min(100, Math.round((jobData.processed_rows / jobData.total_rows) * 100)) : 10}%`,
               }"
             />
           </div>
 
-          <!-- Error Rows Table -->
           <div v-if="jobData.error_rows && jobData.error_rows.length > 0" class="space-y-2 pt-2 border-t border-ink-border">
             <div class="flex items-center gap-1.5 text-xs font-bold text-red-600">
               <span>{{ jobData.error_rows.length }} Row(s) Failed Validation</span>

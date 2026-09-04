@@ -1,7 +1,16 @@
 <!-- pages/admin/books/new.vue -->
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ArrowLeft, Trash2, Upload, BookOpen, AlertCircle, Sparkles, Link as LinkIcon, RefreshCw } from 'lucide-vue-next';
+import {
+  ArrowLeft,
+  Trash2,
+  Upload,
+  BookOpen,
+  AlertCircle,
+  Sparkles,
+  Link as LinkIcon,
+  RefreshCw,
+} from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import { useToast } from '~/composables/useToast';
 import type { BookFormatType } from '~/types';
@@ -21,6 +30,11 @@ const author = ref('');
 const categoryId = ref('');
 const description = ref('');
 const price = ref(999);
+const compareAtPrice = ref<number | null>(1200);
+const badge = ref<
+  'BESTSELLER' | 'FLASH_SALE' | 'NO1_PICK' | 'DEAL_OF_WEEK' | 'LIMITED_TIME' | null
+>(null);
+const saleEndsAt = ref<string>('');
 const status = ref<'draft' | 'published'>('published');
 
 // Cover art state
@@ -29,10 +43,10 @@ const coverPublicId = ref('');
 const isUploadingCover = ref(false);
 const isSearchingCover = ref(false);
 
-// Format rows repeater
 interface FormatDraft {
   format: BookFormatType;
   price: number;
+  compare_at_price: number | null;
   stock: number | null;
   file_url: string | null;
   file_public_id: string | null;
@@ -41,18 +55,37 @@ interface FormatDraft {
 }
 
 const formats = ref<FormatDraft[]>([
-  { format: 'hardcopy', price: 999, stock: 25, file_url: null, file_public_id: null, file_size_bytes: null, uploading: false },
-  { format: 'pdf', price: 149, stock: null, file_url: null, file_public_id: null, file_size_bytes: null, uploading: false },
+  {
+    format: 'hardcopy',
+    price: 999,
+    compare_at_price: 1200,
+    stock: 25,
+    file_url: null,
+    file_public_id: null,
+    file_size_bytes: null,
+    uploading: false,
+  },
+  {
+    format: 'pdf',
+    price: 149,
+    compare_at_price: null,
+    stock: null,
+    file_url: null,
+    file_public_id: null,
+    file_size_bytes: null,
+    uploading: false,
+  },
 ]);
 
 const isSubmitting = ref(false);
 const formError = ref<string | null>(null);
 
 function addFormatRow(type: BookFormatType): void {
-  if (formats.value.some((f: FormatDraft) => f.format === type)) return;
+  if (formats.value.some((f) => f.format === type)) return;
   formats.value.push({
     format: type,
     price: type === 'hardcopy' ? 999 : 149,
+    compare_at_price: null,
     stock: type === 'hardcopy' ? 20 : null,
     file_url: null,
     file_public_id: null,
@@ -65,7 +98,6 @@ function removeFormatRow(index: number): void {
   formats.value.splice(index, 1);
 }
 
-// 🪄 Automated Open Web Cover Discovery Engine
 async function handleAutoFindCover(): Promise<void> {
   if (!name.value.trim()) {
     pushToast({ message: 'Enter a book title first to auto-discover cover art', variant: 'error' });
@@ -87,18 +119,28 @@ async function handleAutoFindCover(): Promise<void> {
     if (res?.coverUrl) {
       coverUrl.value = res.coverUrl;
       coverPublicId.value = `auto_${res.source || 'web'}`;
-      pushToast({ message: `Discovered cover art from ${res.source === 'googlebooks' ? 'Google Books' : 'Open Library'}!`, variant: 'success' });
+      pushToast({
+        message: `Discovered cover art from ${
+          res.source === 'googlebooks' ? 'Google Books' : 'Open Library'
+        }!`,
+        variant: 'success',
+      });
     } else {
-      pushToast({ message: 'No online cover found. You can upload or paste an image link.', variant: 'info' });
+      pushToast({
+        message: 'No online cover found. You can upload or paste an image link.',
+        variant: 'info',
+      });
     }
   } catch {
-    pushToast({ message: 'Auto-discovery timed out. You can upload a photo directly.', variant: 'error' });
+    pushToast({
+      message: 'Auto-discovery timed out. You can upload a photo directly.',
+      variant: 'error',
+    });
   } finally {
     isSearchingCover.value = false;
   }
 }
 
-// Upload Cover Art to Cloudinary
 async function handleCoverUpload(event: Event): Promise<void> {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
@@ -133,13 +175,12 @@ async function handleCoverUpload(event: Event): Promise<void> {
       pushToast({ message: 'Cover image uploaded to Cloudinary', variant: 'success' });
     }
   } catch {
-    pushToast({ message: 'Cloudinary upload failed. You can use Auto-Find or paste a direct image URL.', variant: 'error' });
+    pushToast({ message: 'Cloudinary upload failed', variant: 'error' });
   } finally {
     isUploadingCover.value = false;
   }
 }
 
-// Upload PDF / EPUB directly to Cloudflare R2
 async function handleEbookUpload(event: Event, index: number): Promise<void> {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
@@ -147,14 +188,17 @@ async function handleEbookUpload(event: Event, index: number): Promise<void> {
 
   formats.value[index].uploading = true;
   try {
-    const presigned = await $fetch<{ uploadUrl: string; key: string }>('/api/admin/books/upload-url', {
-      method: 'POST',
-      body: {
-        filename: file.name,
-        format: formats.value[index].format,
-        contentType: file.type || 'application/pdf',
-      },
-    });
+    const presigned = await $fetch<{ uploadUrl: string; key: string }>(
+      '/api/admin/books/upload-url',
+      {
+        method: 'POST',
+        body: {
+          filename: file.name,
+          format: formats.value[index].format,
+          contentType: file.type || 'application/pdf',
+        },
+      }
+    );
 
     const uploadRes = await fetch(presigned.uploadUrl, {
       method: 'PUT',
@@ -179,6 +223,14 @@ async function handleEbookUpload(event: Event, index: number): Promise<void> {
 async function handleSubmit(): Promise<void> {
   if (!name.value.trim() || formats.value.length === 0) return;
 
+  // Validate format-level compare-at price to avoid inverted discounts
+  for (const f of formats.value) {
+    if (f.compare_at_price !== null && f.compare_at_price <= f.price) {
+      formError.value = `Compare-at price for ${f.format.toUpperCase()} must be strictly greater than its selling price.`;
+      return;
+    }
+  }
+
   isSubmitting.value = true;
   formError.value = null;
 
@@ -191,12 +243,16 @@ async function handleSubmit(): Promise<void> {
         category_id: categoryId.value || undefined,
         description: description.value.trim() || undefined,
         price: formats.value[0]?.price || price.value,
+        compare_at_price: compareAtPrice.value || null,
+        badge: badge.value || null,
+        sale_ends_at: saleEndsAt.value ? new Date(saleEndsAt.value).toISOString() : null,
         cover_image_url: coverUrl.value.trim() || undefined,
         cover_image_public_id: coverPublicId.value || undefined,
         status: status.value,
         formats: formats.value.map((f: FormatDraft) => ({
           format: f.format,
           price: Number(f.price),
+          compare_at_price: f.compare_at_price ? Number(f.compare_at_price) : null,
           file_url: f.file_url,
           file_public_id: f.file_public_id,
           file_size_bytes: f.file_size_bytes,
@@ -218,7 +274,10 @@ async function handleSubmit(): Promise<void> {
 <template>
   <AdminLayout>
     <div class="max-w-4xl mx-auto space-y-6">
-      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline">
+      <NuxtLink
+        to="/admin/books"
+        class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline"
+      >
         <ArrowLeft :size="14" /> Back to Books
       </NuxtLink>
 
@@ -226,14 +285,16 @@ async function handleSubmit(): Promise<void> {
         <div class="pb-4 border-b border-ink-border">
           <h1 class="font-display text-2xl font-bold text-forest-950">Add New Book</h1>
           <p class="text-xs text-ink-muted">
-            Auto-discover cover art from the open web or upload custom Cloudinary media.
+            Configure catalog details, strike-through discounts, and automated homepage merchandising.
           </p>
         </div>
 
         <form class="space-y-6" @submit.prevent="handleSubmit">
           <!-- 1. General Details -->
           <div class="space-y-4">
-            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Book Information</h3>
+            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
+              Book Information
+            </h3>
 
             <div class="grid sm:grid-cols-2 gap-4">
               <div class="space-y-1">
@@ -242,10 +303,14 @@ async function handleSubmit(): Promise<void> {
                   <input
                     v-model="name"
                     type="text"
-                    placeholder="e.g. Atomic Habits or Freakonomics"
+                    placeholder="e.g. Atomic Habits"
                     class="flex-1 px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
                     required
-                    @blur="() => { if (!coverUrl && name) handleAutoFindCover(); }"
+                    @blur="
+                      () => {
+                        if (!coverUrl && name) handleAutoFindCover();
+                      }
+                    "
                   />
                   <button
                     type="button"
@@ -295,6 +360,42 @@ async function handleSubmit(): Promise<void> {
               </div>
             </div>
 
+            <!-- Promotion & Badge Merchandising -->
+            <div
+              class="p-4 bg-paper-cream/60 rounded-xl border border-ink-border grid sm:grid-cols-2 gap-4"
+            >
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-forest-950">
+                  Promotional Badge / Placement
+                </label>
+                <select
+                  v-model="badge"
+                  class="w-full px-3 py-2 bg-white border border-ink-border rounded text-xs outline-none focus:border-forest-900 font-semibold"
+                >
+                  <option :value="null">None (Standard Catalog)</option>
+                  <option value="BESTSELLER">🔥 Bestseller (Monthly Section)</option>
+                  <option value="NO1_PICK">⭐ #1 Pick (Featured Top Slot)</option>
+                  <option value="FLASH_SALE">⚡ Flash Sale (High Urgency)</option>
+                  <option value="DEAL_OF_WEEK">🏷️ Deal of the Week</option>
+                  <option value="LIMITED_TIME">⏳ Limited Time Sale</option>
+                </select>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-forest-950">
+                  Sale Expiration (Optional)
+                </label>
+                <input
+                  v-model="saleEndsAt"
+                  type="datetime-local"
+                  class="w-full px-3 py-1.5 bg-white border border-ink-border rounded text-xs font-mono outline-none focus:border-forest-900"
+                />
+                <span class="text-[10px] text-ink-muted">
+                  Auto-removes flash sale badge once passed to prevent perpetual sales.
+                </span>
+              </div>
+            </div>
+
             <div class="space-y-1">
               <label class="text-xs font-semibold text-forest-950">Description / Synopsis</label>
               <textarea
@@ -306,12 +407,22 @@ async function handleSubmit(): Promise<void> {
             </div>
           </div>
 
-          <!-- 2. Auto-Discovered Cover Art & Preview -->
+          <!-- 2. Cover Art Preview -->
           <div class="space-y-3 pt-4 border-t border-ink-border">
-            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Cover Art</h3>
+            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
+              Cover Art
+            </h3>
             <div class="flex items-start gap-4">
-              <div class="w-20 h-28 bg-paper-cream rounded border border-ink-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm relative">
-                <img v-if="coverUrl" :src="coverUrl" :alt="name ? `${name} Cover Art Preview` : 'Cover Art Preview'" class="w-full h-full object-cover" @error="coverUrl = ''" />
+              <div
+                class="w-20 h-28 bg-paper-cream rounded border border-ink-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm relative"
+              >
+                <img
+                  v-if="coverUrl"
+                  :src="coverUrl"
+                  :alt="name ? `${name} Cover` : 'Cover'"
+                  class="w-full h-full object-cover"
+                  @error="coverUrl = ''"
+                />
                 <BookOpen v-else :size="24" class="text-ink-muted opacity-40" />
               </div>
               <div class="space-y-2 flex-1">
@@ -322,10 +433,12 @@ async function handleSubmit(): Promise<void> {
                     :disabled="isSearchingCover || !name"
                     @click="handleAutoFindCover"
                   >
-                    <Sparkles :size="13" class="text-gold-300" /> Auto-Find Cover from Web
+                    <Sparkles :size="13" class="text-gold-300" /> Auto-Find HD Cover
                   </button>
 
-                  <label class="cursor-pointer bg-white border border-ink-border text-forest-950 text-xs font-bold px-3 py-1.5 rounded hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 shadow-xs">
+                  <label
+                    class="cursor-pointer bg-white border border-ink-border text-forest-950 text-xs font-bold px-3 py-1.5 rounded hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 shadow-xs"
+                  >
                     <Upload :size="13" /> {{ isUploadingCover ? 'Uploading...' : 'Upload File' }}
                     <input
                       type="file"
@@ -352,12 +465,16 @@ async function handleSubmit(): Promise<void> {
             </div>
           </div>
 
-          <!-- 3. Formats Repeater (Cloudflare R2 Digital Uploads) -->
+          <!-- 3. Formats Repeater (With Format-Specific Compare-at Price) -->
           <div class="space-y-4 pt-4 border-t border-ink-border">
             <div class="flex justify-between items-center">
               <div>
-                <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Reading Formats &amp; Pricing</h3>
-                <p class="text-[11px] text-ink-muted">Physical stock counts &amp; direct Cloudflare R2 digital uploads.</p>
+                <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
+                  Reading Formats &amp; Discounts
+                </h3>
+                <p class="text-[11px] text-ink-muted">
+                  Set individual sale prices and optional strike-through regular prices per format.
+                </p>
               </div>
               <div class="flex gap-2">
                 <button
@@ -390,22 +507,37 @@ async function handleSubmit(): Promise<void> {
                 :key="fmt.format"
                 class="p-4 bg-slate-50 border border-ink-border rounded-lg grid sm:grid-cols-12 gap-3 items-center"
               >
-                <div class="sm:col-span-3">
-                  <span class="text-xs font-bold uppercase text-forest-950 font-mono">{{ fmt.format }}</span>
+                <div class="sm:col-span-2">
+                  <span class="text-xs font-bold uppercase text-forest-950 font-mono">{{
+                    fmt.format
+                  }}</span>
                 </div>
 
-                <div class="sm:col-span-3 space-y-1">
-                  <label class="text-[10px] text-ink-muted font-semibold">Price (KSh)</label>
+                <div class="sm:col-span-2 space-y-1">
+                  <label class="text-[10px] text-ink-muted font-semibold">Sale (KSh) *</label>
                   <input
                     v-model.number="fmt.price"
                     type="number"
-                    min="0"
+                    min="1"
                     class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono font-bold"
                   />
                 </div>
 
+                <div class="sm:col-span-3 space-y-1">
+                  <label class="text-[10px] text-ink-muted font-semibold">
+                    Strike-through (KSh)
+                  </label>
+                  <input
+                    v-model.number="fmt.compare_at_price"
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 1200"
+                    class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono"
+                  />
+                </div>
+
                 <div v-if="fmt.format === 'hardcopy'" class="sm:col-span-4 space-y-1">
-                  <label class="text-[10px] text-ink-muted font-semibold">Stock Count</label>
+                  <label class="text-[10px] text-ink-muted font-semibold">Physical Stock</label>
                   <input
                     v-model.number="fmt.stock"
                     type="number"
@@ -415,9 +547,15 @@ async function handleSubmit(): Promise<void> {
                 </div>
 
                 <div v-else class="sm:col-span-4 space-y-1">
-                  <label class="text-[10px] text-ink-muted font-semibold">Digital File (Cloudflare R2)</label>
-                  <label class="w-full bg-white border border-ink-border text-forest-950 text-[11px] font-medium px-2 py-1.5 rounded flex items-center justify-between cursor-pointer">
-                    <span class="truncate">{{ fmt.file_public_id ? 'R2 File Ready ✓' : 'Upload to R2' }}</span>
+                  <label class="text-[10px] text-ink-muted font-semibold">
+                    Digital File (Cloudflare R2)
+                  </label>
+                  <label
+                    class="w-full bg-white border border-ink-border text-forest-950 text-[11px] font-medium px-2 py-1.5 rounded flex items-center justify-between cursor-pointer"
+                  >
+                    <span class="truncate">{{
+                      fmt.file_public_id ? 'R2 File Ready âœ“' : 'Upload to R2'
+                    }}</span>
                     <input
                       type="file"
                       :accept="fmt.format === 'pdf' ? '.pdf' : '.epub'"
@@ -428,7 +566,7 @@ async function handleSubmit(): Promise<void> {
                   </label>
                 </div>
 
-                <div class="sm:col-span-2 text-right">
+                <div class="sm:col-span-1 text-right">
                   <button
                     type="button"
                     class="text-red-500 hover:text-red-700 p-1 cursor-pointer"
@@ -441,13 +579,19 @@ async function handleSubmit(): Promise<void> {
             </div>
           </div>
 
-          <div v-if="formError" class="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-center gap-2">
+          <div
+            v-if="formError"
+            class="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-center gap-2"
+          >
             <AlertCircle :size="14" class="flex-shrink-0" />
             <span>{{ formError }}</span>
           </div>
 
           <div class="pt-4 border-t border-ink-border flex justify-end gap-3">
-            <NuxtLink to="/admin/books" class="px-4 py-2.5 border border-ink-border rounded text-xs font-semibold hover:bg-slate-50">
+            <NuxtLink
+              to="/admin/books"
+              class="px-4 py-2.5 border border-ink-border rounded text-xs font-semibold hover:bg-slate-50"
+            >
               Cancel
             </NuxtLink>
             <button

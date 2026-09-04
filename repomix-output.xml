@@ -50,8 +50,11 @@ assets/
 components/
   admin/
     AdminLayout.vue
+  illustrations/
+    ReaderHeroIllustration.vue
   storefront/
     BentoCategories.vue
+    BestsellersSection.vue
     BookCard.vue
     BookRequestModal.vue
     BookstoreHeader.vue
@@ -60,12 +63,17 @@ components/
     CategoryGrid.vue
     DealsWeek.vue
     DeliveryTypeStep.vue
+    FeaturedMonth.vue
     HeroBanner.vue
     HeroReference.vue
     LeafletPinPicker.vue
+    NewsletterBanner.vue
     QuantityStepper.vue
+    StoreFooter.vue
+    StoreNavbar.vue
     TopUtilityBar.vue
     TrustBadgeStrip.vue
+    TrustStrip.vue
   ui/
     Badge.vue
     Button.vue
@@ -343,147 +351,182 @@ const route = useRoute();
 </template>
 </file>
 
-<file path="components/storefront/BentoCategories.vue">
-<!-- components/storefront/BentoCategories.vue -->
-<script setup lang="ts">
-import { ArrowUpRight } from 'lucide-vue-next';
+<file path="components/illustrations/ReaderHeroIllustration.vue">
+<!-- components/illustrations/ReaderHeroIllustration.vue -->
+<template>
+  <svg
+    viewBox="0 0 100 100"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    class="inline-block w-9 h-9 sm:w-12 sm:h-12 align-middle -translate-y-1"
+    aria-hidden="true"
+  >
+    <!-- Hair / Head -->
+    <path
+      d="M50 22C43.5 22 41 27 41 33C41 39 44 43 50 43C56 43 59 39 59 33C59 27 56.5 22 50 22Z"
+      fill="#F05A36"
+    />
+    <circle cx="50" cy="34" r="7" fill="#FBD5B5" />
+    <path
+      d="M45 30C46.5 26 53.5 26 55 30"
+      stroke="#F05A36"
+      stroke-width="3"
+      stroke-linecap="round"
+    />
 
+    <!-- Torso / Sitting Body -->
+    <path
+      d="M43 42C38 45 35 56 36 68C38 78 44 82 54 82C64 82 66 76 65 67C64 57 61 45 57 42C54 40 46 40 43 42Z"
+      fill="#F05A36"
+    />
+
+    <!-- Legs Crossed / Bent -->
+    <path
+      d="M36 68C32 72 30 78 35 83C40 88 48 86 52 82C56 78 58 72 58 68"
+      stroke="#E04622"
+      stroke-width="5"
+      stroke-linecap="round"
+    />
+    <path
+      d="M65 67C68 71 70 78 65 83C60 88 53 85 49 82"
+      stroke="#E04622"
+      stroke-width="5"
+      stroke-linecap="round"
+    />
+
+    <!-- Open Book in Hands -->
+    <path
+      d="M32 52L48 57L48 68L32 63Z"
+      fill="#26D48C"
+      stroke="#1CB875"
+      stroke-width="1.5"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M68 52L52 57L52 68L68 63Z"
+      fill="#26D48C"
+      stroke="#1CB875"
+      stroke-width="1.5"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M34 54L46 58"
+      stroke="white"
+      stroke-width="1.2"
+      stroke-linecap="round"
+    />
+    <path
+      d="M34 58L46 62"
+      stroke="white"
+      stroke-width="1.2"
+      stroke-linecap="round"
+    />
+    <path
+      d="M66 54L54 58"
+      stroke="white"
+      stroke-width="1.2"
+      stroke-linecap="round"
+    />
+    <path
+      d="M66 58L54 62"
+      stroke="white"
+      stroke-width="1.2"
+      stroke-linecap="round"
+    />
+  </svg>
+</template>
+</file>
+
+<file path="components/storefront/BestsellersSection.vue">
+<!-- components/storefront/BestsellersSection.vue -->
+<script setup lang="ts">
+import { computed } from 'vue';
+import BookCard from '~/components/storefront/BookCard.vue';
+import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import type { Book } from '~/types';
+
+interface Props {
+  books: Book[];
+}
+
+const props = defineProps<Props>();
 const emit = defineEmits<{
-  select: [category: string];
+  requestSeed: [title: string, author?: string];
+  seeMore: [];
 }>();
 
-const bentoItems = [
-  {
-    name: 'Fiction & Literature',
-    shortName: 'Fiction',
-    count: 'Curated Editions',
-    bgClass: 'bg-bento-fiction',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780062315007-M.jpg',
-  },
-  {
-    name: 'Psychology & Self-Help',
-    shortName: 'Self-Help',
-    count: 'Bestselling Titles',
-    bgClass: 'bg-bento-thriller',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg',
-    isLarge: true,
-  },
-  {
-    name: 'Christian Books',
-    shortName: 'Christian',
-    count: 'Spiritual Wisdom',
-    bgClass: 'bg-bento-fantasy',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780807014295-M.jpg',
-  },
-  {
-    name: 'Nonfiction',
-    shortName: 'Nonfiction',
-    count: 'History & Science',
-    bgClass: 'bg-bento-nonfiction',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780062316097-M.jpg',
-  },
-  {
-    name: 'Business & Finance',
-    shortName: 'Finance',
-    count: 'Wealth & Strategy',
-    bgClass: 'bg-bento-romance',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780857197689-M.jpg',
-  },
-];
+const bestsellerBooks = computed(() => {
+  const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
+  return mergeWithSeeds(props.books, combinedSeeds, 6);
+});
 </script>
 
 <template>
-  <section class="py-14 px-4 max-w-6xl mx-auto space-y-6">
-    <div class="text-center space-y-1">
-      <span class="text-[10px] font-mono uppercase font-bold tracking-widest text-theme-coral block">Browse by Genre</span>
-      <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-theme-ink tracking-tight uppercase">
-        WHAT KIND OF STORY ARE YOU CRAVING TODAY?
-      </h2>
+  <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
+    <!-- Header with Subtitle and "See More" Button on Right -->
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-theme-border pb-4">
+      <div>
+        <h2 class="font-display text-xl sm:text-2xl font-extrabold uppercase text-theme-ink tracking-tight">
+          BEST SELLERS OF THE MONTH
+        </h2>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <p class="text-xs text-theme-muted hidden md:inline">
+          Explore the best books our readers are loving and reading right now.
+        </p>
+        <button
+          type="button"
+          class="bg-theme-coral hover:bg-theme-coral-hover text-white text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full transition-all shadow-xs cursor-pointer flex-shrink-0"
+          @click="emit('seeMore')"
+        >
+          See More
+        </button>
+      </div>
     </div>
 
-    <!-- Bento Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[170px]">
-      <!-- Card 1 -->
-      <div
-        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
-        :class="bentoItems[0].bgClass"
-        @click="emit('select', bentoItems[0].name)"
-      >
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[0].count }}</span>
-          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[0].shortName }}</h3>
-        <img :src="bentoItems[0].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[8deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+    <!-- Layout: 3x2 Grid (8 Cols) + Vertical Dark Pine Promo Card (4 Cols) -->
+    <div class="grid lg:grid-cols-12 gap-6 items-stretch">
+      
+      <!-- 6 Books (3 Columns x 2 Rows) -->
+      <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <BookCard
+          v-for="book in bestsellerBooks"
+          :key="book.id"
+          :book="book"
+          @request-seed="(t, a) => emit('requestSeed', t, a)"
+        />
       </div>
 
-      <!-- Card 2: Self-Help (Spans 2 rows on desktop) -->
-      <div
-        class="lg:row-span-2 rounded-2xl p-6 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
-        :class="bentoItems[1].bgClass"
-        @click="emit('select', bentoItems[1].name)"
-      >
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[11px] text-white/80 font-mono">{{ bentoItems[1].count }}</span>
-          <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
-            <ArrowUpRight :size="15" />
+      <!-- Tall Vertical Dark Pine Promo Card with Arched Illustration -->
+      <div class="lg:col-span-4 bg-theme-dark text-white rounded-2xl p-7 flex flex-col justify-between items-center text-center shadow-card relative overflow-hidden">
+        
+        <!-- Top Arched Window Illustration Motif -->
+        <div class="w-24 h-32 rounded-t-full bg-theme-turquoise/20 border-2 border-theme-turquoise/40 flex items-center justify-center p-3 shadow-inner my-2">
+          <div class="w-16 h-22 bg-white/10 rounded-t-full flex items-center justify-center">
+            <span class="text-2xl">📚</span>
           </div>
         </div>
-        <div class="relative h-44 flex items-center justify-center">
-          <img :src="bentoItems[1].cover" alt="" class="w-28 h-40 object-cover rounded-lg shadow-2xl rotate-[-8deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+
+        <div class="space-y-2 py-4">
+          <h3 class="font-display text-2xl sm:text-3xl font-extrabold uppercase leading-tight tracking-tight">
+            GET <span class="text-theme-coral">20% OFF</span> BESTSELLERS
+          </h3>
+          <p class="text-xs text-white/70 leading-relaxed max-w-xs mx-auto">
+            This week only — pick the stories everyone is talking about at a lower price.
+          </p>
         </div>
-        <h3 class="font-display text-2xl font-bold uppercase z-10">{{ bentoItems[1].shortName }}</h3>
+
+        <!-- Full-Width Coral CTA Button -->
+        <button
+          type="button"
+          class="w-full bg-theme-coral hover:bg-theme-coral-hover text-white text-xs font-bold uppercase tracking-wider py-3.5 rounded-xl transition-all shadow-md cursor-pointer active:scale-95"
+          @click="emit('seeMore')"
+        >
+          Get This Offer
+        </button>
       </div>
 
-      <!-- Card 3 -->
-      <div
-        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
-        :class="bentoItems[2].bgClass"
-        @click="emit('select', bentoItems[2].name)"
-      >
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[2].count }}</span>
-          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[2].shortName }}</h3>
-        <img :src="bentoItems[2].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[-10deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
-      </div>
-
-      <!-- Card 4 -->
-      <div
-        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
-        :class="bentoItems[3].bgClass"
-        @click="emit('select', bentoItems[3].name)"
-      >
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[3].count }}</span>
-          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[3].shortName }}</h3>
-        <img :src="bentoItems[3].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[6deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
-      </div>
-
-      <!-- Card 5 -->
-      <div
-        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
-        :class="bentoItems[4].bgClass"
-        @click="emit('select', bentoItems[4].name)"
-      >
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[4].count }}</span>
-          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-        <h3 class="font-display text-xl font-bold uppercase z-10">{{ bentoItems[4].shortName }}</h3>
-        <img :src="bentoItems[4].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
-      </div>
     </div>
   </section>
 </template>
@@ -1145,139 +1188,6 @@ function handleClick(categoryKey: string): void {
 </template>
 </file>
 
-<file path="components/storefront/DealsWeek.vue">
-<!-- components/storefront/DealsWeek.vue -->
-<script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import BookCard from '~/components/storefront/BookCard.vue';
-import { DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
-import type { Book } from '~/types';
-
-interface Props {
-  books: Book[];
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<{
-  requestSeed: [title: string, author?: string];
-}>();
-
-const carouselRef = ref<HTMLElement | null>(null);
-
-const dealBooks = computed(() => {
-  return mergeWithSeeds(props.books, DEALS_SEEDS, 4);
-});
-
-// Real Countdown Timer (Target: Next Sunday Midnight)
-const days = ref('04');
-const hours = ref('18');
-const minutes = ref('40');
-const seconds = ref('23');
-let timerInterval: ReturnType<typeof setInterval> | undefined;
-
-function updateCountdown(): void {
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const daysUntilSunday = (7 - dayOfWeek) % 7 || 7;
-  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59);
-
-  const diff = Math.max(0, target.getTime() - now.getTime());
-  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-  const m = Math.floor((diff / 1000 / 60) % 60);
-  const s = Math.floor((diff / 1000) % 60);
-
-  days.value = String(d).padStart(2, '0');
-  hours.value = String(h).padStart(2, '0');
-  minutes.value = String(m).padStart(2, '0');
-  seconds.value = String(s).padStart(2, '0');
-}
-
-onMounted(() => {
-  updateCountdown();
-  timerInterval = setInterval(updateCountdown, 1000);
-});
-
-onUnmounted(() => {
-  if (timerInterval) clearInterval(timerInterval);
-});
-
-function scrollLeft(): void {
-  carouselRef.value?.scrollBy({ left: -280, behavior: 'smooth' });
-}
-
-function scrollRight(): void {
-  carouselRef.value?.scrollBy({ left: 280, behavior: 'smooth' });
-}
-</script>
-
-<template>
-  <section class="bg-theme-sand py-14 px-4">
-    <div class="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 items-center">
-      <!-- Left: Countdown Column -->
-      <div class="lg:col-span-4 space-y-4">
-        <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-theme-coral block">BOOK OF THE WEEK</span>
-        <h2 class="font-display text-3xl font-extrabold text-theme-ink uppercase tracking-tight">
-          DEALS OF THE WEEK
-        </h2>
-        <p class="text-xs text-theme-muted leading-relaxed">
-          Unforgettable reads that are dominating bestsellers and changing how we view wealth, power, and wisdom.
-        </p>
-
-        <!-- Dynamic Timer Boxes -->
-        <ClientOnly>
-          <div class="flex items-center gap-2 pt-2">
-            <div class="bg-white rounded-xl px-3 py-2 border border-stone-200 text-center shadow-xs">
-              <span class="font-mono text-sm font-bold text-theme-ink block">{{ days }}D</span>
-            </div>
-            <span class="font-bold text-theme-ink">:</span>
-            <div class="bg-white rounded-xl px-3 py-2 border border-stone-200 text-center shadow-xs">
-              <span class="font-mono text-sm font-bold text-theme-ink block">{{ hours }}H</span>
-            </div>
-            <span class="font-bold text-theme-ink">:</span>
-            <div class="bg-white rounded-xl px-3 py-2 border border-stone-200 text-center shadow-xs">
-              <span class="font-mono text-sm font-bold text-theme-ink block">{{ minutes }}M</span>
-            </div>
-            <span class="font-bold text-theme-ink">:</span>
-            <div class="bg-white rounded-xl px-3 py-2 border border-stone-200 text-center shadow-xs">
-              <span class="font-mono text-sm font-bold text-theme-coral block">{{ seconds }}S</span>
-            </div>
-          </div>
-        </ClientOnly>
-
-        <!-- Carousel Buttons -->
-        <div class="flex items-center gap-2 pt-2">
-          <button
-            type="button"
-            class="w-9 h-9 rounded-full bg-white border border-stone-200 flex items-center justify-center text-theme-ink hover:bg-stone-50 cursor-pointer shadow-xs active:scale-95 transition-all"
-            aria-label="Previous deal"
-            @click="scrollLeft"
-          >
-            <ChevronLeft :size="16" />
-          </button>
-          <button
-            type="button"
-            class="w-9 h-9 rounded-full bg-theme-coral text-white flex items-center justify-center hover:bg-theme-coral-hover cursor-pointer shadow-xs active:scale-95 transition-all"
-            aria-label="Next deal"
-            @click="scrollRight"
-          >
-            <ChevronRight :size="16" />
-          </button>
-        </div>
-      </div>
-
-      <!-- Right: Deals Cards -->
-      <div ref="carouselRef" class="lg:col-span-8 flex gap-4 overflow-x-auto no-scrollbar py-2">
-        <div v-for="book in dealBooks" :key="book.id" class="w-56 sm:w-60 flex-shrink-0">
-          <BookCard :book="book" @request-seed="(t, a) => emit('requestSeed', t, a)" />
-        </div>
-      </div>
-    </div>
-  </section>
-</template>
-</file>
-
 <file path="components/storefront/DeliveryTypeStep.vue">
 <!-- components/storefront/DeliveryTypeStep.vue -->
 <script setup lang="ts">
@@ -1350,6 +1260,55 @@ const emit = defineEmits<{
       </div>
     </label>
   </div>
+</template>
+</file>
+
+<file path="components/storefront/FeaturedMonth.vue">
+<!-- components/storefront/FeaturedMonth.vue -->
+<script setup lang="ts">
+import { computed } from 'vue';
+import BookCard from '~/components/storefront/BookCard.vue';
+import { MONTHLY_TOP_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import type { Book } from '~/types';
+
+interface Props {
+  books: Book[];
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<{
+  requestSeed: [title: string, author?: string];
+}>();
+
+const featuredBooks = computed(() => {
+  return mergeWithSeeds(props.books, MONTHLY_TOP_SEEDS, 4);
+});
+</script>
+
+<template>
+  <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
+    <!-- Split Header: Bold Left, Paragraph Right -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-theme-border pb-4">
+      <div>
+        <h2 class="font-display text-xl sm:text-2xl font-extrabold uppercase text-theme-ink tracking-tight">
+          THE #1 BOOK OF THE MONTH YOU CAN'T MISS
+        </h2>
+      </div>
+      <p class="text-xs text-theme-muted max-w-sm md:text-right leading-relaxed">
+        An unforgettable read that is dominating bestsellers and changing how we view mindset, power, and success.
+      </p>
+    </div>
+
+    <!-- 4 Cards Row -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
+      <BookCard
+        v-for="book in featuredBooks"
+        :key="book.id"
+        :book="book"
+        @request-seed="(t, a) => emit('requestSeed', t, a)"
+      />
+    </div>
+  </section>
 </template>
 </file>
 
@@ -1429,135 +1388,6 @@ function scrollToSection(id: string): void {
             @click="scrollToSection('categories')"
           >
             Browse Categories
-          </button>
-        </div>
-      </div>
-    </div>
-  </section>
-</template>
-</file>
-
-<file path="components/storefront/HeroReference.vue">
-<!-- components/storefront/HeroReference.vue -->
-<script setup lang="ts">
-import { ref } from 'vue';
-import { Search, ChevronDown, Sparkles } from 'lucide-vue-next';
-
-const emit = defineEmits<{
-  search: [query: string, category: string];
-  selectCategory: [category: string];
-}>();
-
-const searchQuery = ref('');
-const selectedCategory = ref('All Categories');
-const isDropdownOpen = ref(false);
-
-const categories = [
-  'All Categories',
-  'Fiction & Literature',
-  'Psychology & Self-Help',
-  'Business & Finance',
-  'Christian Books',
-  'Education & Textbooks',
-  'Biographies & Memoir'
-];
-
-function handleSearch(): void {
-  emit('search', searchQuery.value.trim(), selectedCategory.value);
-}
-
-function handleSelectCat(cat: string): void {
-  selectedCategory.value = cat;
-  isDropdownOpen.value = false;
-  emit('selectCategory', cat === 'All Categories' ? 'ALL' : cat);
-}
-</script>
-
-<template>
-  <section class="relative bg-theme-dark text-white pt-12 pb-20 px-4 overflow-hidden">
-    <!-- Floating Cover Stacks (Left and Right) -->
-    <div class="absolute inset-0 pointer-events-none opacity-30 flex justify-between items-center px-4 sm:px-12">
-      <!-- Left Stack -->
-      <div class="hidden lg:flex flex-col gap-6 -translate-x-6">
-        <img src="https://covers.openlibrary.org/b/isbn/9780140283334-M.jpg" alt="" class="w-16 h-24 object-cover rounded shadow-lg rotate-[-6deg]" referrerpolicy="no-referrer" />
-        <img src="https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg" alt="" class="w-20 h-28 object-cover rounded shadow-lg rotate-[4deg] translate-x-4" referrerpolicy="no-referrer" />
-        <img src="https://covers.openlibrary.org/b/isbn/9780062316097-M.jpg" alt="" class="w-16 h-24 object-cover rounded shadow-lg rotate-[-3deg]" referrerpolicy="no-referrer" />
-      </div>
-
-      <!-- Right Stack -->
-      <div class="hidden lg:flex flex-col gap-6 translate-x-6">
-        <img src="https://covers.openlibrary.org/b/isbn/9781501110368-M.jpg" alt="" class="w-16 h-24 object-cover rounded shadow-lg rotate-[8deg]" referrerpolicy="no-referrer" />
-        <img src="https://covers.openlibrary.org/b/isbn/9780857197689-M.jpg" alt="" class="w-20 h-28 object-cover rounded shadow-lg rotate-[-5deg] -translate-x-4" referrerpolicy="no-referrer" />
-        <img src="https://covers.openlibrary.org/b/isbn/9780451524935-M.jpg" alt="" class="w-16 h-24 object-cover rounded shadow-lg rotate-[3deg]" referrerpolicy="no-referrer" />
-      </div>
-    </div>
-
-    <!-- Hero Content -->
-    <div class="relative z-10 max-w-3xl mx-auto text-center space-y-6">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-theme-turquoise shadow-xs">
-        <Sparkles :size="13" />
-        <span>Curated for Curious Minds</span>
-      </div>
-
-      <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold uppercase tracking-tight leading-[1.1]">
-        THE NEXT <br />
-        <span class="text-theme-turquoise">CHAPTER</span> IN <span class="text-theme-coral">YOUR</span> <br />
-        READING JOURNEY
-      </h1>
-
-      <p class="text-xs sm:text-sm text-white/75 max-w-lg mx-auto leading-relaxed">
-        Browse curated collections of page-turners, timeless classics, and life-changing books crafted to enrich your reading list.
-      </p>
-
-      <!-- Search Bar -->
-      <div class="pt-2 max-w-2xl mx-auto">
-        <div class="bg-white rounded-full p-1.5 shadow-2xl flex items-center gap-2 border border-white/20">
-          
-          <!-- Category Dropdown -->
-          <div class="relative flex-shrink-0">
-            <button
-              type="button"
-              class="px-4 py-2 text-xs font-semibold text-theme-ink flex items-center gap-1.5 border-r border-slate-200 cursor-pointer select-none"
-              @click="isDropdownOpen = !isDropdownOpen"
-            >
-              <span class="max-w-[120px] truncate">{{ selectedCategory }}</span>
-              <ChevronDown :size="13" class="text-slate-500" />
-            </button>
-
-            <div
-              v-if="isDropdownOpen"
-              class="absolute top-full left-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-left text-xs font-medium text-theme-ink"
-            >
-              <button
-                v-for="cat in categories"
-                :key="cat"
-                type="button"
-                class="w-full text-left px-4 py-2 hover:bg-slate-50 transition-colors"
-                :class="{ 'font-bold text-theme-coral bg-orange-50/50': selectedCategory === cat }"
-                @click="handleSelectCat(cat)"
-              >
-                {{ cat }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Input -->
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search by title, author, or ISBN..."
-            class="flex-1 bg-transparent px-3 text-xs sm:text-sm text-theme-ink outline-none placeholder:text-slate-400"
-            @keyup.enter="handleSearch"
-          />
-
-          <!-- Button -->
-          <button
-            type="button"
-            class="bg-theme-coral hover:bg-theme-coral-hover text-white text-xs font-bold uppercase tracking-wider px-6 py-2.5 rounded-full transition-all flex items-center gap-1.5 shadow-md cursor-pointer flex-shrink-0"
-            @click="handleSearch"
-          >
-            <Search :size="14" />
-            <span class="hidden sm:inline">Search</span>
           </button>
         </div>
       </div>
@@ -1695,6 +1525,67 @@ defineExpose({
 </template>
 </file>
 
+<file path="components/storefront/NewsletterBanner.vue">
+<!-- components/storefront/NewsletterBanner.vue -->
+<script setup lang="ts">
+import { ref } from 'vue';
+import { useToast } from '~/composables/useToast';
+
+const { push: pushToast } = useToast();
+const email = ref('');
+const isSubscribed = ref(false);
+
+function handleSubscribe(): void {
+  if (!email.value || !email.value.includes('@')) return;
+  isSubscribed.value = true;
+  pushToast({ message: '20% Coupon Code sent to your email!', variant: 'success' });
+  email.value = '';
+}
+</script>
+
+<template>
+  <section class="py-12 px-4 max-w-6xl mx-auto">
+    <div class="bg-theme-sand border border-stone-300 rounded-2xl p-6 sm:p-10 relative overflow-hidden shadow-card">
+      
+      <!-- Left Hand Illustrated Graphic -->
+      <div class="absolute -left-4 top-1/2 -translate-y-1/2 hidden md:block text-5xl pointer-events-none opacity-80 rotate-[-12deg]">
+        📖
+      </div>
+
+      <!-- Right Hand Illustrated Graphic -->
+      <div class="absolute -right-4 top-1/2 -translate-y-1/2 hidden md:block text-5xl pointer-events-none opacity-80 rotate-[12deg]">
+        📕
+      </div>
+
+      <!-- Center Content -->
+      <div class="max-w-md mx-auto text-center space-y-4 relative z-10">
+        <h3 class="font-display text-xl sm:text-2xl font-extrabold uppercase tracking-tight text-theme-ink">
+          GET A <span class="text-theme-coral">20% DISCOUNT</span> ON YOUR FIRST ORDER!
+        </h3>
+
+        <!-- Integrated Email Subscription Pill -->
+        <form class="flex items-center bg-white rounded-full p-1.5 border border-stone-300 shadow-sm" @submit.prevent="handleSubscribe">
+          <input
+            v-model="email"
+            type="email"
+            placeholder="Enter your email..."
+            class="flex-1 px-4 py-2 text-xs text-theme-ink outline-none bg-transparent"
+            required
+          />
+          <button
+            type="submit"
+            class="bg-theme-coral hover:bg-theme-coral-hover text-white text-xs font-bold uppercase tracking-wider px-6 py-2 rounded-full transition-all shadow-xs cursor-pointer flex-shrink-0"
+          >
+            {{ isSubscribed ? 'Sent!' : 'Send' }}
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </section>
+</template>
+</file>
+
 <file path="components/storefront/QuantityStepper.vue">
 <!-- components/storefront/QuantityStepper.vue -->
 <script setup lang="ts">
@@ -1752,6 +1643,97 @@ function increment(): void {
       <Plus :size="14" />
     </button>
   </div>
+</template>
+</file>
+
+<file path="components/storefront/StoreFooter.vue">
+<!-- components/storefront/StoreFooter.vue -->
+<script setup lang="ts">
+//import { ref } from 'vue';
+</script>
+
+<template>
+  <footer class="bg-theme-dark text-white pt-14 pb-10 px-4 border-t border-white/10 mt-auto">
+    <div class="max-w-6xl mx-auto space-y-10">
+      
+      <!-- 4 Columns Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-xs text-white/70">
+        
+        <!-- Column 1: Need Help? -->
+        <div class="space-y-3">
+          <h5 class="font-mono font-bold uppercase text-white tracking-wider text-[11px]">NEED HELP?</h5>
+          <ul class="space-y-2">
+            <li><a href="#" class="hover:text-white transition-colors">Help Center</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Shipping FAQs</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Track Your Order</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Order Status</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Product Recalls</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Accessibility</a></li>
+          </ul>
+        </div>
+
+        <!-- Column 2: About Us -->
+        <div class="space-y-3">
+          <h5 class="font-mono font-bold uppercase text-white tracking-wider text-[11px]">ABOUT US</h5>
+          <ul class="space-y-2">
+            <li><a href="#" class="hover:text-white transition-colors">About Us</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Flemela Readers</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Return Policy</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Delivery Information</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Loyalty Program</a></li>
+          </ul>
+        </div>
+
+        <!-- Column 3: Categories -->
+        <div class="space-y-3">
+          <h5 class="font-mono font-bold uppercase text-white tracking-wider text-[11px]">CATEGORIES</h5>
+          <ul class="space-y-2">
+            <li><a href="#" class="hover:text-white transition-colors">Coupons</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">RX Prescription</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Scholarship Program</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Brand Directory</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">E-Catalog/Requests</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Corporate Orders</a></li>
+          </ul>
+        </div>
+
+        <!-- Column 4: Payments & Contact -->
+        <div class="space-y-3">
+          <h5 class="font-mono font-bold uppercase text-white tracking-wider text-[11px]">PAYMENTS &amp; CONTACT</h5>
+          <p class="text-[11px] text-white/60">Payments are 100% secured and direct:</p>
+          
+          <!-- Payment Badges -->
+          <div class="flex flex-wrap gap-1.5 pt-1">
+            <span class="px-2 py-0.5 rounded bg-white/10 text-white font-mono text-[9px] font-bold">LIPA NA M-PESA</span>
+            <span class="px-2 py-0.5 rounded bg-white/10 text-white font-mono text-[9px] font-bold">VISA</span>
+            <span class="px-2 py-0.5 rounded bg-white/10 text-white font-mono text-[9px] font-bold">MASTERCARD</span>
+          </div>
+
+          <!-- Social Icons -->
+          <div class="flex items-center gap-3 pt-3 text-white/60">
+            <span class="hover:text-white cursor-pointer">Twitter</span>
+            <span>•</span>
+            <span class="hover:text-white cursor-pointer">Instagram</span>
+            <span>•</span>
+            <span class="hover:text-white cursor-pointer">WhatsApp</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Bar -->
+      <div class="pt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-3 text-[11px] text-white/50">
+        <div class="flex gap-4">
+          <a href="#" class="hover:text-white transition-colors">Terms of Use</a>
+          <a href="#" class="hover:text-white transition-colors">Privacy Policy</a>
+          <a href="#" class="hover:text-white transition-colors">Copyright</a>
+          <a href="#" class="hover:text-white transition-colors">Sitemap</a>
+        </div>
+        <p>&copy; 2026 Flemela Bookstore. All Rights Reserved.</p>
+      </div>
+
+    </div>
+  </footer>
 </template>
 </file>
 
@@ -1870,6 +1852,54 @@ import { Truck, ShieldCheck, Headphones, Lock } from 'lucide-vue-next';
           <p class="text-xs font-medium text-forest-900 mt-0.5">Direct STK Push settlement</p>
         </div>
       </div>
+    </div>
+  </section>
+</template>
+</file>
+
+<file path="components/storefront/TrustStrip.vue">
+<!-- components/storefront/TrustStrip.vue -->
+<script setup lang="ts">
+import { Truck, BookOpen, Percent } from 'lucide-vue-next';
+</script>
+
+<template>
+  <section class="py-12 bg-white border-y border-theme-border px-4">
+    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+      
+      <!-- Benefit 1: Free Standard Delivery -->
+      <div class="flex flex-col items-center space-y-2.5">
+        <div class="w-12 h-12 rounded-full bg-emerald-100 text-theme-forest flex items-center justify-center shadow-xs">
+          <Truck :size="22" class="text-emerald-800" />
+        </div>
+        <h4 class="text-xs font-extrabold uppercase tracking-wider text-theme-ink">FREE STANDARD DELIVERY</h4>
+        <p class="text-[11px] text-theme-muted max-w-xs leading-relaxed">
+          These are the books everyone is reading, loving, and recommending right now.
+        </p>
+      </div>
+
+      <!-- Benefit 2: 2 Million Books Availability -->
+      <div class="flex flex-col items-center space-y-2.5">
+        <div class="w-12 h-12 rounded-full bg-emerald-100 text-theme-forest flex items-center justify-center shadow-xs">
+          <BookOpen :size="22" class="text-emerald-800" />
+        </div>
+        <h4 class="text-xs font-extrabold uppercase tracking-wider text-theme-ink">2 MILLION BOOKS AVAILABILITY</h4>
+        <p class="text-[11px] text-theme-muted max-w-xs leading-relaxed">
+          These are the books everyone is reading, loving, and recommending right now.
+        </p>
+      </div>
+
+      <!-- Benefit 3: Special Discount -->
+      <div class="flex flex-col items-center space-y-2.5">
+        <div class="w-12 h-12 rounded-full bg-emerald-100 text-theme-forest flex items-center justify-center shadow-xs">
+          <Percent :size="22" class="text-emerald-800" />
+        </div>
+        <h4 class="text-xs font-extrabold uppercase tracking-wider text-theme-ink">SPECIAL DISCOUNT</h4>
+        <p class="text-[11px] text-theme-muted max-w-xs leading-relaxed">
+          These are the books everyone is reading, loving, and recommending right now.
+        </p>
+      </div>
+
     </div>
   </section>
 </template>
@@ -7382,6 +7412,158 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 }
 </file>
 
+<file path="components/storefront/BentoCategories.vue">
+<!-- components/storefront/BentoCategories.vue -->
+<script setup lang="ts">
+import { ArrowUpRight } from 'lucide-vue-next';
+
+const emit = defineEmits<{
+  select: [category: string];
+}>();
+
+const bentoItems = [
+  {
+    name: 'Fiction & Literature',
+    shortName: 'FICTION',
+    count: '234 Books',
+    bgClass: 'bg-bento-fiction',
+    cover: 'https://covers.openlibrary.org/b/isbn/9780062315007-M.jpg',
+  },
+  {
+    name: 'Psychology & Self-Help',
+    shortName: 'THRILLER',
+    count: '189 Books',
+    bgClass: 'bg-bento-thriller',
+    isTall: true,
+  },
+  {
+    name: 'Christian Books',
+    shortName: 'FANTASY',
+    count: '142 Books',
+    bgClass: 'bg-bento-fantasy',
+    cover: 'https://covers.openlibrary.org/b/isbn/9780547928227-M.jpg',
+  },
+  {
+    name: 'Nonfiction',
+    shortName: 'NONFICTION',
+    count: '156 Books',
+    bgClass: 'bg-bento-nonfiction',
+    cover: 'https://covers.openlibrary.org/b/isbn/9780062316097-M.jpg',
+  },
+  {
+    name: 'Business & Finance',
+    shortName: 'ROMANCE',
+    count: '210 Books',
+    bgClass: 'bg-bento-romance',
+    cover: 'https://covers.openlibrary.org/b/isbn/9781501110368-M.jpg',
+  },
+];
+</script>
+
+<template>
+  <section id="categories-bento" class="py-14 px-4 max-w-6xl mx-auto space-y-6">
+    <div class="text-center space-y-1">
+      <span class="text-[10px] font-mono uppercase font-bold tracking-widest text-theme-coral block">BOOK CATEGORIES</span>
+      <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-theme-ink tracking-tight uppercase">
+        WHAT KIND OF STORY ARE YOU CRAVING TODAY?
+      </h2>
+    </div>
+
+    <!-- 3-Column Asymmetric Bento Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[170px]">
+      
+      <!-- Card 1: Fiction (Top-Left) -->
+      <div
+        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
+        :class="bentoItems[0].bgClass"
+        @click="emit('select', bentoItems[0].name)"
+      >
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[0].count }}</span>
+          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-display text-xl font-bold uppercase z-10 tracking-tight">{{ bentoItems[0].shortName }}</h3>
+        <img :src="bentoItems[0].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[8deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+      </div>
+
+      <!-- Card 2: Center Tall Card (Spanning 2 Full Rows with 3 Fanned Books Stack) -->
+      <div
+        class="lg:row-span-2 rounded-2xl p-6 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
+        :class="bentoItems[1].bgClass"
+        @click="emit('select', bentoItems[1].name)"
+      >
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[11px] text-white/80 font-mono">{{ bentoItems[1].count }}</span>
+          <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
+            <ArrowUpRight :size="15" />
+          </div>
+        </div>
+
+        <!-- Fanned 3-Book Center Stack -->
+        <div class="relative h-44 flex items-center justify-center my-auto">
+          <img src="https://covers.openlibrary.org/b/isbn/9780140283334-M.jpg" alt="" class="absolute w-24 h-34 object-cover rounded-lg shadow-xl -translate-x-7 rotate-[-12deg] group-hover:rotate-[-8deg] transition-transform duration-300" referrerpolicy="no-referrer" />
+          <img src="https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg" alt="" class="absolute w-26 h-38 object-cover rounded-lg shadow-2xl z-10 scale-105 group-hover:scale-110 transition-transform duration-300" referrerpolicy="no-referrer" />
+          <img src="https://covers.openlibrary.org/b/isbn/9780857197689-M.jpg" alt="" class="absolute w-24 h-34 object-cover rounded-lg shadow-xl translate-x-7 rotate-[12deg] group-hover:rotate-[8deg] transition-transform duration-300" referrerpolicy="no-referrer" />
+        </div>
+
+        <h3 class="font-display text-2xl font-bold uppercase z-10 tracking-tight">{{ bentoItems[1].shortName }}</h3>
+      </div>
+
+      <!-- Card 3: Fantasy (Top-Right) -->
+      <div
+        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
+        :class="bentoItems[2].bgClass"
+        @click="emit('select', bentoItems[2].name)"
+      >
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[2].count }}</span>
+          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-display text-xl font-bold uppercase z-10 tracking-tight">{{ bentoItems[2].shortName }}</h3>
+        <img :src="bentoItems[2].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[-10deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+      </div>
+
+      <!-- Card 4: Nonfiction (Bottom-Left) -->
+      <div
+        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
+        :class="bentoItems[3].bgClass"
+        @click="emit('select', bentoItems[3].name)"
+      >
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[3].count }}</span>
+          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-display text-xl font-bold uppercase z-10 tracking-tight">{{ bentoItems[3].shortName }}</h3>
+        <img :src="bentoItems[3].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[6deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+      </div>
+
+      <!-- Card 5: Romance (Bottom-Right) -->
+      <div
+        class="rounded-2xl p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-card transition-transform hover:-translate-y-1"
+        :class="bentoItems[4].bgClass"
+        @click="emit('select', bentoItems[4].name)"
+      >
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] text-white/80 font-mono">{{ bentoItems[4].count }}</span>
+          <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-theme-ink transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-display text-xl font-bold uppercase z-10 tracking-tight">{{ bentoItems[4].shortName }}</h3>
+        <img :src="bentoItems[4].cover" alt="" class="absolute right-2 -bottom-4 w-20 h-28 object-cover rounded shadow-xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300" referrerpolicy="no-referrer" />
+      </div>
+
+    </div>
+  </section>
+</template>
+</file>
+
 <file path="components/storefront/BookCard.vue">
 <!-- components/storefront/BookCard.vue -->
 <script setup lang="ts">
@@ -7567,6 +7749,148 @@ function handleAction(event: Event): void {
       </button>
     </div>
   </div>
+</template>
+</file>
+
+<file path="components/storefront/DealsWeek.vue">
+<!-- components/storefront/DealsWeek.vue -->
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import BookCard from '~/components/storefront/BookCard.vue';
+import { DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import type { Book } from '~/types';
+
+interface Props {
+  books: Book[];
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<{
+  requestSeed: [title: string, author?: string];
+}>();
+
+const carouselRef = ref<HTMLElement | null>(null);
+
+const dealBooks = computed(() => {
+  return mergeWithSeeds(props.books, DEALS_SEEDS, 4);
+});
+
+// Live Countdown Timer
+const days = ref('04');
+const hours = ref('18');
+const minutes = ref('40');
+const seconds = ref('23');
+let timerInterval: ReturnType<typeof setInterval> | undefined;
+
+function updateCountdown(): void {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const daysUntilSunday = (7 - dayOfWeek) % 7 || 7;
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59);
+
+  const diff = Math.max(0, target.getTime() - now.getTime());
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const m = Math.floor((diff / 1000 / 60) % 60);
+  const s = Math.floor((diff / 1000) % 60);
+
+  days.value = String(d).padStart(2, '0');
+  hours.value = String(h).padStart(2, '0');
+  minutes.value = String(m).padStart(2, '0');
+  seconds.value = String(s).padStart(2, '0');
+}
+
+onMounted(() => {
+  updateCountdown();
+  timerInterval = setInterval(updateCountdown, 1000);
+});
+
+onUnmounted(() => {
+  if (timerInterval) clearInterval(timerInterval);
+});
+
+function scrollLeft(): void {
+  carouselRef.value?.scrollBy({ left: -280, behavior: 'smooth' });
+}
+
+function scrollRight(): void {
+  carouselRef.value?.scrollBy({ left: 280, behavior: 'smooth' });
+}
+</script>
+
+<template>
+  <section id="deals-week" class="bg-theme-sand py-14 px-4 relative overflow-hidden">
+    <!-- Subtle Concentric Ripple Texture Lines in Background -->
+    <svg class="absolute -left-20 -bottom-20 w-96 h-96 text-stone-300/40 pointer-events-none" viewBox="0 0 200 200" fill="none">
+      <circle cx="100" cy="100" r="40" stroke="currentColor" stroke-width="0.75" />
+      <circle cx="100" cy="100" r="70" stroke="currentColor" stroke-width="0.75" />
+      <circle cx="100" cy="100" r="100" stroke="currentColor" stroke-width="0.75" />
+    </svg>
+
+    <div class="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 items-center relative z-10">
+      
+      <!-- Left Column: Title, Copy, Countdown & Carousel Arrows (4 Cols) -->
+      <div class="lg:col-span-4 space-y-4">
+        <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-theme-coral block">BOOK OF THE WEEK</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-extrabold text-theme-ink uppercase tracking-tight">
+          DEALS OF THE WEEK
+        </h2>
+        <p class="text-xs text-theme-muted leading-relaxed">
+          An unforgettable read that is dominating bestsellers and changing how we view love, loss, and everything in between.
+        </p>
+
+        <!-- 4 Square Countdown Boxes (White with border) -->
+        <ClientOnly>
+          <div class="flex items-center gap-2 pt-1">
+            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
+              <span class="font-mono text-sm font-bold text-theme-ink block">{{ days }}D</span>
+            </div>
+            <span class="font-bold text-theme-ink">:</span>
+            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
+              <span class="font-mono text-sm font-bold text-theme-ink block">{{ hours }}H</span>
+            </div>
+            <span class="font-bold text-theme-ink">:</span>
+            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
+              <span class="font-mono text-sm font-bold text-theme-ink block">{{ minutes }}M</span>
+            </div>
+            <span class="font-bold text-theme-ink">:</span>
+            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
+              <span class="font-mono text-sm font-bold text-theme-coral block">{{ seconds }}S</span>
+            </div>
+          </div>
+        </ClientOnly>
+
+        <!-- Circular Slider Arrows (Left White, Right Coral) -->
+        <div class="flex items-center gap-2.5 pt-3">
+          <button
+            type="button"
+            class="w-9 h-9 rounded-full bg-white border border-stone-300 flex items-center justify-center text-theme-ink hover:bg-stone-50 cursor-pointer shadow-xs active:scale-95 transition-all"
+            aria-label="Previous deal"
+            @click="scrollLeft"
+          >
+            <ChevronLeft :size="16" />
+          </button>
+          <button
+            type="button"
+            class="w-9 h-9 rounded-full bg-theme-coral text-white flex items-center justify-center hover:bg-theme-coral-hover cursor-pointer shadow-xs active:scale-95 transition-all"
+            aria-label="Next deal"
+            @click="scrollRight"
+          >
+            <ChevronRight :size="16" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Column: Horizontal Deals Carousel (8 Cols) -->
+      <div ref="carouselRef" class="lg:col-span-8 flex gap-4 overflow-x-auto no-scrollbar py-2">
+        <div v-for="book in dealBooks" :key="book.id" class="w-56 sm:w-60 flex-shrink-0">
+          <BookCard :book="book" @request-seed="(t, a) => emit('requestSeed', t, a)" />
+        </div>
+      </div>
+
+    </div>
+  </section>
 </template>
 </file>
 
@@ -8342,224 +8666,6 @@ async function handleBulkDelete(): Promise<void> {
 </template>
 </file>
 
-<file path="pages/index.vue">
-<!-- pages/index.vue -->
-<script setup lang="ts">
-import { ref, computed } from 'vue';
-import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
-import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
-import HeroReference from '~/components/storefront/HeroReference.vue';
-import BentoCategories from '~/components/storefront/BentoCategories.vue';
-import DealsWeek from '~/components/storefront/DealsWeek.vue';
-import BookCard from '~/components/storefront/BookCard.vue';
-import CartDrawer from '~/components/storefront/CartDrawer.vue';
-import ToastContainer from '~/components/ui/ToastContainer.vue';
-import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
-import { MONTHLY_TOP_SEEDS, mergeWithSeeds } from '~/data/seeds';
-import { BookOpen } from 'lucide-vue-next';
-import type { Book } from '~/types';
-
-const { data: realBooks } = await useFetch<Book[]>('/api/products');
-
-const activeCategoryFilter = ref<string>('ALL');
-const searchQuery = ref<string>('');
-
-const showRequestModal = ref(false);
-const modalInitialTitle = ref('');
-const modalInitialAuthor = ref('');
-
-// Section 1: #1 Books of the Month (Real DB books take lead, seeds fill remainder)
-const monthlyTopBooks = computed(() => {
-  return mergeWithSeeds(realBooks.value, MONTHLY_TOP_SEEDS, 4);
-});
-
-// Full Search & Filter Engine
-const filteredBooks = computed(() => {
-  const books = realBooks.value || [];
-  let result = [...books];
-
-  if (activeCategoryFilter.value !== 'ALL') {
-    const filterKey = activeCategoryFilter.value.toLowerCase().trim();
-    result = result.filter((b) => {
-      const cat = (b.category_name || '').toLowerCase().trim();
-      if (cat === filterKey) return true;
-      if (cat.includes(filterKey) || filterKey.includes(cat)) return true;
-      if (filterKey.includes('fiction') && cat.includes('fiction')) return true;
-      if ((filterKey.includes('finance') || filterKey.includes('business')) && (cat.includes('finance') || cat.includes('business'))) return true;
-      if ((filterKey.includes('religious') || filterKey.includes('christian')) && (cat.includes('religious') || cat.includes('christian'))) return true;
-      if (filterKey.includes('self-help') && (cat.includes('self') || cat.includes('psychology'))) return true;
-      return false;
-    });
-  }
-
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase().trim();
-    result = result.filter(
-      (b) => b.name.toLowerCase().includes(q) || (b.author && b.author.toLowerCase().includes(q)) || (b.description && b.description.toLowerCase().includes(q))
-    );
-  }
-
-  return result;
-});
-
-const hasActiveFilter = computed(() => {
-  return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
-});
-
-function handleSearch(query: string, category: string): void {
-  searchQuery.value = query;
-  activeCategoryFilter.value = (category && category !== 'All Categories') ? category : 'ALL';
-  scrollToResults();
-}
-
-function handleCategorySelect(category: string): void {
-  activeCategoryFilter.value = category;
-  scrollToResults();
-}
-
-function scrollToResults(): void {
-  if (process.client) {
-    const el = document.getElementById('catalog-results');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  }
-}
-
-function handleRequestSeed(title: string, author?: string): void {
-  modalInitialTitle.value = title;
-  modalInitialAuthor.value = author || '';
-  showRequestModal.value = true;
-}
-</script>
-
-<template>
-  <div class="min-h-screen flex flex-col bg-theme-canvas text-theme-ink antialiased font-sans">
-    <TopUtilityBar />
-    <BookstoreHeader @search="handleSearch" @select-category="handleCategorySelect" />
-    
-    <!-- Hero Banner with Floating Covers & Search -->
-    <HeroReference @search="handleSearch" @select-category="handleCategorySelect" />
-
-    <!-- Search / Filter Results Section (Scroll Target) -->
-    <section id="catalog-results" v-if="hasActiveFilter" class="py-12 px-4 max-w-6xl mx-auto w-full space-y-6">
-      <div class="flex items-center justify-between bg-theme-surface p-4 rounded-2xl border border-theme-border shadow-soft">
-        <div class="space-y-0.5">
-          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-theme-coral">Filtered Catalog</span>
-          <p class="text-xs text-theme-ink font-medium">
-            Category: <strong>{{ activeCategoryFilter }}</strong>
-            <template v-if="searchQuery"> • Search: "{{ searchQuery }}"</template>
-          </p>
-        </div>
-        <button
-          type="button"
-          class="text-xs font-bold text-theme-coral hover:underline px-3 py-1.5 bg-orange-50 rounded-xl"
-          @click="activeCategoryFilter = 'ALL'; searchQuery = '';"
-        >
-          Reset Filter
-        </button>
-      </div>
-
-      <div v-if="filteredBooks.length === 0" class="bg-theme-surface rounded-2xl border border-theme-border p-12 text-center space-y-3">
-        <BookOpen :size="36" class="mx-auto text-theme-forest opacity-40" />
-        <h3 class="font-display font-bold text-base text-theme-ink">No exact matches in live inventory</h3>
-        <p class="text-xs text-theme-muted max-w-xs mx-auto">
-          We can source this publication for you on request.
-        </p>
-        <button
-          type="button"
-          class="bg-theme-coral text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer"
-          @click="handleRequestSeed(searchQuery)"
-        >
-          Submit Special Request
-        </button>
-      </div>
-
-      <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        <BookCard v-for="book in filteredBooks" :key="book.id" :book="book" @request-seed="handleRequestSeed" />
-      </div>
-    </section>
-
-    <!-- 1. #1 Book of the Month Section -->
-    <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
-      <div class="flex flex-wrap items-baseline justify-between gap-4 border-b border-theme-border pb-3">
-        <div>
-          <h2 class="font-display text-xl sm:text-2xl font-bold uppercase text-theme-ink tracking-tight">
-            THE #1 BOOK OF THE MONTH YOU CAN'T MISS
-          </h2>
-          <p class="text-xs text-theme-muted">Dominating the reading lists and changing how we view mindset, power, and success.</p>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <BookCard v-for="book in monthlyTopBooks" :key="book.id" :book="book" @request-seed="handleRequestSeed" />
-      </div>
-    </section>
-
-    <!-- 2. Bento Category Grid -->
-    <BentoCategories @select="handleCategorySelect" />
-
-    <!-- 3. Deals of the Week (Warm Sand + Live Timer) -->
-    <DealsWeek :books="realBooks || []" @request-seed="handleRequestSeed" />
-
-    <!-- 4. Best Sellers of the Month + Promo Card -->
-    <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
-      <div class="flex items-baseline justify-between border-b border-theme-border pb-3">
-        <h2 class="font-display text-xl sm:text-2xl font-bold uppercase text-theme-ink tracking-tight">
-          BEST SELLERS OF THE MONTH
-        </h2>
-      </div>
-
-      <div class="grid lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <BookCard
-            v-for="book in ((realBooks && realBooks.length >= 6) ? realBooks.slice(0, 6) : monthlyTopBooks)"
-            :key="book.id"
-            :book="book"
-            @request-seed="handleRequestSeed"
-          />
-        </div>
-
-        <!-- Vertical Promo Card -->
-        <div class="lg:col-span-4 bg-theme-dark text-white rounded-2xl p-8 flex flex-col justify-between items-center text-center shadow-card relative overflow-hidden">
-          <div class="space-y-2 z-10">
-            <span class="text-[10px] font-mono uppercase font-bold tracking-widest text-theme-turquoise block">Special Privilege</span>
-            <h3 class="font-display text-2xl sm:text-3xl font-bold uppercase leading-tight">GET 20% OFF BESTSELLERS</h3>
-            <p class="text-xs text-white/70">Pick the stories that readers across Nairobi are talking about.</p>
-          </div>
-          <button
-            type="button"
-            class="w-full bg-theme-coral hover:bg-theme-coral-hover text-white text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-all shadow-md cursor-pointer z-10"
-            @click="handleCategorySelect('Fiction & Literature')"
-          >
-            Explore Bestsellers
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="bg-theme-dark text-white py-12 px-4 border-t border-white/10 mt-auto">
-      <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
-        <div class="space-y-1 text-center sm:text-left">
-          <span class="font-display font-bold text-base tracking-tight text-white block">FLEMELA BOOKSTORE</span>
-          <p class="text-white/70 text-xs">Books that inspire. Knowledge that transforms.</p>
-        </div>
-        <p class="text-white/50 text-xs font-mono">&copy; 2026 Flemela Bookstore. All rights reserved.</p>
-      </div>
-    </footer>
-
-    <!-- Modals & Drawers -->
-    <BookRequestModal
-      :open="showRequestModal"
-      :initial-title="modalInitialTitle"
-      :initial-author="modalInitialAuthor"
-      @close="showRequestModal = false"
-    />
-    <CartDrawer />
-    <ToastContainer />
-  </div>
-</template>
-</file>
-
 <file path="tailwind.config.js">
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -8652,40 +8758,64 @@ export default {
 </file>
 
 <file path="assets/css/main.css">
-/* flemela/assets/css/main.css */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+/* =============================================================================
+   flemela/assets/css/main.css
+   Full-Stack Editorial Design System & Theme Styles
+   ============================================================================= */
 
+/* 1. Typography Imports */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,600&display=swap');
+
+/* 2. Tailwind Directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* 3. Global CSS Custom Properties (Theme Design Tokens) */
 :root {
-  /* Dynamic Theme Variables (Modify here to re-theme in the future) */
-  --theme-dark: #08251B;        /* Deep Pine */
-  --theme-forest: #0D382B;      /* Secondary Dark Green */
-  --theme-coral: #FF6347;       /* Primary Action Coral */
-  --theme-coral-hover: #E85338; /* Coral Hover State */
-  --theme-turquoise: #20B2AA;   /* Vibrant Teal Accent */
-  --theme-sand: #F7F2E7;        /* Warm Deals Section */
-  --theme-canvas: #FCFAF6;      /* Background Paper Canvas */
-  --theme-surface: #FFFFFF;     /* Card Surface */
-  --theme-cream: #F4EFE6;       /* Neutral Accent / Badges */
-  --theme-border: rgba(8, 37, 27, 0.09);
+  /* Brand Chromatic Palette (Matching Reference Design) */
+  --theme-dark: #052219;          /* Deep Pine Hero & Navbar (#052219 / #04261B) */
+  --theme-forest: #0C3A2B;        /* Dark Pine Accent */
+  --theme-mint: #2EE59D;          /* Vibrant Mint/Cyan headline word "CHAPTER" */
+  --theme-turquoise: #2CD4BF;     /* Secondary Teal/Cyan Highlight */
+  --theme-orange: #FF8A00;        /* Vibrant Marigold headline word "YOUR" */
+  --theme-coral: #F05A36;         /* Primary Action Coral (Search button, -40% badge) */
+  --theme-coral-hover: #D84315;   /* Coral Hover State */
+  --theme-sage: #8FA89B;          /* Soft Muted Sage for Hero Subtitles */
+
+  /* Neutral & Canvas Layers */
+  --theme-sand: #F7F2E7;          /* Warm Sand for Deals Section & Newsletter Card */
+  --theme-canvas: #FFFFFF;        /* Pure Clean Page Canvas */
+  --theme-surface: #FFFFFF;       /* Card Surface Elevation */
+  --theme-cream: #F4EFE6;         /* Linen Tag / Pill Background */
+
+  /* Typography Ink Tones */
+  --theme-ink: #141E1A;           /* Primary Dark Charcoal/Black */
+  --theme-ink-muted: #5F6964;     /* Secondary Subtitles & Authors */
+  --theme-ink-subtle: #929B96;    /* Placeholders & Meta */
+
+  /* Border Tints */
+  --theme-border: rgba(8, 37, 27, 0.08);
   --theme-border-strong: rgba(8, 37, 27, 0.16);
 
-  --theme-ink: #141E1A;         /* Primary Dark Typography */
-  --theme-ink-muted: #5F6964;   /* Secondary Text */
-  --theme-ink-subtle: #929B96;  /* Placeholder / Muted */
+  /* Bento Box Genre Colors */
+  --bento-fiction: #387A5B;
+  --bento-thriller: #DE9F3F;
+  --bento-fantasy: #207F8B;
+  --bento-nonfiction: #E75837;
+  --bento-romance: #7C67B6;
 }
 
+/* 4. Base Element Rules */
 @layer base {
   html {
     background-color: var(--theme-canvas);
     color: var(--theme-ink);
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
   }
 
   body {
@@ -8695,18 +8825,34 @@ export default {
     overflow-x: hidden;
   }
 
-  h1, h2, h3, h4, .font-display {
+  /* Font Utilities */
+  .font-poster {
+    font-family: 'Bebas Neue', 'Oswald', sans-serif;
+    letter-spacing: 0.015em;
+  }
+
+  .font-display {
     font-family: 'Fraunces', Georgia, serif;
     letter-spacing: -0.02em;
+  }
+
+  .font-sans {
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
   }
 
   .font-mono {
     font-family: 'IBM Plex Mono', monospace;
     font-variant-numeric: tabular-nums;
   }
+
+  /* Selection Highlight */
+  ::selection {
+    background-color: rgba(240, 90, 54, 0.2);
+    color: var(--theme-dark);
+  }
 }
 
-/* 3D Realistic Book Treatment */
+/* 5. Custom 3D Book Cover Treatment */
 .book-cover-3d {
   position: relative;
   border-radius: 2px 8px 8px 2px;
@@ -8721,7 +8867,7 @@ export default {
   bottom: 0;
   left: 0;
   width: 4px;
-  background: linear-gradient(to right, rgba(0,0,0,0.15) 0%, rgba(255,255,255,0.15) 50%, rgba(0,0,0,0.05) 100%);
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.16) 0%, rgba(255, 255, 255, 0.14) 50%, rgba(0, 0, 0, 0.05) 100%);
   pointer-events: none;
 }
 
@@ -8734,14 +8880,390 @@ export default {
   box-shadow: -3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 16px 30px -3px rgba(8, 37, 27, 0.14);
 }
 
-/* Custom Scrollbar Utility */
+/* 6. Hero Staggered Book Stack Top-Gradient Fade Mask */
+.hero-faded-stack {
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 15%, black 35%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 15%, black 35%, black 100%);
+}
+
+/* 7. Deep 50/50 Overlapping Pill Drop Shadow */
+.shadow-search-pill {
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+/* 8. Cross-Browser Invisible Scrollbar Utility */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* 9. Prevent Ugly Form Autofill Color Shifts */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--theme-ink);
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+</file>
+
+<file path="components/storefront/HeroReference.vue">
+<!-- flemela/components/storefront/HeroReference.vue -->
+<script setup lang="ts">
+import { ref } from 'vue';
+import { Search, ChevronDown } from 'lucide-vue-next';
+import ReaderHeroIllustration from '~/components/illustrations/ReaderHeroIllustration.vue';
+
+const emit = defineEmits<{
+  search: [query: string, category: string];
+  selectCategory: [category: string];
+}>();
+
+const searchQuery = ref('');
+const selectedCategory = ref('All Categories');
+const isDropdownOpen = ref(false);
+
+const categories = [
+  'All Categories',
+  'Fiction & Literature',
+  'Psychology & Self-Help',
+  'Business & Finance',
+  'Christian Books',
+  'Education & Textbooks',
+  'Biographies & Memoir',
+];
+
+function handleSearch(): void {
+  emit('search', searchQuery.value.trim(), selectedCategory.value);
+}
+
+function handleSelectCat(cat: string): void {
+  selectedCategory.value = cat;
+  isDropdownOpen.value = false;
+  emit('selectCategory', cat === 'All Categories' ? 'ALL' : cat);
+}
+</script>
+
+<template>
+  <section class="relative bg-[#052219] text-white pt-6 pb-28 sm:pb-36 overflow-visible select-none">
+    
+    <!-- LEFT 4-BOOK STACK (2 Staggered Straight Columns, Faded at Top with Gradient Mask) -->
+    <div class="absolute left-2 sm:left-4 lg:left-8 top-0 bottom-0 hidden md:flex gap-2.5 lg:gap-3 pointer-events-none hero-faded-stack">
+      
+      <!-- Column 1 (Starts Higher) -->
+      <div class="flex flex-col gap-2.5 -translate-y-6">
+        <img
+          src="https://covers.openlibrary.org/b/isbn/9781538724736-M.jpg"
+          alt="Lost and Lassoed"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+          referrerpolicy="no-referrer"
+        />
+        <img
+          src="https://covers.openlibrary.org/b/isbn/9780062316097-M.jpg"
+          alt="Path of Progress"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+          referrerpolicy="no-referrer"
+        />
+      </div>
+
+      <!-- Column 2 (Starts Lower) -->
+      <div class="flex flex-col gap-2.5 translate-y-5">
+        <img
+          src="https://covers.openlibrary.org/b/isbn/9781250268822-M.jpg"
+          alt="Each of Us a Desert"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+          referrerpolicy="no-referrer"
+        />
+        <img
+          src="https://covers.openlibrary.org/b/isbn/9781501171345-M.jpg"
+          alt="The Last Thing He Told Me"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+          referrerpolicy="no-referrer"
+        />
+      </div>
+
+    </div>
+
+    <!-- CENTER HERO POSTER TYPOGRAPHY & DOODLES -->
+    <div class="relative z-10 max-w-4xl mx-auto text-center px-4 pt-2">
+      
+      <div class="relative inline-block">
+        
+        <!-- Top Left Flame Doodle on "C" -->
+        <svg
+          class="absolute -top-7 sm:-top-9 left-12 sm:left-18 w-6 sm:w-7 h-8 text-[#FF5722] pointer-events-none"
+          viewBox="0 0 24 32"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path d="M12 0C12 0 16 6 16 11C16 13.5 14.5 15.5 12 16C9.5 15.5 8 13.5 8 11C8 6 12 0 12 0ZM12 18C16.5 18 20 21.5 20 26C20 29.5 16.5 32 12 32C7.5 32 4 29.5 4 26C4 21.5 7.5 18 12 18Z" />
+        </svg>
+
+        <!-- Top Right Asterisk Doodle on "NEXT" -->
+        <svg
+          class="absolute -top-3 right-10 sm:right-16 w-5 sm:w-6 h-5 sm:h-6 text-[#FFB300] pointer-events-none"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path d="M12 0L14 8L22 6L16 12L22 18L14 16L12 24L10 16L2 18L8 12L2 6L10 8L12 0Z" />
+        </svg>
+
+        <!-- Main Poster Headline (Bebas Neue) -->
+        <h1 class="font-poster text-5xl sm:text-7xl lg:text-[88px] leading-[0.93] tracking-wide uppercase text-white drop-shadow-sm">
+          THE NEXT <br />
+          <span class="text-[#2EE59D]">CHAPTER</span> IN <span class="text-[#FF8A00]">YOUR</span> <br />
+          READING 
+          <ReaderHeroIllustration />
+          JOURNEY
+        </h1>
+
+        <!-- Bottom Left Star Doodle under "R" -->
+        <svg
+          class="absolute -bottom-2 left-6 sm:left-12 w-5 sm:w-6 h-5 sm:h-6 text-[#FFB300] pointer-events-none"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+        </svg>
+
+        <!-- Turquoise Sparkle on "JOURNEY" -->
+        <svg
+          class="absolute top-1/2 -right-4 sm:-right-8 w-5 sm:w-6 h-5 sm:h-6 text-[#2EE59D] pointer-events-none"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+        </svg>
+      </div>
+
+      <!-- Muted Sage Subtitle -->
+      <p class="text-xs sm:text-sm text-[#8FA89B] max-w-lg mx-auto leading-relaxed font-sans pt-3">
+        Browse a curated collection of page-turners, slow burns, and life-changing reads crafted to match your unique taste.
+      </p>
+    </div>
+
+    <!-- RIGHT 4-BOOK STACK (2 Staggered Straight Columns, Faded at Top with Gradient Mask) -->
+    <div class="absolute right-2 sm:right-4 lg:right-8 top-0 bottom-0 hidden md:flex gap-2.5 lg:gap-3 pointer-events-none hero-faded-stack">
+      
+      <!-- Column 3 (Starts Lower) -->
+      <div class="flex flex-col gap-2.5 translate-y-5">
+        <img
+          src="https://covers.openlibrary.org/b/isbn/9780525536963-M.jpg"
+          alt="A Burning"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+          referrerpolicy="no-referrer"
+        />
+        <img
+          src="https://covers.openlibrary.org/b/isbn/9780593300237-M.jpg"
+          alt="Unicorn Irma"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+          referrerpolicy="no-referrer"
+        />
+      </div>
+
+      <!-- Column 4 (Starts Higher) -->
+      <div class="flex flex-col gap-2.5 -translate-y-6">
+        <img
+          src="https://covers.openlibrary.org/b/isbn/9781646220601-M.jpg"
+          alt="The Disaster Tourist"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+          referrerpolicy="no-referrer"
+        />
+        <img
+          src="https://covers.openlibrary.org/b/isbn/9780593135204-M.jpg"
+          alt="Kanslo Smart"
+          class="w-14 sm:w-16 lg:w-18 h-20 sm:h-22 lg:h-26 object-cover rounded shadow-lg border border-white/10"
+          referrerpolicy="no-referrer"
+        />
+      </div>
+
+    </div>
+
+    <!-- 50/50 OVERLAPPING FLOATING SEARCH PILL -->
+    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-full max-w-2xl px-4 z-30">
+      <div class="bg-white rounded-full p-2 shadow-search-pill border border-black/5 flex items-center gap-1 sm:gap-2">
+        
+        <!-- Category Dropdown Selector -->
+        <div class="relative flex-shrink-0">
+          <button
+            type="button"
+            class="px-3.5 sm:px-4 py-2 text-xs font-semibold text-slate-800 flex items-center gap-1.5 border-r border-slate-200 cursor-pointer select-none"
+            @click="isDropdownOpen = !isDropdownOpen"
+          >
+            <span class="max-w-[110px] sm:max-w-[130px] truncate">{{ selectedCategory }}</span>
+            <ChevronDown :size="13" class="text-slate-500 transition-transform" :class="{ 'rotate-180': isDropdownOpen }" />
+          </button>
+
+          <!-- Dropdown List Menu -->
+          <div
+            v-if="isDropdownOpen"
+            class="absolute top-full left-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-2xl py-2 z-50 text-left text-xs font-medium text-slate-800"
+          >
+            <button
+              v-for="cat in categories"
+              :key="cat"
+              type="button"
+              class="w-full text-left px-4 py-2 hover:bg-slate-50 transition-colors"
+              :class="{ 'font-bold text-[#F05A36] bg-orange-50/50': selectedCategory === cat }"
+              @click="handleSelectCat(cat)"
+            >
+              {{ cat }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Input Text -->
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Search 1 million books by title, author or ISBN"
+          class="flex-1 bg-transparent px-3 text-xs sm:text-sm text-slate-800 outline-none placeholder:text-slate-400 font-sans"
+          @keyup.enter="handleSearch"
+        />
+
+        <!-- Coral Pill Button with Search SVG -->
+        <button
+          type="button"
+          class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase tracking-wider px-5 sm:px-7 py-2.5 sm:py-3 rounded-full transition-all flex items-center gap-1.5 shadow-md cursor-pointer flex-shrink-0 active:scale-95"
+          @click="handleSearch"
+        >
+          <Search :size="14" />
+          <span class="hidden sm:inline">Search</span>
+        </button>
+      </div>
+    </div>
+
+  </section>
+</template>
+</file>
+
+<file path="components/storefront/StoreNavbar.vue">
+<!-- components/storefront/StoreNavbar.vue -->
+<script setup lang="ts">
+import { ref } from 'vue';
+import { ShoppingBag, Heart, User, Menu, X } from 'lucide-vue-next';
+import { useCart } from '~/composables/useCart';
+
+const { totalItems, openDrawer } = useCart();
+const isMobileOpen = ref(false);
+
+const navLinks = [
+  { label: 'Home', href: '/' },
+  { label: 'Shop', href: '#catalog-results' },
+  { label: 'Author', href: '#deals-week' },
+  { label: 'Blog', href: '#' },
+  { label: 'Help', href: 'https://wa.me/254700000000' },
+];
+</script>
+
+<template>
+  <header class="bg-[#052219] text-white sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      
+      <!-- Left: Logo -->
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="md:hidden p-1 text-white/80 hover:text-white cursor-pointer"
+          @click="isMobileOpen = !isMobileOpen"
+        >
+          <component :is="isMobileOpen ? X : Menu" :size="22" />
+        </button>
+
+        <NuxtLink to="/" class="flex items-center gap-2">
+          <!-- Teal/Green Brand Mark -->
+          <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M12 28C7 25 5 21 5 16C5 8.268 11.268 2 19 2C26.732 2 33 8.268 33 16C33 22 29 27 24 29"
+              stroke="#2EE59D"
+              stroke-width="5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M19 12C15 12 13 14 13 16C13 20 25 19 25 24C25 27 22 29 18 29C14 29 12 27 11 26"
+              stroke="#2EE59D"
+              stroke-width="4.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span class="font-sans font-bold text-xl tracking-tight text-white">
+            Flemela
+          </span>
+        </NuxtLink>
+      </div>
+
+      <!-- Center: Menu Links -->
+      <nav class="hidden md:flex items-center gap-9 text-xs font-semibold text-white/80">
+        <a
+          v-for="link in navLinks"
+          :key="link.label"
+          :href="link.href"
+          class="hover:text-white transition-colors"
+        >
+          {{ link.label }}
+        </a>
+      </nav>
+
+      <!-- Right: Badges -->
+      <div class="flex items-center gap-4 text-white">
+        <!-- Cart -->
+        <button
+          type="button"
+          class="relative p-1 text-white hover:text-[#2EE59D] transition-colors cursor-pointer"
+          @click="openDrawer"
+        >
+          <ShoppingBag :size="18" />
+          <span
+            class="absolute -top-1 -right-2 bg-[#F05A36] text-white font-mono text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+          >
+            {{ totalItems }}
+          </span>
+        </button>
+
+        <!-- Wishlist -->
+        <button type="button" class="relative p-1 text-white hover:text-[#F05A36] transition-colors hidden sm:block cursor-pointer">
+          <Heart :size="18" />
+          <span class="absolute -top-1 -right-2 bg-[#F05A36] text-white font-mono text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+            0
+          </span>
+        </button>
+
+        <!-- Profile -->
+        <NuxtLink to="/admin/login" class="p-1 text-white hover:text-[#2EE59D] transition-colors">
+          <User :size="18" />
+        </NuxtLink>
+      </div>
+    </div>
+
+    <!-- Mobile Drawer -->
+    <div v-if="isMobileOpen" class="md:hidden bg-[#072d21] border-t border-white/10 px-6 py-4 space-y-3">
+      <div class="flex flex-col gap-3 text-xs font-semibold">
+        <a
+          v-for="link in navLinks"
+          :key="link.label"
+          :href="link.href"
+          class="py-1.5 text-white/90 hover:text-white border-b border-white/5"
+          @click="isMobileOpen = false"
+        >
+          {{ link.label }}
+        </a>
+        <NuxtLink to="/admin/login" class="py-1.5 text-[#2EE59D] font-bold" @click="isMobileOpen = false">
+          Admin Portal
+        </NuxtLink>
+      </div>
+    </div>
+  </header>
+</template>
 </file>
 
 <file path="pages/checkout.vue">
@@ -9341,6 +9863,177 @@ async function handlePlaceOrder(): Promise<void> {
       </div>
     </main>
 
+    <ToastContainer />
+  </div>
+</template>
+</file>
+
+<file path="pages/index.vue">
+<!-- pages/index.vue -->
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import StoreNavbar from '~/components/storefront/StoreNavbar.vue';
+import HeroReference from '~/components/storefront/HeroReference.vue';
+import FeaturedMonth from '~/components/storefront/FeaturedMonth.vue';
+import BentoCategories from '~/components/storefront/BentoCategories.vue';
+import DealsWeek from '~/components/storefront/DealsWeek.vue';
+import BestsellersSection from '~/components/storefront/BestsellersSection.vue';
+import TrustStrip from '~/components/storefront/TrustStrip.vue';
+import NewsletterBanner from '~/components/storefront/NewsletterBanner.vue';
+import StoreFooter from '~/components/storefront/StoreFooter.vue';
+import BookCard from '~/components/storefront/BookCard.vue';
+import CartDrawer from '~/components/storefront/CartDrawer.vue';
+import ToastContainer from '~/components/ui/ToastContainer.vue';
+import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
+import { BookOpen } from 'lucide-vue-next';
+import type { Book } from '~/types';
+
+const { data: realBooks } = await useFetch<Book[]>('/api/products');
+
+const activeCategoryFilter = ref<string>('ALL');
+const searchQuery = ref<string>('');
+
+const showRequestModal = ref(false);
+const modalInitialTitle = ref('');
+const modalInitialAuthor = ref('');
+
+// Dynamic filter engine
+const filteredBooks = computed(() => {
+  const books = realBooks.value || [];
+  let result = [...books];
+
+  if (activeCategoryFilter.value !== 'ALL') {
+    const filterKey = activeCategoryFilter.value.toLowerCase().trim();
+    result = result.filter((b) => {
+      const cat = (b.category_name || '').toLowerCase().trim();
+      if (cat === filterKey) return true;
+      if (cat.includes(filterKey) || filterKey.includes(cat)) return true;
+      if (filterKey.includes('fiction') && cat.includes('fiction')) return true;
+      if ((filterKey.includes('finance') || filterKey.includes('business')) && (cat.includes('finance') || cat.includes('business'))) return true;
+      if ((filterKey.includes('religious') || filterKey.includes('christian')) && (cat.includes('religious') || cat.includes('christian'))) return true;
+      if (filterKey.includes('self-help') && (cat.includes('self') || cat.includes('psychology'))) return true;
+      return false;
+    });
+  }
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    result = result.filter(
+      (b) => b.name.toLowerCase().includes(q) || (b.author && b.author.toLowerCase().includes(q)) || (b.description && b.description.toLowerCase().includes(q))
+    );
+  }
+
+  return result;
+});
+
+const hasActiveFilter = computed(() => {
+  return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
+});
+
+function handleSearch(query: string, category: string): void {
+  searchQuery.value = query;
+  activeCategoryFilter.value = (category && category !== 'All Categories') ? category : 'ALL';
+  scrollToResults();
+}
+
+function handleCategorySelect(category: string): void {
+  activeCategoryFilter.value = category;
+  scrollToResults();
+}
+
+function scrollToResults(): void {
+  if (process.client) {
+    const el = document.getElementById('catalog-results');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+function handleRequestSeed(title: string, author?: string): void {
+  modalInitialTitle.value = title;
+  modalInitialAuthor.value = author || '';
+  showRequestModal.value = true;
+}
+</script>
+
+<template>
+  <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased">
+    
+    <!-- 1. Exact Navbar (#052219, Logo, Centered Links, Right Badges) -->
+    <StoreNavbar />
+
+    <!-- 2. Exact Hero (#052219, Poster Bebas Neue Headline, Faded Straight Stacks, 50% Overlapping Search Bar) -->
+    <HeroReference @search="handleSearch" @select-category="handleCategorySelect" />
+
+    <!-- Search / Filter Results (Visible when search is active) -->
+    <section id="catalog-results" v-if="hasActiveFilter" class="pt-16 sm:pt-20 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6">
+      <div class="flex items-center justify-between bg-[#F7F2E7] p-4 rounded-2xl border border-black/5 shadow-sm">
+        <div class="space-y-0.5">
+          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#F05A36]">Filtered Catalog</span>
+          <p class="text-xs text-slate-800 font-medium">
+            Category: <strong>{{ activeCategoryFilter }}</strong>
+            <template v-if="searchQuery"> • Search: "{{ searchQuery }}"</template>
+          </p>
+        </div>
+        <button
+          type="button"
+          class="text-xs font-bold text-[#F05A36] hover:underline px-3 py-1.5 bg-white rounded-xl cursor-pointer"
+          @click="activeCategoryFilter = 'ALL'; searchQuery = '';"
+        >
+          Reset Filter
+        </button>
+      </div>
+
+      <div v-if="filteredBooks.length === 0" class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm">
+        <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
+        <h3 class="font-display font-bold text-base text-slate-800">No exact matches in live inventory</h3>
+        <p class="text-xs text-slate-500 max-w-xs mx-auto">
+          We can source this publication for you on request.
+        </p>
+        <button
+          type="button"
+          class="bg-[#F05A36] text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer"
+          @click="handleRequestSeed(searchQuery)"
+        >
+          Submit Special Request
+        </button>
+      </div>
+
+      <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <BookCard v-for="book in filteredBooks" :key="book.id" :book="book" @request-seed="handleRequestSeed" />
+      </div>
+    </section>
+
+    <!-- 3. Section 1: #1 Book of the Month (pt-16 receives the bottom 50% of the search bar) -->
+    <div :class="hasActiveFilter ? 'pt-6' : 'pt-16 sm:pt-20'">
+      <FeaturedMonth :books="realBooks || []" @request-seed="handleRequestSeed" />
+    </div>
+
+    <!-- 4. Section 2: Bento Categories Grid -->
+    <BentoCategories @select="handleCategorySelect" />
+
+    <!-- 5. Section 3: Deals of the Week -->
+    <DealsWeek :books="realBooks || []" @request-seed="handleRequestSeed" />
+
+    <!-- 6. Section 4: Best Sellers of the Month + Promo Card -->
+    <BestsellersSection :books="realBooks || []" @request-seed="handleRequestSeed" @see-more="scrollToResults" />
+
+    <!-- 7. Section 5: Trust & Delivery Strip -->
+    <TrustStrip />
+
+    <!-- 8. Section 6: Newsletter Coupon Banner -->
+    <NewsletterBanner />
+
+    <!-- 9. Section 7: Dark Pine Footer -->
+    <StoreFooter />
+
+    <!-- Modals & Drawers -->
+    <BookRequestModal
+      :open="showRequestModal"
+      :initial-title="modalInitialTitle"
+      :initial-author="modalInitialAuthor"
+      @close="showRequestModal = false"
+    />
+    <CartDrawer />
     <ToastContainer />
   </div>
 </template>

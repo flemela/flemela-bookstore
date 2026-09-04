@@ -14,17 +14,29 @@ export default defineEventHandler(async (event) => {
   const backendBaseUrl = config.sokoApiBaseUrl.replace(/\/$/, '');
   const targetUrl = `${backendBaseUrl}/books/import/excel`;
 
-  // Forward incoming multipart stream with authentication
-  const response = await fetch(targetUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(event.node.req.headers['content-type'] ? { 'Content-Type': event.node.req.headers['content-type'] } : {}),
-    },
-    body: event.node.req as any,
-    duplex: 'half',
-  } as any);
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+  };
 
-  const data = await response.json();
-  return data;
+  const incomingContentType = getHeader(event, 'content-type');
+  if (incomingContentType) {
+    headers['content-type'] = incomingContentType;
+  }
+
+  try {
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers,
+      body: event.node.req as any,
+      duplex: 'half',
+    } as any);
+
+    const data = await response.json();
+    return data;
+  } catch (err: any) {
+    throw createError({
+      statusCode: err.statusCode || 500,
+      statusMessage: err.message || 'Spreadsheet upload forwarding failed',
+    });
+  }
 });

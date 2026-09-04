@@ -1,6 +1,6 @@
 // =============================================================================
 // server/api/admin/books/[id].delete.ts
-// Proxy endpoint deleting a book product and cascading its child records.
+// Proxy endpoint executing smart deletion with customer preservation.
 // =============================================================================
 
 import { sokoClient } from '../../../utils/sokoClient';
@@ -13,7 +13,10 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const result = await sokoClient<{ success: boolean; deleted: boolean }>(`/products/${id}`, {
+    const result = await sokoClient<{
+      deleted: boolean;
+      action: 'hard_deleted' | 'soft_deleted';
+    }>(`/products/${id}`, {
       method: 'DELETE',
     });
     return result;

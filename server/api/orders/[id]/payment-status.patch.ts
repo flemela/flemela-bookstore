@@ -1,5 +1,5 @@
 // =============================================================================
-// flemela/server/api/admin/orders/[id]/payment-status.patch.ts
+// server/api/admin/orders/[id]/payment-status.patch.ts
 // Proxy endpoint allowing store admin to approve payment and release downloads.
 // =============================================================================
 
