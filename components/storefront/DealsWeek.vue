@@ -126,10 +126,9 @@ function scrollRight(): void {
           </button>
         </div>
       </div>
-
-      <!-- Right Column: Horizontal Deals Carousel (8 Cols) -->
-      <div ref="carouselRef" class="lg:col-span-8 flex gap-4 overflow-x-auto no-scrollbar py-2">
-        <div v-for="book in dealBooks" :key="book.id" class="w-56 sm:w-60 flex-shrink-0">
+      <!-- Right Column: Horizontal Deals Carousel -->
+      <div ref="carouselRef" class="lg:col-span-8 flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-2 px-1">
+        <div v-for="book in dealBooks" :key="book.id" class="w-24 sm:w-28 flex-shrink-0">
           <BookCard :book="book" @request-seed="(t, a) => emit('requestSeed', t, a)" />
         </div>
       </div>

@@ -1,4 +1,8 @@
 // data/seeds.ts
+// =============================================================================
+// Permanent Seed Collection with Exact Title-Matched High-Res Covers
+// =============================================================================
+
 import type { Book } from '~/types';
 
 export interface SeedBook extends Book {
@@ -20,13 +24,39 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'NO1_PICK',
     images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/id/12886416-L.jpg', 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg', 
       image_public_id: 'seed_atomic_habits', 
       sort_order: 0 
     }],
     formats: [
       { id: 'seed-fmt-1', product_id: 'seed-atomic-habits', format: 'hardcopy', price: 1250, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' },
       { id: 'seed-fmt-2', product_id: 'seed-atomic-habits', format: 'pdf', price: 199, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-dont-make-me-think',
+    org_id: 'seed-flemela',
+    category_id: 'cat-business',
+    category_name: 'Business & Finance',
+    name: "Don't Make Me Think",
+    slug: 'dont-make-me-think',
+    author: 'Steve Krug',
+    description: 'A Common Sense Approach to Web Usability.',
+    price: 1100,
+    compare_at_price: 1550,
+    status: 'published',
+    badge: 'NO1_PICK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780321965516-L.jpg', 
+      image_public_id: 'seed_dont_make_me_think', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-3', product_id: 'seed-dont-make-me-think', format: 'hardcopy', price: 1100, compare_at_price: 1550, file_url: null, file_public_id: null, file_size_bytes: null, stock: 18, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-4', product_id: 'seed-dont-make-me-think', format: 'pdf', price: 149, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -46,13 +76,13 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'NO1_PICK',
     images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/id/10522924-L.jpg', 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780857197689-L.jpg', 
       image_public_id: 'seed_psych_money', 
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-3', product_id: 'seed-psychology-of-money', format: 'hardcopy', price: 1150, compare_at_price: 1650, file_url: null, file_public_id: null, file_size_bytes: null, stock: 18, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-4', product_id: 'seed-psychology-of-money', format: 'epub', price: 149, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-5', product_id: 'seed-psychology-of-money', format: 'hardcopy', price: 1150, compare_at_price: 1650, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-6', product_id: 'seed-psychology-of-money', format: 'epub', price: 149, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -72,37 +102,12 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'NO1_PICK',
     images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/id/8739161-L.jpg', 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9781455586691-L.jpg', 
       image_public_id: 'seed_deep_work', 
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-5', product_id: 'seed-deep-work', format: 'hardcopy', price: 1100, compare_at_price: 1500, file_url: null, file_public_id: null, file_size_bytes: null, stock: 14, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-thinking-fast-and-slow',
-    org_id: 'seed-flemela',
-    category_id: 'cat-self-help',
-    category_name: 'Psychology & Self-Help',
-    name: 'Thinking, Fast and Slow',
-    slug: 'thinking-fast-and-slow',
-    author: 'Daniel Kahneman',
-    description: 'The monumental international bestseller on decision making.',
-    price: 1350,
-    compare_at_price: 1950,
-    status: 'published',
-    badge: 'NO1_PICK',
-    images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/id/7289552-L.jpg', 
-      image_public_id: 'seed_thinking_fast', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-6', product_id: 'seed-thinking-fast-and-slow', format: 'hardcopy', price: 1350, compare_at_price: 1950, file_url: null, file_public_id: null, file_size_bytes: null, stock: 12, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-7', product_id: 'seed-deep-work', format: 'hardcopy', price: 1100, compare_at_price: 1500, file_url: null, file_public_id: null, file_size_bytes: null, stock: 14, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -125,12 +130,12 @@ export const DEALS_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'DEAL_OF_WEEK',
     images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/id/8231856-L.jpg', 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780140280197-L.jpg', 
       image_public_id: 'seed_48_laws', 
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-7', product_id: 'seed-48-laws-of-power', format: 'hardcopy', price: 1200, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-8', product_id: 'seed-48-laws-of-power', format: 'hardcopy', price: 1200, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -150,12 +155,12 @@ export const DEALS_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'DEAL_OF_WEEK',
     images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/id/10515152-L.jpg', 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9781612680194-L.jpg', 
       image_public_id: 'seed_rich_dad', 
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-8', product_id: 'seed-rich-dad-poor-dad', format: 'hardcopy', price: 850, compare_at_price: 1300, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-9', product_id: 'seed-rich-dad-poor-dad', format: 'hardcopy', price: 850, compare_at_price: 1300, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -175,12 +180,12 @@ export const DEALS_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'CLASSIC',
     images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/id/8381881-L.jpg', 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780062315007-L.jpg', 
       image_public_id: 'seed_the_alchemist', 
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-9', product_id: 'seed-the-alchemist', format: 'hardcopy', price: 750, compare_at_price: 1100, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-10', product_id: 'seed-the-alchemist', format: 'hardcopy', price: 750, compare_at_price: 1100, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -200,12 +205,12 @@ export const DEALS_SEEDS: SeedBook[] = [
     status: 'published',
     badge: 'SPECIAL',
     images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/id/7222246-L.jpg', 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg', 
       image_public_id: 'seed_1984', 
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-10', product_id: 'seed-1984', format: 'hardcopy', price: 799, compare_at_price: 1200, file_url: null, file_public_id: null, file_size_bytes: null, stock: 22, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-11', product_id: 'seed-1984', format: 'hardcopy', price: 799, compare_at_price: 1200, file_url: null, file_public_id: null, file_size_bytes: null, stock: 22, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',

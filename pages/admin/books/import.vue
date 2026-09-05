@@ -122,6 +122,8 @@ async function handleFileUpload(file: File): Promise<void> {
     const formData = new FormData();
     formData.append('file', file);
 
+
+	  /*
     const res = await new Promise<any>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/admin/books/import/excel');
@@ -153,6 +155,47 @@ async function handleFileUpload(file: File): Promise<void> {
       xhr.send(formData);
     });
 
+*/
+	  const res = await new Promise<any>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/admin/books/import/excel');
+      xhr.timeout = 60000; // 60s hard timeout prevents browser from hanging indefinitely
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          uploadProgress.value = Math.min(99, Math.round((e.loaded / e.total) * 100));
+        }
+      };
+
+      xhr.onload = () => {
+        uploadProgress.value = 100;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            resolve({ success: true });
+          }
+        } else {
+          try {
+            const parsed = JSON.parse(xhr.responseText);
+            reject(new Error(parsed.statusMessage || parsed.message || `Upload failed (HTTP ${xhr.status})`));
+          } catch {
+            reject(new Error(`Upload failed with HTTP ${xhr.status}`));
+          }
+        }
+      };
+
+      xhr.ontimeout = () => {
+        reject(new Error('Upload timed out. Check your connection or file size and try again.'));
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Network connection error while uploading spreadsheet'));
+      };
+
+      xhr.send(formData);
+    });
+											 
     const jobId = res?.data?.jobId || res?.jobId;
     if (!jobId) {
       throw new Error('Server did not return a valid ingestion job ticket.');
