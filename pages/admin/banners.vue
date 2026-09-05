@@ -57,7 +57,8 @@ const form = ref({
   ends_at: '',
 });
 
-const isUploadingImage = ref(false);
+const isUploadingDesktop = ref(false);
+const isUploadingMobile = ref(false);
 const isSaving = ref(false);
 const isReordering = ref(false);
 
@@ -102,7 +103,9 @@ async function handleImageUpload(event: Event, targetField: 'image_url' | 'mobil
   const file = target.files?.[0];
   if (!file) return;
 
-  isUploadingImage.value = true;
+  if (targetField === 'image_url') isUploadingDesktop.value = true;
+  else isUploadingMobile.value = true;
+
   try {
     const sig = await $fetch<{
       signature: string;
@@ -111,6 +114,10 @@ async function handleImageUpload(event: Event, targetField: 'image_url' | 'mobil
       apiKey: string;
       cloudName: string;
     }>('/api/admin/upload-signature?target=store', { method: 'POST' });
+
+    if (!sig || !sig.signature || !sig.apiKey || !sig.cloudName) {
+      throw new Error('Server returned incomplete Cloudinary credentials.');
+    }
 
     const formData = new FormData();
     formData.append('file', file);
@@ -123,23 +130,33 @@ async function handleImageUpload(event: Event, targetField: 'image_url' | 'mobil
       method: 'POST',
       body: formData,
     });
+
     const data = await res.json();
 
-    if (data.secure_url) {
-      form.value[targetField] = data.secure_url;
-      pushToast({ message: 'Banner image uploaded to Cloudinary', variant: 'success' });
+    if (!res.ok || !data.secure_url) {
+      const errMsg = data?.error?.message || `Cloudinary upload failed (HTTP ${res.status})`;
+      throw new Error(errMsg);
     }
-  } catch {
-    pushToast({ message: 'Image upload failed. You can paste a direct URL.', variant: 'error' });
+
+    form.value[targetField] = data.secure_url;
+    pushToast({
+      message: `${targetField === 'image_url' ? 'Desktop' : 'Mobile'} banner uploaded successfully!`,
+      variant: 'success',
+    });
+  } catch (err: any) {
+    const message = err.message || 'Image upload failed. You can also paste a direct image URL.';
+    pushToast({ message, variant: 'error' });
   } finally {
-    isUploadingImage.value = false;
+    if (targetField === 'image_url') isUploadingDesktop.value = false;
+    else isUploadingMobile.value = false;
+    target.value = '';
   }
 }
 
 async function handleSave(): Promise<void> {
-  // ONLY image_url is required! Everything else is completely optional.
+  // Desktop image is the ONLY required field
   if (!form.value.image_url.trim()) {
-    pushToast({ message: 'Banner image is required', variant: 'error' });
+    pushToast({ message: 'Desktop banner image is required', variant: 'error' });
     return;
   }
 
@@ -164,19 +181,22 @@ async function handleSave(): Promise<void> {
         method: 'PATCH',
         body: payload,
       });
-      pushToast({ message: 'Banner updated successfully', variant: 'success' });
+      pushToast({ message: 'Hero banner updated successfully', variant: 'success' });
     } else {
       await $fetch('/api/admin/banners', {
         method: 'POST',
         body: payload,
       });
-      pushToast({ message: 'Banner published to hero carousel', variant: 'success' });
+      pushToast({ message: 'Hero banner added to carousel', variant: 'success' });
     }
 
     showModal.value = false;
     await refresh();
   } catch (err: any) {
-    pushToast({ message: err.data?.statusMessage || err.statusMessage || 'Failed to save banner', variant: 'error' });
+    pushToast({
+      message: err.data?.statusMessage || err.statusMessage || 'Failed to save banner',
+      variant: 'error',
+    });
   } finally {
     isSaving.value = false;
   }
@@ -236,7 +256,6 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
 <template>
   <AdminLayout>
     <div class="space-y-6 max-w-6xl mx-auto">
-      
       <!-- Top Title Bar -->
       <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-paper-border">
         <div>
@@ -247,7 +266,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
             Hero Carousel Banners
           </h1>
           <p class="text-xs text-ink-muted mt-0.5">
-            Add full photo banners or custom promotional slides. Everything except the image is optional.
+            Add full-width commerce banners. Desktop image is the only requirement—all text, links, and dates are completely optional.
           </p>
         </div>
 
@@ -284,7 +303,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
           </div>
           <h3 class="font-display font-bold text-sm text-forest-950">No Promotional Banners Yet</h3>
           <p class="text-xs text-ink-muted max-w-sm mx-auto">
-            Upload custom graphics or photo advertisements. If none exist, your permanent signature brand poster displays cleanly.
+            Upload custom 4:1 graphics or photos. If none exist, your signature brand poster displays cleanly.
           </p>
           <button
             type="button"
@@ -325,11 +344,11 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               </div>
 
               <!-- Banner Thumbnail -->
-              <div class="w-28 sm:w-36 aspect-[21/9] rounded-lg border border-paper-border overflow-hidden bg-forest-950 flex-shrink-0 shadow-xs relative">
+              <div class="w-32 sm:w-40 aspect-[4/1] rounded-lg border border-paper-border overflow-hidden bg-forest-950 flex-shrink-0 shadow-xs relative">
                 <img :src="banner.image_url" :alt="banner.title || 'Banner'" class="w-full h-full object-cover" />
                 <span
                   v-if="banner.badge"
-                  class="absolute top-1 left-1 bg-black/70 text-white font-mono text-[8px] font-bold px-1 rounded uppercase"
+                  class="absolute top-1 left-1 bg-black/70 text-white font-mono text-[7.5px] font-bold px-1 rounded uppercase"
                 >
                   {{ banner.badge }}
                 </span>
@@ -339,7 +358,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               <div class="space-y-1 min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                   <h4 class="text-xs sm:text-sm font-bold text-forest-950 truncate">
-                    {{ banner.title || '(Photo Only Banner)' }}
+                    {{ banner.title || '(Image-Only Banner)' }}
                   </h4>
                   <span
                     class="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded"
@@ -401,9 +420,11 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
           <div class="flex items-center justify-between pb-3 border-b border-paper-border">
             <div>
               <h3 class="font-display font-bold text-base text-forest-950">
-                {{ editingBannerId ? 'Edit Hero Banner' : 'New Promotional Hero Banner' }}
+                {{ editingBannerId ? 'Edit Hero Banner' : 'New Hero Banner' }}
               </h3>
-              <p class="text-[11px] text-ink-muted">Only the image is required. Leave text empty for clean full-bleed photos.</p>
+              <p class="text-[11px] text-ink-muted">
+                Desktop image is the only required field. All text, buttons, and dates are optional.
+              </p>
             </div>
             <button type="button" class="text-ink-muted hover:text-ink p-1 cursor-pointer" @click="showModal = false">
               <X :size="16" />
@@ -411,135 +432,175 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
           </div>
 
           <form class="space-y-4" @submit.prevent="handleSave">
-            <!-- 1. Image Upload (The only required field) -->
+            <!-- 1. Desktop Image (THE ONLY REQUIRED FIELD) -->
             <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-forest-950 flex justify-between">
-                <span>Desktop Banner Image (1920x600 recommended) *</span>
-                <span class="text-[10px] text-gold-600 font-bold uppercase">Required</span>
-              </label>
+              <div class="flex justify-between items-baseline">
+                <label class="text-xs font-bold text-forest-950">
+                  Desktop Image URL *
+                </label>
+                <span class="text-[10px] text-gold-600 font-mono font-bold uppercase tracking-wide">
+                  Target: 4:1 (1440×360px)
+                </span>
+              </div>
+
               <div class="flex gap-2 items-center">
                 <input
                   v-model="form.image_url"
                   type="url"
-                  placeholder="https://..."
+                  placeholder="https://... (Recommended: 4:1 ratio — e.g. 1440×360px or 1920×480px)"
                   class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
                   required
                 />
                 <label class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0">
                   <Upload :size="13" />
-                  <span>{{ isUploadingImage ? 'Uploading...' : 'Upload' }}</span>
+                  <span>{{ isUploadingDesktop ? 'Uploading...' : 'Upload' }}</span>
                   <input
                     type="file"
                     accept="image/*"
                     class="hidden"
-                    :disabled="isUploadingImage"
+                    :disabled="isUploadingDesktop"
                     @change="handleImageUpload($event, 'image_url')"
                   />
                 </label>
               </div>
+
+              <!-- Desktop Preview Thumbnail -->
+              <div v-if="form.image_url" class="relative rounded-lg border border-paper-border overflow-hidden aspect-[4/1] bg-forest-950 mt-1.5">
+                <img :src="form.image_url" alt="Desktop Preview" class="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  class="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black text-white rounded-full text-[10px] cursor-pointer"
+                  title="Remove image"
+                  @click="form.image_url = ''"
+                >
+                  <X :size="12" />
+                </button>
+              </div>
             </div>
 
-            <!-- Optional Mobile Image -->
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-forest-950">
-                Mobile Image (Optional portrait cut, max 640px)
-              </label>
+            <!-- 2. Mobile Image (Optional) -->
+            <div class="space-y-1.5 pt-1">
+              <div class="flex justify-between items-baseline">
+                <label class="text-xs font-semibold text-forest-950">
+                  Mobile Image URL (Optional)
+                </label>
+                <span class="text-[10px] text-ink-muted font-mono font-semibold uppercase tracking-wide">
+                  Target: 1.65:1 (390×240px)
+                </span>
+              </div>
+
               <div class="flex gap-2 items-center">
                 <input
                   v-model="form.mobile_image_url"
                   type="url"
-                  placeholder="https://..."
+                  placeholder="https://... (Recommended: 1.65:1 ratio — e.g. 390×240px or 640×390px)"
                   class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
                 />
                 <label class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0">
                   <Upload :size="13" />
-                  <span>Upload</span>
+                  <span>{{ isUploadingMobile ? 'Uploading...' : 'Upload' }}</span>
                   <input
                     type="file"
                     accept="image/*"
                     class="hidden"
+                    :disabled="isUploadingMobile"
                     @change="handleImageUpload($event, 'mobile_image_url')"
                   />
                 </label>
               </div>
+
+              <!-- Mobile Preview Thumbnail -->
+            <div v-if="form.mobile_image_url" class="relative rounded-lg border border-paper-border overflow-hidden aspect-[1.65/1] max-w-[200px] bg-forest-950 mt-1.5">
+                <img :src="form.mobile_image_url" alt="Mobile Preview" class="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  class="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black text-white rounded-full text-[10px] cursor-pointer"
+                  title="Remove image"
+                  @click="form.mobile_image_url = ''"
+                >
+                  <X :size="12" />
+                </button>
+              </div>
             </div>
 
-            <!-- Optional Text Fields -->
-            <div class="space-y-1 pt-2 border-t border-paper-border">
-              <label class="text-xs font-semibold text-forest-950">Headline (Optional)</label>
-              <input
-                v-model="form.title"
-                type="text"
-                placeholder="Leave blank for an image-only banner"
-                class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs font-semibold outline-none focus:border-forest-900"
-              />
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">Subheadline (Optional)</label>
-              <textarea
-                v-model="form.subtitle"
-                rows="2"
-                placeholder="Leave blank if not needed"
-                class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 resize-none"
-              />
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
+            <!-- 3. Optional Overlay Text -->
+            <div class="space-y-3 pt-2 border-t border-paper-border">
               <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Badge Tag (Optional)</label>
+                <label class="text-xs font-semibold text-forest-950">Headline (Optional)</label>
                 <input
-                  v-model="form.badge"
+                  v-model="form.title"
                   type="text"
-                  placeholder="e.g. FLASH SALE"
-                  class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs font-mono uppercase outline-none focus:border-forest-900"
+                  placeholder="Leave empty for an image-only banner"
+                  class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
                 />
               </div>
 
               <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Background Fallback</label>
-                <div class="flex items-center gap-2">
+                <label class="text-xs font-semibold text-forest-950">Subheadline (Optional)</label>
+                <textarea
+                  v-model="form.subtitle"
+                  rows="2"
+                  placeholder="Leave empty if not needed"
+                  class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 resize-none"
+                />
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="text-xs font-semibold text-forest-950">Badge Tag (Optional)</label>
                   <input
-                    v-model="form.bg_color"
-                    type="color"
-                    class="w-8 h-8 rounded border border-paper-border cursor-pointer"
-                  />
-                  <input
-                    v-model="form.bg_color"
+                    v-model="form.badge"
                     type="text"
-                    class="w-full px-2 py-1.5 border border-paper-border rounded-xl text-xs font-mono outline-none"
+                    placeholder="e.g. FLASH SALE, LIMITED TIME"
+                    class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs font-mono uppercase outline-none focus:border-forest-900"
                   />
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-xs font-semibold text-forest-950">Background Color</label>
+                  <div class="flex items-center gap-2">
+                    <input
+                      v-model="form.bg_color"
+                      type="color"
+                      class="w-8 h-8 rounded border border-paper-border cursor-pointer p-0.5"
+                    />
+                    <input
+                      v-model="form.bg_color"
+                      type="text"
+                      class="w-full px-2 py-1.5 border border-paper-border rounded-xl text-xs font-mono outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Optional Link & Button -->
-        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-paper-border">
+            <!-- 4. Optional Button Action -->
+            <div class="grid grid-cols-2 gap-3 pt-2 border-t border-paper-border">
               <div class="space-y-1">
                 <label class="text-xs font-semibold text-forest-950">Button Label (Optional)</label>
                 <input
                   v-model="form.cta_label"
                   type="text"
-                  placeholder="e.g. Shop Now (or leave empty)"
+                  placeholder="e.g. Shop Now"
                   class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
                 />
               </div>
 
               <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Target Link / URL (Optional)</label>
+                <label class="text-xs font-semibold text-forest-950">Button Link (Optional)</label>
                 <input
                   v-model="form.cta_link"
                   type="text"
-                  placeholder="e.g. /#deals-week or /book/slug"
+                  placeholder="e.g. #flash-sale or /book/slug"
                   class="w-full px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
                 />
               </div>
             </div>
 
-            <!-- Scheduling -->
+            <!-- 5. Optional Scheduling -->
             <div class="grid grid-cols-2 gap-3 pt-2 border-t border-paper-border">
               <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Auto-Start Date (Optional)</label>
+                <label class="text-xs font-semibold text-forest-950">Start Date (Optional)</label>
                 <input
                   v-model="form.starts_at"
                   type="datetime-local"
@@ -548,7 +609,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               </div>
 
               <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Auto-Expire Date (Optional)</label>
+                <label class="text-xs font-semibold text-forest-950">Expire Date (Optional)</label>
                 <input
                   v-model="form.ends_at"
                   type="datetime-local"
@@ -560,7 +621,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
             <div class="pt-3 flex justify-end gap-2.5 border-t border-paper-border">
               <button
                 type="button"
-                class="px-4 py-2 text-xs font-semibold text-ink-muted hover:text-forest-950"
+                class="px-4 py-2 text-xs font-semibold text-ink-muted hover:text-forest-950 cursor-pointer"
                 @click="showModal = false"
               >
                 Cancel
@@ -568,7 +629,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               <button
                 type="submit"
                 class="bg-forest-950 text-paper text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl shadow-medium cursor-pointer hover:bg-forest-900 disabled:opacity-50"
-                :disabled="isSaving || isUploadingImage"
+                :disabled="isSaving || isUploadingDesktop || isUploadingMobile"
               >
                 {{ isSaving ? 'Saving...' : (editingBannerId ? 'Update Banner' : 'Create Banner') }}
               </button>
@@ -577,5 +638,5 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
         </div>
       </div>
     </Teleport>
-  </AdminLayout></template>
-   
+  </AdminLayout>
+</template>

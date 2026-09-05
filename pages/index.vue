@@ -58,34 +58,36 @@ const hasActiveFilter = computed(() => {
   return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
 });
 
-// 1. Flash Sale Strip: Discounted books
+// -----------------------------------------------------------------------------
+// STRICT MUTUALLY EXCLUSIVE BADGE SECTIONS
+// -----------------------------------------------------------------------------
+
+// 1. FLASH SALE: Specifically badged FLASH_SALE / LIMITED_TIME, or unbadged books with discounts
 const flashSaleBooks = computed<Book[]>(() => {
   const books = realBooks.value || [];
-  return books.filter(
-    (b) => b.badge === 'FLASH_SALE' || (b.compare_at_price && b.compare_at_price > b.price)
-  );
+  return books.filter((b) => {
+    if (b.badge === 'FLASH_SALE' || b.badge === 'LIMITED_TIME') return true;
+    // Only capture unbadged discounted books; never steal a book with another badge
+    if (!b.badge && b.compare_at_price && b.compare_at_price > b.price) return true;
+    return false;
+  });
 });
 
-// 2. #1 Picks: Editorial curation
+// 2. #1 PICKS / FEATURED MONTH: Strictly books tagged with NO1_PICK
 const no1Picks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'NO1_PICK');
   return mergeWithSeeds(tagged, MONTHLY_TOP_SEEDS, 4);
 });
 
-// 3. Deals of the Week: Time-sensitive deals
+// 3. DEALS OF THE WEEK: Strictly books tagged with DEAL_OF_WEEK
 const dealBooks = computed<Book[]>(() => {
   const books = realBooks.value || [];
-  const deals = books.filter(
-    (b) =>
-      b.badge === 'DEAL_OF_WEEK' ||
-      b.badge === 'FLASH_SALE' ||
-      (b.compare_at_price && b.compare_at_price > b.price)
-  );
+  const deals = books.filter((b) => b.badge === 'DEAL_OF_WEEK');
   return mergeWithSeeds(deals, DEALS_SEEDS, 4);
 });
 
-// 4. Bestsellers: Social proof selection
+// 4. BESTSELLERS: Strictly books tagged with BESTSELLER
 const bestsellers = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'BESTSELLER');
@@ -122,17 +124,16 @@ function handleRequestSeed(title: string, author?: string): void {
 
 <template>
   <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased">
-    <!-- Restrained Floating Glassmorphic Header -->
     <StoreNavbar @search="handleSearch" />
 
-    <!-- 1. Hero: Compact Commerce Banner (~4:1 Desktop, ~1.65:1 Mobile) -->
+    <!-- 1. Hero Banner (~4:1 Desktop, ~1.65:1 Mobile) -->
     <HeroCarousel
       @search="handleSearch"
       @select-category="handleCategorySelect"
       @navigate-flash-sale="scrollToSection('flash-sale')"
     />
 
-    <!-- 2. Flash Sale: Horizontal Shopping Shelf (Tight 16-24px transition) -->
+    <!-- 2. Flash Sale Shelf: Specifically FLASH_SALE & LIMITED_TIME -->
     <div id="flash-sale" class="mt-3 sm:mt-5">
       <FlashSaleStrip
         :books="flashSaleBooks"
@@ -141,20 +142,20 @@ function handleRequestSeed(title: string, author?: string): void {
       />
     </div>
 
-    <!-- 3. #1 Picks / Featured Month: Editorial Curation -->
+    <!-- 3. #1 Picks Section: Specifically NO1_PICK -->
     <FeaturedMonth :books="no1Picks" @request-seed="handleRequestSeed" />
 
-    <!-- 4. Book Categories: Distinct Bento Visual Experience -->
+    <!-- 4. Book Categories (Bento Grid) -->
     <BentoCategories @select="handleCategorySelect" />
 
-    <!-- 5. Bestsellers of the Month: Social Proof (6 Books + Offer Card) -->
+    <!-- 5. Bestsellers Section: Specifically BESTSELLER -->
     <BestsellersSection
       :books="bestsellers"
       @request-seed="handleRequestSeed"
       @see-more="scrollToSection('catalog-results')"
     />
 
-    <!-- 6. Deals of the Week: Live Countdown & Deal Shelf -->
+    <!-- 6. Deals of the Week: Specifically DEAL_OF_WEEK -->
     <DealsWeek :books="dealBooks" @request-seed="handleRequestSeed" />
 
     <!-- 7. Browse All Books: Broader Catalogue with Search & Filter Bar -->
@@ -185,7 +186,7 @@ function handleRequestSeed(title: string, author?: string): void {
         </button>
       </div>
 
-      <!-- Real Books Grid: 4 cards/row desktop, 2 cards/row mobile with symmetrical side breathing room -->
+      <!-- Real Books Grid -->
       <div
         v-if="filteredBooks.length > 0"
         class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center"

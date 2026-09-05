@@ -223,32 +223,21 @@ export function mergeWithSeeds(
   seedCollection: SeedBook[],
   targetCount = 4
 ): Book[] {
-  const realWithCovers = (realBooks || []).filter((b) => {
-    const firstImg: unknown = b.images?.[0];
-    if (typeof firstImg === 'string' && firstImg.length > 5) return true;
-    if (
-      firstImg &&
-      typeof firstImg === 'object' &&
-      'image_url' in firstImg &&
-      Boolean((firstImg as { image_url?: string }).image_url)
-    ) {
-      return true;
-    }
-    if ((b as any).cover_image_url) return true;
-    return false;
-  });
+  const real = realBooks || [];
 
-  if (realWithCovers.length >= targetCount) {
-    return realWithCovers.slice(0, targetCount);
+  // If we have enough real books with this specific badge, return all of them
+  if (real.length >= targetCount) {
+    return real;
   }
 
-  const realSlugs = new Set(realWithCovers.map((b) => b.slug.toLowerCase()));
-  const realNames = new Set(realWithCovers.map((b) => b.name.toLowerCase()));
+  const realSlugs = new Set(real.map((b) => b.slug.toLowerCase()));
+  const realNames = new Set(real.map((b) => b.name.toLowerCase()));
 
+  // Avoid duplicate cards if a real book shares title/slug with a seed
   const eligibleSeeds = seedCollection.filter(
     (s) => !realSlugs.has(s.slug.toLowerCase()) && !realNames.has(s.name.toLowerCase())
   );
 
-  const needed = targetCount - realWithCovers.length;
-  return [...realWithCovers, ...eligibleSeeds.slice(0, needed)];
+  const needed = targetCount - real.length;
+  return [...real, ...eligibleSeeds.slice(0, needed)];
 }

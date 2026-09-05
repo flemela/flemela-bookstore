@@ -4,7 +4,7 @@ import { ref } from 'vue';
 import { Zap, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
-import type { Book } from '~/types';
+import type { Book, ProductFormat } from '~/types';
 
 interface Props {
   books: Book[];
@@ -21,6 +21,7 @@ const { addItem, openDrawer } = useCart();
 const { push: pushToast } = useToast();
 
 const scrollContainer = ref<HTMLElement | null>(null);
+const selectedFormats = ref<Record<string, string>>({});
 
 function scrollLeft(): void {
   scrollContainer.value?.scrollBy({ left: -240, behavior: 'smooth' });
@@ -34,17 +35,59 @@ function formatCurrency(val: number): string {
   return `KSh ${val.toLocaleString('en-KE')}`;
 }
 
-function calculateDiscount(price: number, compareAt?: number | null): number {
-  if (!compareAt || compareAt <= price) return 0;
-  return Math.round(((compareAt - price) / compareAt) * 100);
+function getSelectedFormat(book: Book): ProductFormat | undefined {
+  if (!book.formats || book.formats.length === 0) return undefined;
+  const selectedId = selectedFormats.value[book.id];
+  if (selectedId) {
+    const found = book.formats.find((f) => f.id === selectedId);
+    if (found) return found;
+  }
+  const sorted = [...book.formats].sort((a, b) => a.price - b.price);
+  return sorted[0];
+}
+
+function getBookCurrentPrice(book: Book): number {
+  const fmt = getSelectedFormat(book);
+  return fmt ? fmt.price : book.price;
+}
+
+function getBookOriginalPrice(book: Book): number | null {
+  const fmt = getSelectedFormat(book);
+  if (fmt?.compare_at_price) return fmt.compare_at_price;
+  return book.compare_at_price || null;
+}
+
+function getBookDiscount(book: Book): number {
+  const orig = getBookOriginalPrice(book);
+  const curr = getBookCurrentPrice(book);
+  if (!orig || orig <= curr || curr <= 0) return 0;
+  return Math.round(((orig - curr) / orig) * 100);
+}
+
+function formatBadge(badgeStr?: string | null): string {
+  if (!badgeStr) return '⚡ FLASH';
+  switch (badgeStr) {
+    case 'LIMITED_TIME':
+      return '⏳ LIMITED';
+    case 'FLASH_SALE':
+      return '⚡ FLASH';
+    default:
+      return badgeStr.replace(/_/g, ' ');
+  }
+}
+
+function selectBookFormat(bookId: string, formatId: string, event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
+  selectedFormats.value[bookId] = formatId;
 }
 
 function handleQuickAdd(book: Book, event: Event): void {
   event.preventDefault();
   event.stopPropagation();
 
-  const fmt = book.formats?.[0];
-  const priceToUse = fmt ? fmt.price : book.price;
+  const fmt = getSelectedFormat(book);
+  const priceToUse = getBookCurrentPrice(book);
   const formatType = fmt ? fmt.format : 'hardcopy';
   const formatId = fmt ? fmt.id : 'default';
 
@@ -54,14 +97,14 @@ function handleQuickAdd(book: Book, event: Event): void {
     title: book.name,
     format: formatType,
     price: priceToUse,
-    compare_at_price: book.compare_at_price,
+    compare_at_price: getBookOriginalPrice(book),
     quantity: 1,
     coverUrl: book.images?.[0]?.image_url || (book as any).cover_image_url || null,
     author: book.author,
   });
 
   pushToast({
-    message: `Added "${book.name}" to cart!`,
+    message: `Added "${book.name}" (${formatType.toUpperCase()}) to cart!`,
     variant: 'success',
   });
 
@@ -125,10 +168,10 @@ function handleQuickAdd(book: Book, event: Event): void {
         <div
           v-for="book in books"
           :key="book.id"
-          class="w-[140px] sm:w-[148px] flex-shrink-0 bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all snap-start flex flex-col justify-between group select-none"
+          class="w-[140px] sm:w-[148px] flex-shrink-0 bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all snap-start flex flex-col justify-between group select-none text-left"
         >
           <div>
-            <!-- Book Cover: Exactly 120-125px Wide x 170px Height -->
+            <!-- Book Cover: 124px wide x ~170px height -->
             <NuxtLink
               :to="`/book/${book.slug}`"
               class="block relative aspect-[1/1.37] rounded-book overflow-hidden bg-stone-100 book-cover-3d mb-2 sm:mb-2.5"
@@ -143,15 +186,17 @@ function handleQuickAdd(book: Book, event: Event): void {
 
               <!-- Percentage Off Badge -->
               <span
-                v-if="calculateDiscount(book.price, book.compare_at_price) > 0"
-                class="absolute top-1.5 right-1.5 bg-red-600 text-white font-mono font-extrabold text-[8px] px-1.5 py-0.5 rounded shadow-xs"
+                v-if="getBookDiscount(book) > 0"
+                class="absolute top-1.5 right-1.5 bg-red-600 text-white font-mono font-extrabold text-[8px] px-1.5 py-0.5 rounded shadow-xs z-10"
               >
-                -{{ calculateDiscount(book.price, book.compare_at_price) }}%
+                -{{ getBookDiscount(book) }}%
               </span>
 
-              <!-- Flash Tag -->
-              <span class="absolute top-1.5 left-1.5 bg-[#052219] text-[#2EE59D] font-mono font-bold text-[7.5px] px-1.5 py-0.5 rounded uppercase">
-                ⚡ FLASH
+              <!-- Badge Tag on Top Left -->
+              <span
+                class="absolute top-1.5 left-1.5 bg-[#052219] text-[#2EE59D] font-mono font-bold text-[7.5px] px-1.5 py-0.5 rounded uppercase z-10"
+              >
+                {{ formatBadge(book.badge) }}
               </span>
             </NuxtLink>
 
@@ -162,21 +207,46 @@ function handleQuickAdd(book: Book, event: Event): void {
               </h3>
             </NuxtLink>
             <p class="text-[9.5px] text-slate-500 italic truncate mt-0.5">
-              {{ book.author ? `By ${book.author}` : 'Original Edition' }}
+              {{ book.author ? (book.author.startsWith('By ') ? book.author : `By ${book.author}`) : 'Original Edition' }}
             </p>
+
+            <!-- Format Toggle Pills -->
+            <div class="flex items-center justify-start gap-1 pt-1.5 flex-wrap">
+              <template v-if="book.formats && book.formats.length > 1">
+                <button
+                  v-for="fmt in book.formats"
+                  :key="fmt.id"
+                  type="button"
+                  class="text-[7px] sm:text-[7.5px] font-mono font-bold uppercase px-1.5 py-0.5 rounded-full transition-all cursor-pointer select-none leading-none"
+                  :class="getSelectedFormat(book)?.id === fmt.id ? 'bg-[#052219] text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  @click="selectBookFormat(book.id, fmt.id, $event)"
+                >
+                  {{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}
+                </button>
+              </template>
+              <span
+                v-else
+                class="text-[7px] sm:text-[7.5px] font-mono font-medium uppercase tracking-wider text-[#6B7280] bg-slate-100 px-1.5 py-0.5 rounded-full leading-none"
+              >
+                {{ getSelectedFormat(book)?.format === 'hardcopy' ? 'Print' : (getSelectedFormat(book) ? getSelectedFormat(book)!.format.toUpperCase() : 'Print') }}
+              </span>
+            </div>
           </div>
 
-          <!-- Price & Quick Add Button -->
+          <!-- Bottom Bar: Price + Add Button -->
           <div class="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
             <div class="min-w-0">
               <span
-                v-if="book.compare_at_price && book.compare_at_price > book.price"
+                v-if="getBookOriginalPrice(book) && getBookOriginalPrice(book)! > getBookCurrentPrice(book)"
                 class="text-[8px] sm:text-[8.5px] text-slate-400 line-through font-mono block leading-none"
               >
-                {{ formatCurrency(book.compare_at_price) }}
+                {{ formatCurrency(getBookOriginalPrice(book)!) }}
               </span>
-              <span class="text-[10px] sm:text-[11px] font-extrabold font-mono text-red-600 leading-none">
-                {{ formatCurrency(book.price) }}
+              <span
+                class="text-[10px] sm:text-[11px] font-extrabold font-mono leading-none"
+                :class="getBookOriginalPrice(book) && getBookOriginalPrice(book)! > getBookCurrentPrice(book) ? 'text-red-600' : 'text-[#141E1A]'"
+              >
+                {{ formatCurrency(getBookCurrentPrice(book)) }}
               </span>
             </div>
 
