@@ -1,11 +1,7 @@
 // server/api/admin/books/import/excel.post.ts
 // =============================================================================
-// Protocol-aware streaming forwarder supporting Render HTTPS (443) & local HTTP
+// Direct raw stream forwarder (Restores the 5-second upload response)
 // =============================================================================
-
-import http from 'http';
-import https from 'https';
-import { URL } from 'url';
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
@@ -16,61 +12,47 @@ export default defineEventHandler(async (event) => {
   }
 
   const backendBaseUrl = config.sokoApiBaseUrl.replace(/\/$/, '');
-  const targetUrl = new URL(`${backendBaseUrl}/books/import/excel`);
+  const targetUrl = `${backendBaseUrl}/books/import/excel`;
 
-  // Detect whether target is HTTPS (Render production) or HTTP (local dev)
-  const isHttps = targetUrl.protocol === 'https:';
-  const transport = isHttps ? https : http;
-  const defaultPort = isHttps ? 443 : 3000;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+  };
 
-  return new Promise((resolve, reject) => {
-    const headers: Record<string, string | string[] | undefined> = {
-      ...event.node.req.headers,
-      host: targetUrl.host,
-      authorization: `Bearer ${token}`,
-    };
+  const incomingContentType = getHeader(event, 'content-type');
+  if (incomingContentType) {
+    headers['content-type'] = incomingContentType;
+  }
 
-    const options = {
-      protocol: targetUrl.protocol,
-      hostname: targetUrl.hostname,
-      port: targetUrl.port || defaultPort,
-      path: targetUrl.pathname + targetUrl.search,
+  const incomingContentLength = getHeader(event, 'content-length');
+  if (incomingContentLength) {
+    headers['content-length'] = incomingContentLength;
+  }
+
+  try {
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers,
-    };
+      body: event.node.req as any,
+      duplex: 'half',
+    } as any);
 
-    const proxyReq = transport.request(options, (proxyRes) => {
-      let data = '';
-      proxyRes.on('data', (chunk) => {
-        data += chunk;
-      });
+    if (!response.ok) {
+      let errorMsg = `Upload failed with HTTP ${response.status}`;
+      try {
+        const errorJson: any = await response.json();
+        errorMsg = errorJson.message || errorJson.error?.message || errorMsg;
+      } catch {
+        // Fall back to HTTP status
+      }
+      throw createError({ statusCode: response.status, statusMessage: errorMsg });
+    }
 
-      proxyRes.on('end', () => {
-        const statusCode = proxyRes.statusCode || 200;
-        if (statusCode >= 200 && statusCode < 300) {
-          try {
-            resolve(JSON.parse(data));
-          } catch {
-            resolve({ success: true, data });
-          }
-        } else {
-          let errorMsg = `Upload failed with HTTP ${statusCode}`;
-          try {
-            const errJson = JSON.parse(data);
-            errorMsg = errJson.message || errJson.error?.message || errorMsg;
-          } catch {
-            // Use default error string
-          }
-          reject(createError({ statusCode, statusMessage: errorMsg }));
-        }
-      });
+    const data = await response.json();
+    return data;
+  } catch (err: any) {
+    throw createError({
+      statusCode: err.statusCode || 500,
+      statusMessage: err.statusMessage || err.message || 'Spreadsheet upload forwarding failed',
     });
-
-    proxyReq.on('error', (err) => {
-      reject(createError({ statusCode: 502, statusMessage: `Proxy connection error: ${err.message}` }));
-    });
-
-    // Pipe raw incoming file stream directly to the backend
-    event.node.req.pipe(proxyReq);
-  });
+  }
 });

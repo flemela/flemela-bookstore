@@ -1020,55 +1020,6 @@ const emit = defineEmits<{
 </template>
 </file>
 
-<file path="components/storefront/FeaturedMonth.vue">
-<!-- components/storefront/FeaturedMonth.vue -->
-<script setup lang="ts">
-import { computed } from 'vue';
-import BookCard from '~/components/storefront/BookCard.vue';
-import { MONTHLY_TOP_SEEDS, mergeWithSeeds } from '~/data/seeds';
-import type { Book } from '~/types';
-
-interface Props {
-  books: Book[];
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<{
-  requestSeed: [title: string, author?: string];
-}>();
-
-const featuredBooks = computed(() => {
-  return mergeWithSeeds(props.books, MONTHLY_TOP_SEEDS, 4);
-});
-</script>
-
-<template>
-  <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
-    <!-- Split Header: Bold Left, Paragraph Right -->
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-theme-border pb-4">
-      <div>
-        <h2 class="font-display text-xl sm:text-2xl font-extrabold uppercase text-theme-ink tracking-tight">
-          THE #1 BOOK OF THE MONTH YOU CAN'T MISS
-        </h2>
-      </div>
-      <p class="text-xs text-theme-muted max-w-sm md:text-right leading-relaxed">
-        An unforgettable read that is dominating bestsellers and changing how we view mindset, power, and success.
-      </p>
-    </div>
-
-    <!-- 4 Cards Row -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
-      <BookCard
-        v-for="book in featuredBooks"
-        :key="book.id"
-        :book="book"
-        @request-seed="(t, a) => emit('requestSeed', t, a)"
-      />
-    </div>
-  </section>
-</template>
-</file>
-
 <file path="components/storefront/FlashSaleStrip.vue">
 <!-- components/storefront/FlashSaleStrip.vue -->
 <script setup lang="ts">
@@ -5863,101 +5814,6 @@ const route = useRoute();
 </template>
 </file>
 
-<file path="components/storefront/BestsellersSection.vue">
-<!-- components/storefront/BestsellersSection.vue -->
-<script setup lang="ts">
-import { computed } from 'vue';
-import BookCard from '~/components/storefront/BookCard.vue';
-import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
-import type { Book } from '~/types';
-
-interface Props {
-  books: Book[];
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<{
-  requestSeed: [title: string, author?: string];
-  seeMore: [];
-}>();
-
-const bestsellerBooks = computed(() => {
-  const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
-  return mergeWithSeeds(props.books, combinedSeeds, 6);
-});
-</script>
-
-<template>
-  <section class="py-12 sm:py-16 px-4 max-w-6xl mx-auto w-full space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-stone-200 pb-3">
-      <div>
-        <h2 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase text-[#141E1A] tracking-wide">
-          BEST SELLERS OF THE MONTH
-        </h2>
-      </div>
-      
-      <div class="flex items-center gap-3">
-        <p class="text-xs text-[#5F6964] hidden md:inline">
-          Explore the best books our readers are loving and reading right now.
-        </p>
-        <button
-          type="button"
-          class="bg-[#F05A36] hover:bg-[#D94827] text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full transition-all shadow-xs cursor-pointer flex-shrink-0"
-          @click="emit('seeMore')"
-        >
-          See More
-        </button>
-      </div>
-    </div>
-
-    <!-- Grid Layout: 6 Books (2x3 or 3x2) + Dark Promo Card -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-      
-      <!-- 6 Books: 3 Columns x 2 Rows -->
-      <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-6">
-        <BookCard
-          v-for="book in bestsellerBooks"
-          :key="book.id"
-          :book="book"
-          @request-seed="(t, a) => emit('requestSeed', t, a)"
-        />
-      </div>
-
-      <!-- Reference Dark Pine Promo Card (Spans 4 columns) -->
-      <div class="lg:col-span-4 bg-[#052219] text-white rounded-2xl p-6 sm:p-8 flex flex-col justify-between items-center text-center shadow-md relative overflow-hidden">
-        
-        <!-- Arched Window Frame with Books Graphic -->
-        <div class="w-28 h-36 rounded-t-full bg-[#2CD4BF]/20 border-2 border-[#2CD4BF]/40 flex items-center justify-center p-3 shadow-inner my-2">
-          <div class="w-20 h-28 bg-white/10 rounded-t-full flex items-center justify-center text-3xl">
-            📚
-          </div>
-        </div>
-
-        <div class="space-y-2 py-4">
-          <h3 class="font-poster text-3xl sm:text-4xl font-extrabold uppercase leading-tight tracking-wide text-white">
-            GET <span class="text-[#F05A36]">20% OFF</span> BESTSELLERS
-          </h3>
-          <p class="text-xs text-white/70 leading-relaxed max-w-xs mx-auto">
-            This week only — pick the stories everyone is talking about at a lower price.
-          </p>
-        </div>
-
-        <!-- Coral CTA Button -->
-        <button
-          type="button"
-          class="w-full bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase tracking-wider py-3.5 rounded-xl transition-all shadow-md cursor-pointer active:scale-95"
-          @click="emit('seeMore')"
-        >
-          Get This Offer
-        </button>
-      </div>
-
-    </div>
-  </section>
-</template>
-</file>
-
 <file path="components/storefront/BookstoreHeader.vue">
 <!-- components/storefront/BookstoreHeader.vue -->
 <script setup lang="ts">
@@ -6328,13 +6184,12 @@ function handleSelect(category: string): void {
 </template>
 </file>
 
-<file path="components/storefront/DealsWeek.vue">
-<!-- components/storefront/DealsWeek.vue -->
+<file path="components/storefront/FeaturedMonth.vue">
+<!-- components/storefront/FeaturedMonth.vue -->
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { computed } from 'vue';
 import BookCard from '~/components/storefront/BookCard.vue';
-import { DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import { MONTHLY_TOP_SEEDS, mergeWithSeeds } from '~/data/seeds';
 import type { Book } from '~/types';
 
 interface Props {
@@ -6346,125 +6201,31 @@ const emit = defineEmits<{
   requestSeed: [title: string, author?: string];
 }>();
 
-const carouselRef = ref<HTMLElement | null>(null);
-
-const dealBooks = computed(() => {
-  return mergeWithSeeds(props.books, DEALS_SEEDS, 4);
-});
-
-// Live Countdown Timer
-const days = ref('04');
-const hours = ref('18');
-const minutes = ref('40');
-const seconds = ref('23');
-let timerInterval: ReturnType<typeof setInterval> | undefined;
-
-function updateCountdown(): void {
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const daysUntilSunday = (7 - dayOfWeek) % 7 || 7;
-  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59);
-
-  const diff = Math.max(0, target.getTime() - now.getTime());
-  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-  const m = Math.floor((diff / 1000 / 60) % 60);
-  const s = Math.floor((diff / 1000) % 60);
-
-  days.value = String(d).padStart(2, '0');
-  hours.value = String(h).padStart(2, '0');
-  minutes.value = String(m).padStart(2, '0');
-  seconds.value = String(s).padStart(2, '0');
-}
-
-onMounted(() => {
-  updateCountdown();
-  timerInterval = setInterval(updateCountdown, 1000);
-});
-
-onUnmounted(() => {
-  if (timerInterval) clearInterval(timerInterval);
-});
-
-function scrollLeft(): void {
-  carouselRef.value?.scrollBy({ left: -280, behavior: 'smooth' });
-}
-
-function scrollRight(): void {
-  carouselRef.value?.scrollBy({ left: 280, behavior: 'smooth' });
-}
+const featuredBooks = computed(() => mergeWithSeeds(props.books, MONTHLY_TOP_SEEDS, 4));
 </script>
 
 <template>
-  <section id="deals-week" class="bg-theme-sand py-14 px-4 relative overflow-hidden">
-    <!-- Subtle Concentric Ripple Texture Lines in Background -->
-    <svg class="absolute -left-20 -bottom-20 w-96 h-96 text-stone-300/40 pointer-events-none" viewBox="0 0 200 200" fill="none">
-      <circle cx="100" cy="100" r="40" stroke="currentColor" stroke-width="0.75" />
-      <circle cx="100" cy="100" r="70" stroke="currentColor" stroke-width="0.75" />
-      <circle cx="100" cy="100" r="100" stroke="currentColor" stroke-width="0.75" />
-    </svg>
-
-    <div class="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 items-center relative z-10">
-      
-      <!-- Left Column: Title, Copy, Countdown & Carousel Arrows (4 Cols) -->
-      <div class="lg:col-span-4 space-y-4">
-        <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-theme-coral block">BOOK OF THE WEEK</span>
-        <h2 class="font-display text-3xl sm:text-4xl font-extrabold text-theme-ink uppercase tracking-tight">
-          DEALS OF THE WEEK
+  <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
+    <!-- Split Header: Title on Left, Description on Right -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-stone-200 pb-4">
+      <div>
+        <h2 class="font-display text-xl sm:text-2xl font-extrabold uppercase text-[#141E1A] tracking-tight">
+          THE #1 BOOK OF THE MONTH YOU CAN'T MISS
         </h2>
-        <p class="text-xs text-theme-muted leading-relaxed">
-          An unforgettable read that is dominating bestsellers and changing how we view love, loss, and everything in between.
-        </p>
-
-        <!-- 4 Square Countdown Boxes (White with border) -->
-        <ClientOnly>
-          <div class="flex items-center gap-2 pt-1">
-            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
-              <span class="font-mono text-sm font-bold text-theme-ink block">{{ days }}D</span>
-            </div>
-            <span class="font-bold text-theme-ink">:</span>
-            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
-              <span class="font-mono text-sm font-bold text-theme-ink block">{{ hours }}H</span>
-            </div>
-            <span class="font-bold text-theme-ink">:</span>
-            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
-              <span class="font-mono text-sm font-bold text-theme-ink block">{{ minutes }}M</span>
-            </div>
-            <span class="font-bold text-theme-ink">:</span>
-            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
-              <span class="font-mono text-sm font-bold text-theme-coral block">{{ seconds }}S</span>
-            </div>
-          </div>
-        </ClientOnly>
-
-        <!-- Circular Slider Arrows (Left White, Right Coral) -->
-        <div class="flex items-center gap-2.5 pt-3">
-          <button
-            type="button"
-            class="w-9 h-9 rounded-full bg-white border border-stone-300 flex items-center justify-center text-theme-ink hover:bg-stone-50 cursor-pointer shadow-xs active:scale-95 transition-all"
-            aria-label="Previous deal"
-            @click="scrollLeft"
-          >
-            <ChevronLeft :size="16" />
-          </button>
-          <button
-            type="button"
-            class="w-9 h-9 rounded-full bg-theme-coral text-white flex items-center justify-center hover:bg-theme-coral-hover cursor-pointer shadow-xs active:scale-95 transition-all"
-            aria-label="Next deal"
-            @click="scrollRight"
-          >
-            <ChevronRight :size="16" />
-          </button>
-        </div>
       </div>
+      <p class="text-xs text-[#5F6964] max-w-sm md:text-right leading-relaxed">
+        An unforgettable read that is dominating bestsellers and changing how we view mindset, power, and success.
+      </p>
+    </div>
 
-      <!-- Right Column: Horizontal Deals Carousel (8 Cols) -->
-      <div ref="carouselRef" class="lg:col-span-8 flex gap-4 overflow-x-auto no-scrollbar py-2">
-        <div v-for="book in dealBooks" :key="book.id" class="w-56 sm:w-60 flex-shrink-0">
-          <BookCard :book="book" @request-seed="(t, a) => emit('requestSeed', t, a)" />
-        </div>
-      </div>
-
+    <!-- 4 Cards Row in exact alignment -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 w-full">
+      <BookCard
+        v-for="book in featuredBooks"
+        :key="book.id"
+        :book="book"
+        @request-seed="(t, a) => emit('requestSeed', t, a)"
+      />
     </div>
   </section>
 </template>
@@ -7003,51 +6764,6 @@ const whatsappShareUrl = computed(() => {
     <ToastContainer />
   </div>
 </template>
-</file>
-
-<file path="server/api/admin/books/import/excel.post.ts">
-// =============================================================================
-// server/api/admin/books/import/excel.post.ts
-// Proxies multipart spreadsheet uploads securely to Soko background BullMQ queue.
-// =============================================================================
-
-export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig();
-  const token = getCookie(event, 'flemela_admin_session') || event.context.authToken;
-
-  if (!token) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized session' });
-  }
-
-  const backendBaseUrl = config.sokoApiBaseUrl.replace(/\/$/, '');
-  const targetUrl = `${backendBaseUrl}/books/import/excel`;
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const incomingContentType = getHeader(event, 'content-type');
-  if (incomingContentType) {
-    headers['content-type'] = incomingContentType;
-  }
-
-  try {
-    const response = await fetch(targetUrl, {
-      method: 'POST',
-      headers,
-      body: event.node.req as any,
-      duplex: 'half',
-    } as any);
-
-    const data = await response.json();
-    return data;
-  } catch (err: any) {
-    throw createError({
-      statusCode: err.statusCode || 500,
-      statusMessage: err.message || 'Spreadsheet upload forwarding failed',
-    });
-  }
-});
 </file>
 
 <file path="server/api/admin/books/bulk-delete.post.ts">
@@ -7614,450 +7330,235 @@ export default {
 };
 </file>
 
-<file path="components/storefront/BentoCategories.vue">
-<!-- components/storefront/BentoCategories.vue -->
+<file path="components/storefront/BestsellersSection.vue">
+<!-- components/storefront/BestsellersSection.vue -->
 <script setup lang="ts">
-import { ArrowUpRight } from 'lucide-vue-next';
+import { computed } from 'vue';
+import BookCard from '~/components/storefront/BookCard.vue';
+import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import type { Book } from '~/types';
 
+interface Props {
+  books: Book[];
+}
+
+const props = defineProps<Props>();
 const emit = defineEmits<{
-  select: [category: string];
+  requestSeed: [title: string, author?: string];
+  seeMore: [];
 }>();
 
-const bentoItems = [
-  {
-    name: 'Fiction & Literature',
-    title: 'FICTION',
-    count: '234 Books',
-    bg: '#2A805A',
-    cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    name: 'Psychology & Self-Help',
-    title: 'THRILLER',
-    count: '189 Books',
-    bg: '#E5A636',
-  },
-  {
-    name: 'Christian Books',
-    title: 'FANTASY',
-    count: '142 Books',
-    bg: '#189CB0',
-    cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    name: 'Education & Textbooks',
-    title: 'NONFICTION',
-    count: '156 Books',
-    bg: '#EE5335',
-    cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    name: 'Business & Finance',
-    title: 'ROMANCE',
-    count: '210 Books',
-    bg: '#7A62B3',
-    cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&auto=format&fit=crop&q=80',
-  },
-];
+const bestsellerBooks = computed(() => {
+  const combined = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
+  return mergeWithSeeds(props.books, combined, 6);
+});
 </script>
 
 <template>
-  <section id="categories-bento" class="py-12 sm:py-16 px-4 max-w-6xl mx-auto space-y-7 select-none overflow-hidden">
+  <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
     <!-- Header -->
-    <div class="text-center space-y-1">
-      <span class="text-[10px] sm:text-[11px] font-mono uppercase font-bold tracking-widest text-[#EE5335] block">
-        BOOK CATEGORIES
-      </span>
-      <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#141E1A] tracking-wide uppercase leading-none">
-        WHAT KIND OF STORY ARE YOU CRAVING TODAY?
-      </h2>
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-stone-200 pb-3">
+      <div>
+        <h2 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase text-[#141E1A] tracking-wide">
+          BEST SELLERS OF THE MONTH
+        </h2>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <p class="text-xs text-[#5F6964] hidden md:inline">
+          Explore the best books our readers are loving and reading right now.
+        </p>
+        <button
+          type="button"
+          class="bg-[#F05A36] hover:bg-[#D94827] text-white text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full transition-all shadow-xs cursor-pointer flex-shrink-0"
+          @click="emit('seeMore')"
+        >
+          See More
+        </button>
+      </div>
     </div>
 
-    <!-- Bento Grid -->
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4 auto-rows-[160px] sm:auto-rows-[190px]">
+    <!-- 12-Column Split: 8 Cols for 6 Books (3x2) + 4 Cols for Dark Promo Card -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <!-- 6 Books: 3 Columns x 2 Rows -->
+      <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5">
+        <BookCard
+          v-for="book in bestsellerBooks"
+          :key="book.id"
+          :book="book"
+          @request-seed="(t, a) => emit('requestSeed', t, a)"
+        />
+      </div>
+
+      <!-- Right Pine Promo Card -->
+      <div class="lg:col-span-4 bg-[#052219] text-white rounded-2xl p-6 sm:p-8 flex flex-col justify-between items-center text-center shadow-md relative overflow-hidden">
+        <div class="w-28 h-36 rounded-t-full bg-[#2CD4BF]/20 border-2 border-[#2CD4BF]/40 flex items-center justify-center p-3 shadow-inner my-2">
+          <div class="w-20 h-28 bg-white/10 rounded-t-full flex items-center justify-center text-3xl">
+            📚
+          </div>
+        </div>
+
+        <div class="space-y-2 py-4">
+          <h3 class="font-poster text-3xl sm:text-4xl font-extrabold uppercase leading-tight tracking-wide text-white">
+            GET <span class="text-[#F05A36]">20% OFF</span> BESTSELLERS
+          </h3>
+          <p class="text-xs text-white/70 leading-relaxed max-w-xs mx-auto">
+            This week only — pick the stories everyone is talking about at a lower price.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="w-full bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase tracking-wider py-3.5 rounded-xl transition-all shadow-md cursor-pointer active:scale-95"
+          @click="emit('seeMore')"
+        >
+          Get This Offer
+        </button>
+      </div>
+    </div>
+  </section>
+</template>
+</file>
+
+<file path="components/storefront/DealsWeek.vue">
+<!-- components/storefront/DealsWeek.vue -->
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import BookCard from '~/components/storefront/BookCard.vue';
+import { DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import type { Book } from '~/types';
+
+interface Props {
+  books: Book[];
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<{
+  requestSeed: [title: string, author?: string];
+}>();
+
+const carouselRef = ref<HTMLElement | null>(null);
+
+const dealBooks = computed(() => {
+  return mergeWithSeeds(props.books, DEALS_SEEDS, 4);
+});
+
+// Live Countdown Timer
+const days = ref('04');
+const hours = ref('18');
+const minutes = ref('40');
+const seconds = ref('23');
+let timerInterval: ReturnType<typeof setInterval> | undefined;
+
+function updateCountdown(): void {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const daysUntilSunday = (7 - dayOfWeek) % 7 || 7;
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59);
+
+  const diff = Math.max(0, target.getTime() - now.getTime());
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const m = Math.floor((diff / 1000 / 60) % 60);
+  const s = Math.floor((diff / 1000) % 60);
+
+  days.value = String(d).padStart(2, '0');
+  hours.value = String(h).padStart(2, '0');
+  minutes.value = String(m).padStart(2, '0');
+  seconds.value = String(s).padStart(2, '0');
+}
+
+onMounted(() => {
+  updateCountdown();
+  timerInterval = setInterval(updateCountdown, 1000);
+});
+
+onUnmounted(() => {
+  if (timerInterval) clearInterval(timerInterval);
+});
+
+function scrollLeft(): void {
+  carouselRef.value?.scrollBy({ left: -280, behavior: 'smooth' });
+}
+
+function scrollRight(): void {
+  carouselRef.value?.scrollBy({ left: 280, behavior: 'smooth' });
+}
+</script>
+
+<template>
+  <section id="deals-week" class="bg-theme-sand py-14 px-4 relative overflow-hidden">
+    <!-- Subtle Concentric Ripple Texture Lines in Background -->
+    <svg class="absolute -left-20 -bottom-20 w-96 h-96 text-stone-300/40 pointer-events-none" viewBox="0 0 200 200" fill="none">
+      <circle cx="100" cy="100" r="40" stroke="currentColor" stroke-width="0.75" />
+      <circle cx="100" cy="100" r="70" stroke="currentColor" stroke-width="0.75" />
+      <circle cx="100" cy="100" r="100" stroke="currentColor" stroke-width="0.75" />
+    </svg>
+
+    <div class="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 items-center relative z-10">
       
-      <!-- Card 1: Fiction -->
-      <div
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
-        :style="{ backgroundColor: bentoItems[0].bg }"
-        @click="emit('select', bentoItems[0].name)"
-      >
-        <!-- Atmospheric Depth Overlay -->
-        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
+      <!-- Left Column: Title, Copy, Countdown & Carousel Arrows (4 Cols) -->
+      <div class="lg:col-span-4 space-y-4">
+        <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-theme-coral block">BOOK OF THE WEEK</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-extrabold text-theme-ink uppercase tracking-tight">
+          DEALS OF THE WEEK
+        </h2>
+        <p class="text-xs text-theme-muted leading-relaxed">
+          An unforgettable read that is dominating bestsellers and changing how we view love, loss, and everything in between.
+        </p>
 
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[0].count }}</span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
-            <ArrowUpRight :size="14" />
+        <!-- 4 Square Countdown Boxes (White with border) -->
+        <ClientOnly>
+          <div class="flex items-center gap-2 pt-1">
+            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
+              <span class="font-mono text-sm font-bold text-theme-ink block">{{ days }}D</span>
+            </div>
+            <span class="font-bold text-theme-ink">:</span>
+            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
+              <span class="font-mono text-sm font-bold text-theme-ink block">{{ hours }}H</span>
+            </div>
+            <span class="font-bold text-theme-ink">:</span>
+            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
+              <span class="font-mono text-sm font-bold text-theme-ink block">{{ minutes }}M</span>
+            </div>
+            <span class="font-bold text-theme-ink">:</span>
+            <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
+              <span class="font-mono text-sm font-bold text-theme-coral block">{{ seconds }}S</span>
+            </div>
           </div>
-        </div>
-        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[0].title }}</h3>
-        
-        <!-- Book with Soft Shadow & Vignette Mask -->
-        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[10deg] group-hover:rotate-6 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
-          <img :src="bentoItems[0].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+        </ClientOnly>
+
+        <!-- Circular Slider Arrows (Left White, Right Coral) -->
+        <div class="flex items-center gap-2.5 pt-3">
+          <button
+            type="button"
+            class="w-9 h-9 rounded-full bg-white border border-stone-300 flex items-center justify-center text-theme-ink hover:bg-stone-50 cursor-pointer shadow-xs active:scale-95 transition-all"
+            aria-label="Previous deal"
+            @click="scrollLeft"
+          >
+            <ChevronLeft :size="16" />
+          </button>
+          <button
+            type="button"
+            class="w-9 h-9 rounded-full bg-theme-coral text-white flex items-center justify-center hover:bg-theme-coral-hover cursor-pointer shadow-xs active:scale-95 transition-all"
+            aria-label="Next deal"
+            @click="scrollRight"
+          >
+            <ChevronRight :size="16" />
+          </button>
         </div>
       </div>
-
-      <!-- Card 2: Center Tall Card (Thriller Cluster) -->
-      <div
-        class="col-span-2 md:col-span-1 md:row-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1 order-last md:order-none min-h-[220px] md:min-h-0"
-        :style="{ backgroundColor: bentoItems[1].bg }"
-        @click="emit('select', bentoItems[1].name)"
-      >
-        <!-- Atmospheric Center Overlay -->
-        <div class="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/35 pointer-events-none z-0" />
-
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[1].count }}</span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-
-        <!-- Fanned Cluster with Shading & Vignettes -->
-        <div class="relative w-full h-36 sm:h-48 md:h-56 flex items-center justify-center my-auto pointer-events-none z-1">
-          <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[1/1.45] rounded-md overflow-hidden shadow-xl -translate-x-[42%] rotate-[-14deg] border border-white/20">
-            <img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
-            <div class="absolute inset-0 bg-black/25" />
-          </div>
-          <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[1/1.45] rounded-md overflow-hidden shadow-xl translate-x-[42%] rotate-[14deg] border border-white/20">
-            <img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
-            <div class="absolute inset-0 bg-black/25" />
-          </div>
-          <div class="absolute w-[36%] max-w-[115px] min-w-[68px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl z-10 scale-105 group-hover:scale-110 transition-transform duration-300 border border-white/30">
-            <img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
-            <div class="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-          </div>
-        </div>
-
-        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10 leading-none">
-          {{ bentoItems[1].title }}
-        </h3>
-      </div>
-
-      <!-- Card 3: Fantasy -->
-      <div
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
-        :style="{ backgroundColor: bentoItems[2].bg }"
-        @click="emit('select', bentoItems[2].name)"
-      >
-        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[2].count }}</span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[2].title }}</h3>
-        
-        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[-8deg] group-hover:rotate-0 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
-          <img :src="bentoItems[2].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-        </div>
-      </div>
-
-      <!-- Card 4: Nonfiction -->
-      <div
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
-        :style="{ backgroundColor: bentoItems[3].bg }"
-        @click="emit('select', bentoItems[3].name)"
-      >
-        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[3].count }}</span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[3].title }}</h3>
-        
-        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[6deg] group-hover:rotate-0 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
-          <img :src="bentoItems[3].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-        </div>
-      </div>
-
-      <!-- Card 5: Romance -->
-      <div
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
-        :style="{ backgroundColor: bentoItems[4].bg }"
-        @click="emit('select', bentoItems[4].name)"
-      >
-        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[4].count }}</span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[4].title }}</h3>
-        
-        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
-          <img :src="bentoItems[4].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+      <!-- Right Column: Horizontal Deals Carousel -->
+      <div ref="carouselRef" class="lg:col-span-8 flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-2 px-1">
+        <div v-for="book in dealBooks" :key="book.id" class="w-24 sm:w-28 flex-shrink-0">
+          <BookCard :book="book" @request-seed="(t, a) => emit('requestSeed', t, a)" />
         </div>
       </div>
 
     </div>
   </section>
 </template>
-</file>
-
-<file path="data/seeds.ts">
-// =============================================================================
-// flemela/data/seeds.ts
-// Permanent 100% Reliable Seed Collection (Zero Rate Limits, Zero Geo-Blocks)
-// =============================================================================
-
-import type { Book } from '~/types';
-
-export interface SeedBook extends Book {
-  isSeed: true;
-}
-
-export const MONTHLY_TOP_SEEDS: SeedBook[] = [
-  {
-    id: 'seed-atomic-habits',
-    org_id: 'seed-flemela',
-    category_id: 'cat-self-help',
-    category_name: 'Self-Help',
-    name: "Don't Make Me Think",
-    slug: 'dont-make-me-think',
-    author: 'Steve Krug',
-    description: 'A Common Sense Approach to Web Usability.',
-    price: 999,
-    compare_at_price: 1450,
-    status: 'published',
-    badge: 'NO1_PICK',
-    images: [{ 
-      image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80', 
-      image_public_id: 'seed_img_1', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-1', product_id: 'seed-atomic-habits', format: 'hardcopy', price: 999, compare_at_price: 1450, file_url: null, file_public_id: null, file_size_bytes: null, stock: 15, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-2', product_id: 'seed-atomic-habits', format: 'pdf', price: 149, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-each-of-us-desert',
-    org_id: 'seed-flemela',
-    category_id: 'cat-fiction',
-    category_name: 'Fiction',
-    name: 'Each of Us a Desert',
-    slug: 'each-of-us-a-desert',
-    author: 'Mark Oshiro',
-    description: 'A fantasy about storytelling and survival in a dangerous world.',
-    price: 1100,
-    compare_at_price: 1600,
-    status: 'published',
-    badge: 'NO1_PICK',
-    images: [{ 
-      image_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&auto=format&fit=crop&q=80', 
-      image_public_id: 'seed_img_2', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-3', product_id: 'seed-each-of-us-desert', format: 'hardcopy', price: 1100, compare_at_price: 1600, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-lost-and-lassoed',
-    org_id: 'seed-flemela',
-    category_id: 'cat-romance',
-    category_name: 'Romance',
-    name: 'Lost and Lassoed',
-    slug: 'lost-and-lassoed',
-    author: 'Lyla Sage',
-    description: 'A small-town romance full of heart, grit, and second chances.',
-    price: 950,
-    compare_at_price: 1400,
-    status: 'published',
-    badge: 'NO1_PICK',
-    images: [{ 
-      image_url: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=600&auto=format&fit=crop&q=80', 
-      image_public_id: 'seed_img_3', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-4', product_id: 'seed-lost-and-lassoed', format: 'hardcopy', price: 950, compare_at_price: 1400, file_url: null, file_public_id: null, file_size_bytes: null, stock: 10, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-kanslo-smart',
-    org_id: 'seed-flemela',
-    category_id: 'cat-business',
-    category_name: 'Business',
-    name: 'Kanslo Smart',
-    slug: 'kanslo-smart',
-    author: 'David Kanslo',
-    description: 'Mastering modern strategy, leverage, and cognitive execution.',
-    price: 1250,
-    compare_at_price: 1800,
-    status: 'published',
-    badge: 'NO1_PICK',
-    images: [{ 
-      image_url: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600&auto=format&fit=crop&q=80', 
-      image_public_id: 'seed_img_4', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-5', product_id: 'seed-kanslo-smart', format: 'hardcopy', price: 1250, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 12, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-];
-
-export const DEALS_SEEDS: SeedBook[] = [
-  {
-    id: 'seed-rich-dad-poor-dad',
-    org_id: 'seed-flemela',
-    category_id: 'cat-finance',
-    category_name: 'Business & Finance',
-    name: 'Rich Dad Poor Dad',
-    slug: 'rich-dad-poor-dad',
-    author: 'Robert T. Kiyosaki',
-    description: 'What the rich teach their kids about money.',
-    price: 850,
-    compare_at_price: 1200,
-    status: 'published',
-    badge: 'DEAL_OF_WEEK',
-    images: [{ 
-      image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80', 
-      image_public_id: 'seed_img_5', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-6', product_id: 'seed-rich-dad-poor-dad', format: 'hardcopy', price: 850, compare_at_price: 1200, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-the-alchemist',
-    org_id: 'seed-flemela',
-    category_id: 'cat-fiction',
-    category_name: 'Fiction & Literature',
-    name: 'The Alchemist',
-    slug: 'the-alchemist',
-    author: 'Paulo Coelho',
-    description: 'A magical fable about following your dream.',
-    price: 750,
-    compare_at_price: 1100,
-    status: 'published',
-    badge: 'CLASSIC',
-    images: [{ 
-      image_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&auto=format&fit=crop&q=80', 
-      image_public_id: 'seed_img_6', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-7', product_id: 'seed-the-alchemist', format: 'hardcopy', price: 750, compare_at_price: 1100, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-1984',
-    org_id: 'seed-flemela',
-    category_id: 'cat-fiction',
-    category_name: 'Fiction & Literature',
-    name: '1984',
-    slug: '1984-george-orwell',
-    author: 'George Orwell',
-    description: 'The dystopian masterpiece of state surveillance.',
-    price: 799,
-    compare_at_price: 1150,
-    status: 'published',
-    badge: 'SPECIAL',
-    images: [{ 
-      image_url: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600&auto=format&fit=crop&q=80', 
-      image_public_id: 'seed_img_7', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-8', product_id: 'seed-1984', format: 'hardcopy', price: 799, compare_at_price: 1150, file_url: null, file_public_id: null, file_size_bytes: null, stock: 18, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-48-laws-of-power',
-    org_id: 'seed-flemela',
-    category_id: 'cat-self-help',
-    category_name: 'Self-Help',
-    name: 'The 48 Laws of Power',
-    slug: '48-laws-of-power',
-    author: 'Robert Greene',
-    description: 'Amoral, cunning, and instructive wisdom on mastery.',
-    price: 1100,
-    compare_at_price: 1650,
-    status: 'published',
-    badge: 'ESSENTIAL',
-    images: [{ 
-      image_url: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=600&auto=format&fit=crop&q=80', 
-      image_public_id: 'seed_img_8', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-9', product_id: 'seed-48-laws-of-power', format: 'hardcopy', price: 1100, compare_at_price: 1650, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-];
-
-export function mergeWithSeeds(
-  realBooks: Book[] | null | undefined,
-  seedCollection: SeedBook[],
-  targetCount = 4
-): Book[] {
-  const realWithCovers = (realBooks || []).filter((b) => {
-    const firstImg: unknown = b.images?.[0];
-    if (typeof firstImg === 'string' && firstImg.length > 5) return true;
-    if (
-      firstImg &&
-      typeof firstImg === 'object' &&
-      'image_url' in firstImg &&
-      Boolean((firstImg as { image_url?: string }).image_url)
-    ) {
-      return true;
-    }
-    if ((b as any).cover_image_url) return true;
-    return false;
-  });
-
-  if (realWithCovers.length >= targetCount) {
-    return realWithCovers.slice(0, targetCount);
-  }
-
-  const realSlugs = new Set(realWithCovers.map((b) => b.slug.toLowerCase()));
-  const realNames = new Set(realWithCovers.map((b) => b.name.toLowerCase()));
-
-  const eligibleSeeds = seedCollection.filter(
-    (s) => !realSlugs.has(s.slug.toLowerCase()) && !realNames.has(s.name.toLowerCase())
-  );
-
-  const needed = targetCount - realWithCovers.length;
-  return [...realWithCovers, ...eligibleSeeds.slice(0, needed)];
-}
 </file>
 
 <file path="pages/admin/books/index.vue">
@@ -9961,6 +9462,197 @@ textarea:-webkit-autofill:focus {
 }
 </file>
 
+<file path="components/storefront/BentoCategories.vue">
+<!-- components/storefront/BentoCategories.vue -->
+<script setup lang="ts">
+import { ArrowUpRight } from 'lucide-vue-next';
+
+const emit = defineEmits<{
+  select: [category: string];
+}>();
+
+const bentoItems = [
+  {
+    name: 'Fiction & Literature',
+    title: 'FICTION',
+    count: '234 Books',
+    bg: '#2A805A',
+    cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80',
+  },
+  {
+    name: 'Psychology & Self-Help',
+    title: 'THRILLER',
+    count: '189 Books',
+    bg: '#E5A636',
+  },
+  {
+    name: 'Christian Books',
+    title: 'FANTASY',
+    count: '142 Books',
+    bg: '#189CB0',
+    cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&auto=format&fit=crop&q=80',
+  },
+  {
+    name: 'Education & Textbooks',
+    title: 'NONFICTION',
+    count: '156 Books',
+    bg: '#EE5335',
+    cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400&auto=format&fit=crop&q=80',
+  },
+  {
+    name: 'Business & Finance',
+    title: 'ROMANCE',
+    count: '210 Books',
+    bg: '#7A62B3',
+    cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&auto=format&fit=crop&q=80',
+  },
+];
+</script>
+
+<template>
+  <section id="categories-bento" class="py-12 sm:py-16 px-4 max-w-6xl mx-auto space-y-7 select-none overflow-hidden">
+    <!-- Header -->
+    <div class="text-center space-y-1">
+      <span class="text-[10px] sm:text-[11px] font-mono uppercase font-bold tracking-widest text-[#EE5335] block">
+        BOOK CATEGORIES
+      </span>
+      <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#141E1A] tracking-wide uppercase leading-none">
+        WHAT KIND OF STORY ARE YOU CRAVING TODAY?
+      </h2>
+    </div>
+
+    <!-- Bento Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4 auto-rows-[160px] sm:auto-rows-[190px]">
+      
+      <!-- Card 1: Fiction -->
+      <div
+        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
+        :style="{ backgroundColor: bentoItems[0].bg }"
+        @click="emit('select', bentoItems[0].name)"
+      >
+        <!-- Atmospheric Depth Overlay -->
+        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
+
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[0].count }}</span>
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[0].title }}</h3>
+        
+        <!-- Book with Soft Shadow & Vignette Mask -->
+        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[10deg] group-hover:rotate-6 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
+          <img :src="bentoItems[0].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+        </div>
+      </div>
+
+      <!-- Card 2: Center Tall Card (Thriller Cluster) -->
+      <div
+        class="col-span-2 md:col-span-1 md:row-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1 order-last md:order-none min-h-[220px] md:min-h-0"
+        :style="{ backgroundColor: bentoItems[1].bg }"
+        @click="emit('select', bentoItems[1].name)"
+      >
+        <!-- Atmospheric Center Overlay -->
+        <div class="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/35 pointer-events-none z-0" />
+
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[1].count }}</span>
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+
+        <!-- Fanned Cluster with Shading & Vignettes -->
+        <div class="relative w-full h-36 sm:h-48 md:h-56 flex items-center justify-center my-auto pointer-events-none z-1">
+          <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[1/1.45] rounded-md overflow-hidden shadow-xl -translate-x-[42%] rotate-[-14deg] border border-white/20">
+            <img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-black/25" />
+          </div>
+          <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[1/1.45] rounded-md overflow-hidden shadow-xl translate-x-[42%] rotate-[14deg] border border-white/20">
+            <img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-black/25" />
+          </div>
+          <div class="absolute w-[36%] max-w-[115px] min-w-[68px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl z-10 scale-105 group-hover:scale-110 transition-transform duration-300 border border-white/30">
+            <img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+          </div>
+        </div>
+
+        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10 leading-none">
+          {{ bentoItems[1].title }}
+        </h3>
+      </div>
+
+      <!-- Card 3: Fantasy -->
+      <div
+        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
+        :style="{ backgroundColor: bentoItems[2].bg }"
+        @click="emit('select', bentoItems[2].name)"
+      >
+        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[2].count }}</span>
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[2].title }}</h3>
+        
+        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[-8deg] group-hover:rotate-0 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
+          <img :src="bentoItems[2].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+        </div>
+      </div>
+
+      <!-- Card 4: Nonfiction -->
+      <div
+        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
+        :style="{ backgroundColor: bentoItems[3].bg }"
+        @click="emit('select', bentoItems[3].name)"
+      >
+        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[3].count }}</span>
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[3].title }}</h3>
+        
+        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[6deg] group-hover:rotate-0 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
+          <img :src="bentoItems[3].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+        </div>
+      </div>
+
+      <!-- Card 5: Romance -->
+      <div
+        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
+        :style="{ backgroundColor: bentoItems[4].bg }"
+        @click="emit('select', bentoItems[4].name)"
+      >
+        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[4].count }}</span>
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[4].title }}</h3>
+        
+        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
+          <img :src="bentoItems[4].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+        </div>
+      </div>
+
+    </div>
+  </section>
+</template>
+</file>
+
 <file path="components/storefront/HeroCarousel.vue">
 <!-- components/storefront/HeroCarousel.vue -->
 <script setup lang="ts">
@@ -11634,676 +11326,6 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
 </template>
 </file>
 
-<file path="pages/admin/books/import.vue">
-<!-- pages/admin/books/import.vue -->
-<script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue';
-import {
-  FileSpreadsheet,
-  Download,
-  Upload,
-  RefreshCw,
-  ArrowLeft,
-  CheckCircle2,
-  AlertTriangle,
-  AlertCircle,
-  Layers,
-  CopyCheck,
-  PlusCircle,
-  ShieldCheck,
-  X,
-  Search,
-  BookOpen,
-} from 'lucide-vue-next';
-import AdminLayout from '~/components/admin/AdminLayout.vue';
-import { useToast } from '~/composables/useToast';
-
-definePageMeta({
-  middleware: 'admin-auth',
-});
-
-const { push: pushToast } = useToast();
-
-type UploadStage = 'idle' | 'uploading' | 'queued' | 'processing' | 'completed' | 'failed';
-
-interface RowErrorDetail {
-  row: number;
-  title?: string;
-  error: string;
-}
-
-interface ImportJobTelemetry {
-  id: string;
-  source: 'excel' | 'google_sheet';
-  status: 'queued' | 'processing' | 'done' | 'failed';
-  total_rows: number | null;
-  processed_rows: number;
-  inserted_rows: number;
-  updated_rows: number;
-  skipped_rows: number;
-  error_rows: RowErrorDetail[];
-  created_at: string;
-}
-
-// Drag & Drop / Upload State
-const isDragging = ref(false);
-const uploadStage = ref<UploadStage>('idle');
-const uploadProgress = ref(0);
-const uploadedFileName = ref<string>('');
-const uploadedFileSize = ref<string>('');
-
-// Active Job & Telemetry State
-const activeJobId = ref<string | null>(null);
-const jobData = ref<ImportJobTelemetry | null>(null);
-let pollTimer: ReturnType<typeof setInterval> | undefined;
-
-// Completion Modal State
-const showCompletionModal = ref(false);
-const errorSearchQuery = ref('');
-
-// Google Sheet State
-const googleSheetUrl = ref('');
-const isSubmittingSheet = ref(false);
-
-const sampleCsvContent = [
-  'Name,Description,SellerSKU,PrimaryCategory,Price_KES,Sale_Price_KES,PDF FILE,PDFS PRICE,Stock,author,Image 1,Image 2',
-  '"The Power of Mindset","<p>Change your thoughts, change your life.</p>",A1,Self-Help,1200,999,https://drive.google.com/uc?export=download&id=SAMPLE_ID,149,25,"Darren Hardy",https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600,https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600',
-  '"The Great Gatsby","<p>A classic tale of the Jazz Age.</p>",A2,Fiction,1400,1235,https://drive.google.com/uc?export=download&id=SAMPLE_ID,149,30,"F. Scott Fitzgerald",https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600,https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600',
-].join('\n');
-
-function downloadSampleTemplate(): void {
-  const blob = new Blob([sampleCsvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'Flemela_Bookstore_Template.csv');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  pushToast({ message: 'Sample template downloaded', variant: 'success' });
-}
-
-const progressPercentage = computed(() => {
-  if (!jobData.value || !jobData.value.total_rows || jobData.value.total_rows <= 0) {
-    return uploadStage.value === 'processing' ? 15 : 0;
-  }
-  return Math.min(100, Math.round((jobData.value.processed_rows / jobData.value.total_rows) * 100));
-});
-
-const filteredErrors = computed(() => {
-  if (!jobData.value?.error_rows) return [];
-  if (!errorSearchQuery.value.trim()) return jobData.value.error_rows;
-  const q = errorSearchQuery.value.toLowerCase().trim();
-  return jobData.value.error_rows.filter(
-    (e) => String(e.row).includes(q) || e.title?.toLowerCase().includes(q) || e.error.toLowerCase().includes(q)
-  );
-});
-
-async function handleFileUpload(file: File): Promise<void> {
-  if (!file) return;
-
-  const validExts = ['.xlsx', '.xls', '.csv'];
-  const hasValidExt = validExts.some((ext) => file.name.toLowerCase().endsWith(ext));
-  if (!hasValidExt) {
-    pushToast({ message: 'Only Excel (.xlsx, .xls) or CSV (.csv) files are supported', variant: 'error' });
-    return;
-  }
-
-  uploadedFileName.value = file.name;
-  uploadedFileSize.value = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
-  uploadStage.value = 'uploading';
-  uploadProgress.value = 0;
-  jobData.value = null;
-
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const res = await new Promise<any>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/admin/books/import/excel');
-
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          uploadProgress.value = Math.round((e.loaded / e.total) * 100);
-        }
-      };
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            resolve(JSON.parse(xhr.responseText));
-          } catch {
-            resolve({ success: true });
-          }
-        } else {
-          try {
-            const parsed = JSON.parse(xhr.responseText);
-            reject(new Error(parsed.statusMessage || parsed.message || `Upload failed (HTTP ${xhr.status})`));
-          } catch {
-            reject(new Error(`Spreadsheet upload failed (HTTP ${xhr.status})`));
-          }
-        }
-      };
-
-      xhr.onerror = () => reject(new Error('Network connection error while uploading spreadsheet'));
-      xhr.send(formData);
-    });
-
-    const jobId = res?.data?.jobId || res?.jobId;
-    if (!jobId) {
-      throw new Error('Server did not return a valid ingestion job ticket.');
-    }
-
-    activeJobId.value = jobId;
-    uploadStage.value = 'queued';
-    pushToast({ message: 'Spreadsheet received! Queued for background deduplication.', variant: 'info' });
-    startPollingJob(jobId);
-  } catch (err: any) {
-    uploadStage.value = 'idle';
-    pushToast({ message: err.message || 'Spreadsheet upload failed', variant: 'error' });
-  }
-}
-
-async function handleGoogleSheetSubmit(): Promise<void> {
-  if (!googleSheetUrl.value.trim()) return;
-
-  isSubmittingSheet.value = true;
-  jobData.value = null;
-  uploadedFileName.value = 'Google Sheet Import';
-  uploadedFileSize.value = 'Cloud Document';
-  uploadStage.value = 'queued';
-
-  try {
-    const res = await $fetch<{ jobId: string; status: string }>('/api/admin/books/import', {
-      method: 'POST',
-      body: { sheetUrl: googleSheetUrl.value.trim() },
-    });
-
-    activeJobId.value = res.jobId;
-    pushToast({ message: 'Google Sheet import queued for processing!', variant: 'info' });
-    startPollingJob(res.jobId);
-  } catch (err: any) {
-    uploadStage.value = 'idle';
-    pushToast({ message: err.data?.message || err.statusMessage || 'Failed to start Google Sheet import', variant: 'error' });
-  } finally {
-    isSubmittingSheet.value = false;
-  }
-}
-
-function startPollingJob(jobId: string): void {
-  stopPolling();
-
-  pollTimer = setInterval(async () => {
-    try {
-      const res = await $fetch<ImportJobTelemetry>(`/api/admin/books/import/${jobId}`);
-      jobData.value = res;
-
-      if (res.status === 'processing') {
-        uploadStage.value = 'processing';
-      } else if (res.status === 'done') {
-        uploadStage.value = 'completed';
-        stopPolling();
-        showCompletionModal.value = true;
-        pushToast({
-          message: `Import complete: ${res.inserted_rows} new added, ${res.updated_rows} deduplicated & updated.`,
-          variant: 'success',
-        });
-      } else if (res.status === 'failed') {
-        uploadStage.value = 'failed';
-        stopPolling();
-        showCompletionModal.value = true;
-        pushToast({ message: 'Ingestion pipeline halted due to spreadsheet errors.', variant: 'error' });
-      }
-    } catch {
-      // Non-blocking transient check
-    }
-  }, 2000);
-}
-
-function stopPolling(): void {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = undefined;
-  }
-}
-
-function resetImport(): void {
-  stopPolling();
-  uploadStage.value = 'idle';
-  activeJobId.value = null;
-  jobData.value = null;
-  uploadedFileName.value = '';
-  googleSheetUrl.value = '';
-  showCompletionModal.value = false;
-}
-
-onUnmounted(() => {
-  stopPolling();
-});
-
-function onDrop(e: DragEvent): void {
-  isDragging.value = false;
-  const file = e.dataTransfer?.files?.[0];
-  if (file) handleFileUpload(file);
-}
-
-function onFileSelect(e: Event): void {
-  const target = e.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (file) handleFileUpload(file);
-  target.value = '';
-}
-</script>
-
-<template>
-  <AdminLayout>
-    <div class="max-w-4xl mx-auto space-y-6">
-      
-      <!-- Top Return Navigation -->
-      <NuxtLink
-        to="/admin/books"
-        class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:text-gold-600 transition-colors"
-      >
-        <ArrowLeft :size="14" /> Return to Books Catalog
-      </NuxtLink>
-
-      <div class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-8 space-y-7">
-        
-        <!-- Header -->
-        <div class="flex flex-wrap justify-between items-start gap-4 pb-4 border-b border-paper-border">
-          <div>
-            <span class="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-gold-600 font-bold block">
-              Automated Catalog Ingestion
-            </span>
-            <h1 class="font-display text-2xl font-bold text-forest-950">
-              Bulk Spreadsheet Importer &amp; Deduplication Engine
-            </h1>
-            <p class="text-xs text-ink-muted mt-1">
-              Ingest titles in bulk. Existing catalog items are matched by SKU and Title to update stock, formats, and prices without duplicating.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            class="bg-paper-cream border border-gold-400/80 text-forest-950 text-xs font-bold px-3.5 py-2 rounded-xl hover:bg-amber-100 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
-            @click="downloadSampleTemplate"
-          >
-            <Download :size="14" class="text-gold-600" /> Download CSV Template
-          </button>
-        </div>
-
-        <!-- Deduplication Architecture Callout -->
-        <div class="p-4 bg-paper-cream/60 border border-gold-300 rounded-2xl flex items-start gap-3.5 text-xs text-forest-950 shadow-2xs">
-          <div class="w-8 h-8 rounded-xl bg-forest-950 text-gold-300 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
-            <ShieldCheck :size="18" />
-          </div>
-          <div class="space-y-1">
-            <h4 class="font-bold text-forest-950 font-sans">Active Deduplication Shield</h4>
-            <p class="text-[11px] text-ink-muted leading-relaxed">
-              Before inserting, the background worker performs a pre-flight scan against your active inventory. If an existing <strong>SKU</strong> or exact <strong>Title</strong> matches, it updates the pricing, formats, synopsis, and increments stock instead of spawning duplicate entries.
-            </p>
-          </div>
-        </div>
-
-        <!-- 1. Drag & Drop Upload Zone (Interactive when Idle) -->
-        <div v-if="uploadStage === 'idle'" class="space-y-2.5">
-          <label class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono block">
-            1. Upload Spreadsheet File (.xlsx or .csv)
-          </label>
-
-          <div
-            class="border-2 border-dashed rounded-2xl p-8 sm:p-10 text-center transition-all cursor-pointer bg-paper-canvas/40 flex flex-col items-center justify-center gap-3.5"
-            :class="isDragging ? 'border-forest-900 bg-emerald-50/50 scale-[1.01]' : 'border-paper-border hover:border-forest-900 hover:bg-paper-cream/20'"
-            @dragover.prevent="isDragging = true"
-            @dragleave.prevent="isDragging = false"
-            @drop.prevent="onDrop"
-          >
-            <div class="w-14 h-14 rounded-2xl bg-forest-950/5 text-forest-900 flex items-center justify-center shadow-xs">
-              <Upload :size="24" />
-            </div>
-
-            <div class="space-y-1">
-              <p class="text-xs sm:text-sm font-bold text-forest-950">
-                Drag &amp; drop your workbook here, or <span class="text-forest-900 underline">browse files</span>
-              </p>
-              <p class="text-[11px] text-ink-muted">
-                Accepts Excel (.xlsx, .xls) and CSV (.csv) spreadsheets up to 50MB
-              </p>
-            </div>
-
-            <input
-              id="excel-file-picker"
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              class="hidden"
-              @change="onFileSelect"
-            />
-            <label
-              for="excel-file-picker"
-              class="bg-forest-950 text-paper text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl hover:bg-forest-900 cursor-pointer shadow-subtle inline-flex items-center gap-1.5 active:scale-[0.98] transition-all"
-            >
-              <FileSpreadsheet :size="14" class="text-gold-300" />
-              <span>Select File</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- 2. Active Upload / Processing Telemetry Dashboard -->
-        <div v-else class="p-6 bg-paper-cream/60 border border-gold-400/80 rounded-2xl space-y-5 shadow-soft">
-          
-          <!-- Top Header State -->
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-              <div
-                class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                :class="{
-                  'bg-gold-500 text-forest-950 animate-pulse': uploadStage === 'uploading' || uploadStage === 'queued',
-                  'bg-forest-950 text-gold-300': uploadStage === 'processing',
-                  'bg-emerald-100 text-emerald-800': uploadStage === 'completed',
-                  'bg-red-100 text-red-800': uploadStage === 'failed',
-                }"
-              >
-                <RefreshCw v-if="uploadStage === 'uploading' || uploadStage === 'processing'" :size="18" class="animate-spin" />
-                <CheckCircle2 v-else-if="uploadStage === 'completed'" :size="20" />
-                <AlertCircle v-else-if="uploadStage === 'failed'" :size="20" />
-                <FileSpreadsheet v-else :size="18" />
-              </div>
-
-              <div>
-                <span class="text-[10px] font-mono uppercase font-bold tracking-wider text-ink-muted block">
-                  Status:
-                  <span
-                    class="uppercase font-bold"
-                    :class="{
-                      'text-gold-600': uploadStage === 'uploading' || uploadStage === 'queued',
-                      'text-forest-900': uploadStage === 'processing',
-                      'text-emerald-800': uploadStage === 'completed',
-                      'text-red-700': uploadStage === 'failed',
-                    }"
-                  >
-                    {{ uploadStage }}
-                  </span>
-                </span>
-                <h3 class="font-display font-bold text-sm sm:text-base text-forest-950 truncate max-w-sm">
-                  {{ uploadedFileName }}
-                </h3>
-              </div>
-            </div>
-
-            <!-- Action Controls -->
-            <div class="flex items-center gap-2">
-              <button
-                v-if="uploadStage === 'completed' || uploadStage === 'failed'"
-                type="button"
-                class="px-3.5 py-1.5 bg-white border border-paper-border rounded-xl text-xs font-semibold hover:bg-slate-100 text-forest-950 cursor-pointer shadow-2xs"
-                @click="resetImport"
-              >
-                Upload Another File
-              </button>
-              <button
-                v-if="uploadStage === 'completed'"
-                type="button"
-                class="px-3.5 py-1.5 bg-forest-950 text-paper rounded-xl text-xs font-bold hover:bg-forest-900 cursor-pointer shadow-subtle"
-                @click="showCompletionModal = true"
-              >
-                View Summary
-              </button>
-            </div>
-          </div>
-
-          <!-- Progress Bar -->
-          <div class="space-y-1.5">
-            <div class="flex justify-between text-xs font-mono font-bold text-forest-950">
-              <span v-if="uploadStage === 'uploading'">Uploading to pipeline ({{ uploadProgress }}%)...</span>
-              <span v-else-if="uploadStage === 'queued'">Job queued in BullMQ worker. Awaiting worker slot...</span>
-              <span v-else-if="uploadStage === 'processing'">
-                Processing row {{ jobData?.processed_rows || 0 }} of {{ jobData?.total_rows || '...' }}
-              </span>
-              <span v-else-if="uploadStage === 'completed'">Ingestion Complete (100%)</span>
-              <span v-else>Job Terminated with Errors</span>
-
-              <span>{{ progressPercentage }}%</span>
-            </div>
-
-            <div class="w-full bg-paper-canvas rounded-full h-3 overflow-hidden border border-paper-border">
-              <div
-                class="h-full transition-all duration-300 rounded-full"
-                :class="{
-                  'bg-gold-500': uploadStage === 'uploading' || uploadStage === 'queued',
-                  'bg-forest-950': uploadStage === 'processing',
-                  'bg-emerald-600': uploadStage === 'completed',
-                  'bg-red-600': uploadStage === 'failed',
-                }"
-                :style="{ width: `${progressPercentage}%` }"
-              />
-            </div>
-          </div>
-
-          <!-- Live Deduplication Telemetry Tiles -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-            <!-- Metric 1: Inserted -->
-            <div class="bg-white p-3 rounded-xl border border-paper-border space-y-0.5 shadow-2xs">
-              <div class="flex items-center gap-1.5 text-emerald-800 text-[10px] font-mono uppercase font-bold">
-                <PlusCircle :size="12" />
-                <span>New Titles</span>
-              </div>
-              <p class="font-mono text-lg font-bold text-forest-950 tabular-figure">
-                {{ jobData?.inserted_rows || 0 }}
-              </p>
-            </div>
-
-            <!-- Metric 2: Updated (Deduplicated) -->
-            <div class="bg-white p-3 rounded-xl border border-paper-border space-y-0.5 shadow-2xs">
-              <div class="flex items-center gap-1.5 text-gold-600 text-[10px] font-mono uppercase font-bold">
-                <CopyCheck :size="12" />
-                <span>Deduplicated</span>
-              </div>
-              <p class="font-mono text-lg font-bold text-gold-600 tabular-figure">
-                {{ jobData?.updated_rows || 0 }}
-              </p>
-            </div>
-
-            <!-- Metric 3: Skipped -->
-            <div class="bg-white p-3 rounded-xl border border-paper-border space-y-0.5 shadow-2xs">
-              <div class="flex items-center gap-1.5 text-ink-muted text-[10px] font-mono uppercase font-bold">
-                <Layers :size="12" />
-                <span>Skipped</span>
-              </div>
-              <p class="font-mono text-lg font-bold text-ink-muted tabular-figure">
-                {{ jobData?.skipped_rows || 0 }}
-              </p>
-            </div>
-
-            <!-- Metric 4: Failed Errors -->
-            <div class="bg-white p-3 rounded-xl border border-paper-border space-y-0.5 shadow-2xs">
-              <div class="flex items-center gap-1.5 text-red-700 text-[10px] font-mono uppercase font-bold">
-                <AlertTriangle :size="12" />
-                <span>Failed Rows</span>
-              </div>
-              <p class="font-mono text-lg font-bold text-red-700 tabular-figure">
-                {{ jobData?.error_rows?.length || 0 }}
-              </p>
-            </div>
-          </div>
-
-          <!-- Active Error Warning Strip -->
-          <div
-            v-if="jobData?.error_rows && jobData.error_rows.length > 0"
-            class="p-3.5 bg-red-50 border border-red-200 rounded-xl space-y-2 text-xs"
-          >
-            <div class="flex items-center justify-between font-bold text-red-800">
-              <span class="flex items-center gap-1.5">
-                <AlertCircle :size="14" /> {{ jobData.error_rows.length }} Row(s) encountered issues:
-              </span>
-              <button
-                type="button"
-                class="text-[11px] underline cursor-pointer hover:text-red-950"
-                @click="showCompletionModal = true"
-              >
-                Inspect All
-              </button>
-            </div>
-            <div class="max-h-24 overflow-y-auto space-y-1 text-red-700 font-mono text-[11px]">
-              <div v-for="(err, i) in jobData.error_rows.slice(0, 3)" :key="i">
-                Row {{ err.row }}: {{ err.error }} <span v-if="err.title">({{ err.title }})</span>
-              </div>
-              <div v-if="jobData.error_rows.length > 3" class="text-ink-muted italic">
-                + {{ jobData.error_rows.length - 3 }} more errors...
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3. Google Sheet Option (Available when Idle) -->
-        <div v-if="uploadStage === 'idle'" class="space-y-2.5 pt-4 border-t border-paper-border">
-          <label class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono block">
-            2. Or Ingest Live via Public Google Sheet URL
-          </label>
-
-          <form class="flex gap-2.5" @submit.prevent="handleGoogleSheetSubmit">
-            <input
-              v-model="googleSheetUrl"
-              type="url"
-              placeholder="https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"
-              class="flex-1 px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
-              :disabled="isSubmittingSheet"
-            />
-            <button
-              type="submit"
-              class="bg-forest-950 text-paper text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl hover:bg-forest-900 disabled:opacity-50 cursor-pointer flex items-center gap-1.5 transition-all shadow-subtle"
-              :disabled="!googleSheetUrl || isSubmittingSheet"
-            >
-              <RefreshCw v-if="isSubmittingSheet" :size="13" class="animate-spin" />
-              <span>Import Sheet</span>
-            </button>
-          </form>
-          <p class="text-[11px] text-ink-muted">
-            Ensure your Google Sheet link access is set to <em>"Anyone with the link can view"</em>.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- DIALOGUE MODAL: Ingestion Completion & Deduplication Summary -->
-    <Teleport to="body">
-      <div
-        v-if="showCompletionModal"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-forest-950/70 backdrop-blur-xs"
-        @click.self="showCompletionModal = false"
-      >
-        <div
-          class="bg-white rounded-2xl shadow-2xl border border-paper-border max-w-xl w-full p-6 sm:p-7 space-y-5 animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col"
-        >
-          <!-- Modal Header -->
-          <div class="flex items-start justify-between pb-3 border-b border-paper-border">
-            <div class="flex items-center gap-3">
-              <div
-                class="w-10 h-10 rounded-xl flex items-center justify-center"
-                :class="jobData?.status === 'done' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'"
-              >
-                <CheckCircle2 v-if="jobData?.status === 'done'" :size="20" />
-                <AlertTriangle v-else :size="20" />
-              </div>
-              <div>
-                <h3 class="font-display font-bold text-base text-forest-950">
-                  {{ jobData?.status === 'done' ? 'Catalog Ingestion Complete' : 'Ingestion Pipeline Report' }}
-                </h3>
-                <p class="text-xs text-ink-muted">
-                  Batch summary with duplicate tracking and error forensics.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              class="text-ink-muted hover:text-forest-950 p-1 cursor-pointer"
-              @click="showCompletionModal = false"
-            >
-              <X :size="18" />
-            </button>
-          </div>
-
-          <!-- Summary Metric Blocks -->
-          <div class="grid grid-cols-3 gap-3">
-            <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-0.5">
-              <span class="text-[10px] uppercase font-mono font-bold text-emerald-900 block">Created</span>
-              <span class="text-xl font-mono font-extrabold text-emerald-950">{{ jobData?.inserted_rows || 0 }}</span>
-            </div>
-
-            <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-center space-y-0.5">
-              <span class="text-[10px] uppercase font-mono font-bold text-amber-900 block">Deduplicated</span>
-              <span class="text-xl font-mono font-extrabold text-amber-950">{{ jobData?.updated_rows || 0 }}</span>
-            </div>
-
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-0.5">
-              <span class="text-[10px] uppercase font-mono font-bold text-slate-700 block">Skipped / Failed</span>
-              <span class="text-xl font-mono font-extrabold text-slate-900">
-                {{ (jobData?.skipped_rows || 0) + (jobData?.error_rows?.length || 0) }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Error Rows Inspection Panel -->
-          <div v-if="jobData?.error_rows && jobData.error_rows.length > 0" class="flex-1 min-h-0 space-y-2 pt-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-red-800 uppercase font-mono">
-                Row Error Forensics ({{ jobData.error_rows.length }})
-              </span>
-              <div class="relative w-44">
-                <Search :size="12" class="absolute left-2.5 top-2 text-ink-subtle pointer-events-none" />
-                <input
-                  v-model="errorSearchQuery"
-                  type="text"
-                  placeholder="Filter errors..."
-                  class="w-full pl-7 pr-2 py-1 border border-paper-border rounded-lg text-[11px] outline-none"
-                />
-              </div>
-            </div>
-
-            <div class="max-h-48 overflow-y-auto border border-red-200 rounded-xl bg-red-50/40 divide-y divide-red-100 text-xs">
-              <div
-                v-for="(err, idx) in filteredErrors"
-                :key="idx"
-                class="p-2.5 flex items-start justify-between gap-3 text-red-900"
-              >
-                <div>
-                  <strong>Row {{ err.row }}:</strong> {{ err.error }}
-                  <span v-if="err.title" class="text-ink-muted block text-[11px]">Title: {{ err.title }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <p v-else class="text-xs text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-200">
-            âœ“ Zero row errors encountered. All spreadsheet lines were ingested and verified successfully.
-          </p>
-
-          <!-- Modal Action Buttons -->
-          <div class="pt-3 border-t border-paper-border flex flex-wrap justify-between gap-2.5 items-center">
-            <button
-              type="button"
-              class="px-4 py-2 text-xs font-semibold text-ink-muted hover:text-forest-950 cursor-pointer"
-              @click="resetImport"
-            >
-              Import Another File
-            </button>
-
-            <NuxtLink
-              to="/admin/books"
-              class="bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl shadow-subtle flex items-center gap-1.5 transition-all"
-            >
-              <BookOpen :size="14" class="text-gold-300" />
-              <span>Go to Books Catalog</span>
-            </NuxtLink>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-  </AdminLayout>
-</template>
-</file>
-
 <file path="pages/checkout.vue">
 <!-- flemela/pages/checkout.vue -->
 <script setup lang="ts">
@@ -12906,11 +11928,1026 @@ async function handlePlaceOrder(): Promise<void> {
 </template>
 </file>
 
+<file path="server/api/admin/books/import/excel.post.ts">
+// server/api/admin/books/import/excel.post.ts
+// =============================================================================
+// Protocol-aware streaming forwarder supporting Render HTTPS (443) & local HTTP
+// =============================================================================
+
+import http from 'http';
+import https from 'https';
+import { URL } from 'url';
+
+export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig();
+  const token = getCookie(event, 'flemela_admin_session') || event.context.authToken;
+
+  if (!token) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized session' });
+  }
+
+  const backendBaseUrl = config.sokoApiBaseUrl.replace(/\/$/, '');
+  const targetUrl = new URL(`${backendBaseUrl}/books/import/excel`);
+
+  // Detect whether target is HTTPS (Render production) or HTTP (local dev)
+  const isHttps = targetUrl.protocol === 'https:';
+  const transport = isHttps ? https : http;
+  const defaultPort = isHttps ? 443 : 3000;
+
+  return new Promise((resolve, reject) => {
+    const headers: Record<string, string | string[] | undefined> = {
+      ...event.node.req.headers,
+      host: targetUrl.host,
+      authorization: `Bearer ${token}`,
+    };
+
+    const options = {
+      protocol: targetUrl.protocol,
+      hostname: targetUrl.hostname,
+      port: targetUrl.port || defaultPort,
+      path: targetUrl.pathname + targetUrl.search,
+      method: 'POST',
+      headers,
+    };
+
+    const proxyReq = transport.request(options, (proxyRes) => {
+      let data = '';
+      proxyRes.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      proxyRes.on('end', () => {
+        const statusCode = proxyRes.statusCode || 200;
+        if (statusCode >= 200 && statusCode < 300) {
+          try {
+            resolve(JSON.parse(data));
+          } catch {
+            resolve({ success: true, data });
+          }
+        } else {
+          let errorMsg = `Upload failed with HTTP ${statusCode}`;
+          try {
+            const errJson = JSON.parse(data);
+            errorMsg = errJson.message || errJson.error?.message || errorMsg;
+          } catch {
+            // Use default error string
+          }
+          reject(createError({ statusCode, statusMessage: errorMsg }));
+        }
+      });
+    });
+
+    proxyReq.on('error', (err) => {
+      reject(createError({ statusCode: 502, statusMessage: `Proxy connection error: ${err.message}` }));
+    });
+
+    // Pipe raw incoming file stream directly to the backend
+    event.node.req.pipe(proxyReq);
+  });
+});
+</file>
+
+<file path="data/seeds.ts">
+// data/seeds.ts
+// =============================================================================
+// Permanent Seed Collection with Exact Title-Matched High-Res Covers
+// =============================================================================
+
+import type { Book } from '~/types';
+
+export interface SeedBook extends Book {
+  isSeed: true;
+}
+
+export const MONTHLY_TOP_SEEDS: SeedBook[] = [
+  {
+    id: 'seed-atomic-habits',
+    org_id: 'seed-flemela',
+    category_id: 'cat-self-help',
+    category_name: 'Psychology & Self-Help',
+    name: 'Atomic Habits',
+    slug: 'atomic-habits',
+    author: 'James Clear',
+    description: 'An Easy & Proven Way to Build Good Habits & Break Bad Ones.',
+    price: 1250,
+    compare_at_price: 1800,
+    status: 'published',
+    badge: 'NO1_PICK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg', 
+      image_public_id: 'seed_atomic_habits', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-1', product_id: 'seed-atomic-habits', format: 'hardcopy', price: 1250, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-2', product_id: 'seed-atomic-habits', format: 'pdf', price: 199, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-dont-make-me-think',
+    org_id: 'seed-flemela',
+    category_id: 'cat-business',
+    category_name: 'Business & Finance',
+    name: "Don't Make Me Think",
+    slug: 'dont-make-me-think',
+    author: 'Steve Krug',
+    description: 'A Common Sense Approach to Web Usability.',
+    price: 1100,
+    compare_at_price: 1550,
+    status: 'published',
+    badge: 'NO1_PICK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780321965516-L.jpg', 
+      image_public_id: 'seed_dont_make_me_think', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-3', product_id: 'seed-dont-make-me-think', format: 'hardcopy', price: 1100, compare_at_price: 1550, file_url: null, file_public_id: null, file_size_bytes: null, stock: 18, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-4', product_id: 'seed-dont-make-me-think', format: 'pdf', price: 149, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-psychology-of-money',
+    org_id: 'seed-flemela',
+    category_id: 'cat-finance',
+    category_name: 'Business & Finance',
+    name: 'The Psychology of Money',
+    slug: 'psychology-of-money',
+    author: 'Morgan Housel',
+    description: 'Timeless lessons on wealth, greed, and happiness.',
+    price: 1150,
+    compare_at_price: 1650,
+    status: 'published',
+    badge: 'NO1_PICK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780857197689-L.jpg', 
+      image_public_id: 'seed_psych_money', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-5', product_id: 'seed-psychology-of-money', format: 'hardcopy', price: 1150, compare_at_price: 1650, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-6', product_id: 'seed-psychology-of-money', format: 'epub', price: 149, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-deep-work',
+    org_id: 'seed-flemela',
+    category_id: 'cat-self-help',
+    category_name: 'Psychology & Self-Help',
+    name: 'Deep Work',
+    slug: 'deep-work',
+    author: 'Cal Newport',
+    description: 'Rules for Focused Success in a Distracted World.',
+    price: 1100,
+    compare_at_price: 1500,
+    status: 'published',
+    badge: 'NO1_PICK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9781455586691-L.jpg', 
+      image_public_id: 'seed_deep_work', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-7', product_id: 'seed-deep-work', format: 'hardcopy', price: 1100, compare_at_price: 1500, file_url: null, file_public_id: null, file_size_bytes: null, stock: 14, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+];
+
+export const DEALS_SEEDS: SeedBook[] = [
+  {
+    id: 'seed-48-laws-of-power',
+    org_id: 'seed-flemela',
+    category_id: 'cat-self-help',
+    category_name: 'Psychology & Self-Help',
+    name: 'The 48 Laws of Power',
+    slug: '48-laws-of-power',
+    author: 'Robert Greene',
+    description: 'Amoral, cunning, and instructive wisdom on mastery.',
+    price: 1200,
+    compare_at_price: 1800,
+    status: 'published',
+    badge: 'DEAL_OF_WEEK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780140280197-L.jpg', 
+      image_public_id: 'seed_48_laws', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-8', product_id: 'seed-48-laws-of-power', format: 'hardcopy', price: 1200, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-rich-dad-poor-dad',
+    org_id: 'seed-flemela',
+    category_id: 'cat-finance',
+    category_name: 'Business & Finance',
+    name: 'Rich Dad Poor Dad',
+    slug: 'rich-dad-poor-dad',
+    author: 'Robert T. Kiyosaki',
+    description: 'What the rich teach their kids about money.',
+    price: 850,
+    compare_at_price: 1300,
+    status: 'published',
+    badge: 'DEAL_OF_WEEK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9781612680194-L.jpg', 
+      image_public_id: 'seed_rich_dad', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-9', product_id: 'seed-rich-dad-poor-dad', format: 'hardcopy', price: 850, compare_at_price: 1300, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-the-alchemist',
+    org_id: 'seed-flemela',
+    category_id: 'cat-fiction',
+    category_name: 'Fiction & Literature',
+    name: 'The Alchemist',
+    slug: 'the-alchemist',
+    author: 'Paulo Coelho',
+    description: 'A magical fable about following your dream.',
+    price: 750,
+    compare_at_price: 1100,
+    status: 'published',
+    badge: 'CLASSIC',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780062315007-L.jpg', 
+      image_public_id: 'seed_the_alchemist', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-10', product_id: 'seed-the-alchemist', format: 'hardcopy', price: 750, compare_at_price: 1100, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-1984',
+    org_id: 'seed-flemela',
+    category_id: 'cat-fiction',
+    category_name: 'Fiction & Literature',
+    name: '1984',
+    slug: '1984-george-orwell',
+    author: 'George Orwell',
+    description: 'The dystopian masterpiece of surveillance and truth.',
+    price: 799,
+    compare_at_price: 1200,
+    status: 'published',
+    badge: 'SPECIAL',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg', 
+      image_public_id: 'seed_1984', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-11', product_id: 'seed-1984', format: 'hardcopy', price: 799, compare_at_price: 1200, file_url: null, file_public_id: null, file_size_bytes: null, stock: 22, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+];
+
+export function mergeWithSeeds(
+  realBooks: Book[] | null | undefined,
+  seedCollection: SeedBook[],
+  targetCount = 4
+): Book[] {
+  const realWithCovers = (realBooks || []).filter((b) => {
+    const firstImg: unknown = b.images?.[0];
+    if (typeof firstImg === 'string' && firstImg.length > 5) return true;
+    if (
+      firstImg &&
+      typeof firstImg === 'object' &&
+      'image_url' in firstImg &&
+      Boolean((firstImg as { image_url?: string }).image_url)
+    ) {
+      return true;
+    }
+    if ((b as any).cover_image_url) return true;
+    return false;
+  });
+
+  if (realWithCovers.length >= targetCount) {
+    return realWithCovers.slice(0, targetCount);
+  }
+
+  const realSlugs = new Set(realWithCovers.map((b) => b.slug.toLowerCase()));
+  const realNames = new Set(realWithCovers.map((b) => b.name.toLowerCase()));
+
+  const eligibleSeeds = seedCollection.filter(
+    (s) => !realSlugs.has(s.slug.toLowerCase()) && !realNames.has(s.name.toLowerCase())
+  );
+
+  const needed = targetCount - realWithCovers.length;
+  return [...realWithCovers, ...eligibleSeeds.slice(0, needed)];
+}
+</file>
+
+<file path="pages/admin/books/import.vue">
+<!-- pages/admin/books/import.vue -->
+<script setup lang="ts">
+import { ref, computed, onUnmounted } from 'vue';
+import {
+  FileSpreadsheet,
+  Download,
+  Upload,
+  RefreshCw,
+  ArrowLeft,
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  Layers,
+  CopyCheck,
+  PlusCircle,
+  ShieldCheck,
+  X,
+  Search,
+  BookOpen,
+} from 'lucide-vue-next';
+import AdminLayout from '~/components/admin/AdminLayout.vue';
+import { useToast } from '~/composables/useToast';
+
+definePageMeta({
+  middleware: 'admin-auth',
+});
+
+const { push: pushToast } = useToast();
+
+type UploadStage = 'idle' | 'uploading' | 'queued' | 'processing' | 'completed' | 'failed';
+
+interface RowErrorDetail {
+  row: number;
+  title?: string;
+  error: string;
+}
+
+interface ImportJobTelemetry {
+  id: string;
+  source: 'excel' | 'google_sheet';
+  status: 'queued' | 'processing' | 'done' | 'failed';
+  total_rows: number | null;
+  processed_rows: number;
+  inserted_rows: number;
+  updated_rows: number;
+  skipped_rows: number;
+  error_rows: RowErrorDetail[];
+  created_at: string;
+}
+
+// Drag & Drop / Upload State
+const isDragging = ref(false);
+const uploadStage = ref<UploadStage>('idle');
+const uploadProgress = ref(0);
+const uploadedFileName = ref<string>('');
+const uploadedFileSize = ref<string>('');
+
+// Active Job & Telemetry State
+const activeJobId = ref<string | null>(null);
+const jobData = ref<ImportJobTelemetry | null>(null);
+let pollTimer: ReturnType<typeof setInterval> | undefined;
+
+// Completion Modal State
+const showCompletionModal = ref(false);
+const errorSearchQuery = ref('');
+
+// Google Sheet State
+const googleSheetUrl = ref('');
+const isSubmittingSheet = ref(false);
+
+const sampleCsvContent = [
+  'Name,Description,SellerSKU,PrimaryCategory,Price_KES,Sale_Price_KES,PDF FILE,PDFS PRICE,Stock,author,Image 1,Image 2',
+  '"The Power of Mindset","<p>Change your thoughts, change your life.</p>",A1,Self-Help,1200,999,https://drive.google.com/uc?export=download&id=SAMPLE_ID,149,25,"Darren Hardy",https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600,https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600',
+  '"The Great Gatsby","<p>A classic tale of the Jazz Age.</p>",A2,Fiction,1400,1235,https://drive.google.com/uc?export=download&id=SAMPLE_ID,149,30,"F. Scott Fitzgerald",https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600,https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600',
+].join('\n');
+
+function downloadSampleTemplate(): void {
+  const blob = new Blob([sampleCsvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'Flemela_Bookstore_Template.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  pushToast({ message: 'Sample template downloaded', variant: 'success' });
+}
+
+const progressPercentage = computed(() => {
+  if (!jobData.value || !jobData.value.total_rows || jobData.value.total_rows <= 0) {
+    return uploadStage.value === 'processing' ? 15 : 0;
+  }
+  return Math.min(100, Math.round((jobData.value.processed_rows / jobData.value.total_rows) * 100));
+});
+
+const filteredErrors = computed(() => {
+  if (!jobData.value?.error_rows) return [];
+  if (!errorSearchQuery.value.trim()) return jobData.value.error_rows;
+  const q = errorSearchQuery.value.toLowerCase().trim();
+  return jobData.value.error_rows.filter(
+    (e) => String(e.row).includes(q) || e.title?.toLowerCase().includes(q) || e.error.toLowerCase().includes(q)
+  );
+});
+
+async function handleFileUpload(file: File): Promise<void> {
+  if (!file) return;
+
+  const validExts = ['.xlsx', '.xls', '.csv'];
+  const hasValidExt = validExts.some((ext) => file.name.toLowerCase().endsWith(ext));
+  if (!hasValidExt) {
+    pushToast({ message: 'Only Excel (.xlsx, .xls) or CSV (.csv) files are supported', variant: 'error' });
+    return;
+  }
+
+  uploadedFileName.value = file.name;
+  uploadedFileSize.value = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+  uploadStage.value = 'uploading';
+  uploadProgress.value = 0;
+  jobData.value = null;
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+
+	const res = await new Promise<any>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/admin/books/import/excel');
+      xhr.timeout = 120000; // 120s accommodates Render cold start wake-up time
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          uploadProgress.value = Math.min(99, Math.round((e.loaded / e.total) * 100));
+        }
+      };
+
+      xhr.onload = () => {
+        uploadProgress.value = 100;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            resolve({ success: true });
+          }
+        } else {
+          try {
+            const parsed = JSON.parse(xhr.responseText);
+            reject(new Error(parsed.statusMessage || parsed.message || `Upload failed (HTTP ${xhr.status})`));
+          } catch {
+            reject(new Error(`Upload failed with HTTP ${xhr.status}`));
+          }
+        }
+      };
+
+      xhr.ontimeout = () => {
+        reject(new Error('Server wake-up timed out. Render backend may still be starting; please retry in 10 seconds.'));
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Network connection error while uploading spreadsheet'));
+      };
+
+      xhr.send(formData);
+    });							 
+    const jobId = res?.data?.jobId || res?.jobId;
+    if (!jobId) {
+      throw new Error('Server did not return a valid ingestion job ticket.');
+    }
+
+    activeJobId.value = jobId;
+    uploadStage.value = 'queued';
+    pushToast({ message: 'Spreadsheet received! Queued for background deduplication.', variant: 'info' });
+    startPollingJob(jobId);
+  } catch (err: any) {
+    uploadStage.value = 'idle';
+    pushToast({ message: err.message || 'Spreadsheet upload failed', variant: 'error' });
+  }
+}
+
+async function handleGoogleSheetSubmit(): Promise<void> {
+  if (!googleSheetUrl.value.trim()) return;
+
+  isSubmittingSheet.value = true;
+  jobData.value = null;
+  uploadedFileName.value = 'Google Sheet Import';
+  uploadedFileSize.value = 'Cloud Document';
+  uploadStage.value = 'queued';
+
+  try {
+    const res = await $fetch<{ jobId: string; status: string }>('/api/admin/books/import', {
+      method: 'POST',
+      body: { sheetUrl: googleSheetUrl.value.trim() },
+    });
+
+    activeJobId.value = res.jobId;
+    pushToast({ message: 'Google Sheet import queued for processing!', variant: 'info' });
+    startPollingJob(res.jobId);
+  } catch (err: any) {
+    uploadStage.value = 'idle';
+    pushToast({ message: err.data?.message || err.statusMessage || 'Failed to start Google Sheet import', variant: 'error' });
+  } finally {
+    isSubmittingSheet.value = false;
+  }
+}
+
+function startPollingJob(jobId: string): void {
+  stopPolling();
+
+  pollTimer = setInterval(async () => {
+    try {
+      const res = await $fetch<ImportJobTelemetry>(`/api/admin/books/import/${jobId}`);
+      jobData.value = res;
+
+      if (res.status === 'processing') {
+        uploadStage.value = 'processing';
+      } else if (res.status === 'done') {
+        uploadStage.value = 'completed';
+        stopPolling();
+        showCompletionModal.value = true;
+        pushToast({
+          message: `Import complete: ${res.inserted_rows} new added, ${res.updated_rows} deduplicated & updated.`,
+          variant: 'success',
+        });
+      } else if (res.status === 'failed') {
+        uploadStage.value = 'failed';
+        stopPolling();
+        showCompletionModal.value = true;
+        pushToast({ message: 'Ingestion pipeline halted due to spreadsheet errors.', variant: 'error' });
+      }
+    } catch {
+      // Non-blocking transient check
+    }
+  }, 2000);
+}
+
+function stopPolling(): void {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = undefined;
+  }
+}
+
+function resetImport(): void {
+  stopPolling();
+  uploadStage.value = 'idle';
+  activeJobId.value = null;
+  jobData.value = null;
+  uploadedFileName.value = '';
+  googleSheetUrl.value = '';
+  showCompletionModal.value = false;
+}
+
+onUnmounted(() => {
+  stopPolling();
+});
+
+function onDrop(e: DragEvent): void {
+  isDragging.value = false;
+  const file = e.dataTransfer?.files?.[0];
+  if (file) handleFileUpload(file);
+}
+
+function onFileSelect(e: Event): void {
+  const target = e.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (file) handleFileUpload(file);
+  target.value = '';
+}
+</script>
+
+<template>
+  <AdminLayout>
+    <div class="max-w-4xl mx-auto space-y-6">
+      
+      <!-- Top Return Navigation -->
+      <NuxtLink
+        to="/admin/books"
+        class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:text-gold-600 transition-colors"
+      >
+        <ArrowLeft :size="14" /> Return to Books Catalog
+      </NuxtLink>
+
+      <div class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-8 space-y-7">
+        
+        <!-- Header -->
+        <div class="flex flex-wrap justify-between items-start gap-4 pb-4 border-b border-paper-border">
+          <div>
+            <span class="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-gold-600 font-bold block">
+              Automated Catalog Ingestion
+            </span>
+            <h1 class="font-display text-2xl font-bold text-forest-950">
+              Bulk Spreadsheet Importer &amp; Deduplication Engine
+            </h1>
+            <p class="text-xs text-ink-muted mt-1">
+              Ingest titles in bulk. Existing catalog items are matched by SKU and Title to update stock, formats, and prices without duplicating.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="bg-paper-cream border border-gold-400/80 text-forest-950 text-xs font-bold px-3.5 py-2 rounded-xl hover:bg-amber-100 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            @click="downloadSampleTemplate"
+          >
+            <Download :size="14" class="text-gold-600" /> Download CSV Template
+          </button>
+        </div>
+
+        <!-- Deduplication Architecture Callout -->
+        <div class="p-4 bg-paper-cream/60 border border-gold-300 rounded-2xl flex items-start gap-3.5 text-xs text-forest-950 shadow-2xs">
+          <div class="w-8 h-8 rounded-xl bg-forest-950 text-gold-300 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
+            <ShieldCheck :size="18" />
+          </div>
+          <div class="space-y-1">
+            <h4 class="font-bold text-forest-950 font-sans">Active Deduplication Shield</h4>
+            <p class="text-[11px] text-ink-muted leading-relaxed">
+              Before inserting, the background worker performs a pre-flight scan against your active inventory. If an existing <strong>SKU</strong> or exact <strong>Title</strong> matches, it updates the pricing, formats, synopsis, and increments stock instead of spawning duplicate entries.
+            </p>
+          </div>
+        </div>
+
+        <!-- 1. Drag & Drop Upload Zone (Interactive when Idle) -->
+        <div v-if="uploadStage === 'idle'" class="space-y-2.5">
+          <label class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono block">
+            1. Upload Spreadsheet File (.xlsx or .csv)
+          </label>
+
+          <div
+            class="border-2 border-dashed rounded-2xl p-8 sm:p-10 text-center transition-all cursor-pointer bg-paper-canvas/40 flex flex-col items-center justify-center gap-3.5"
+            :class="isDragging ? 'border-forest-900 bg-emerald-50/50 scale-[1.01]' : 'border-paper-border hover:border-forest-900 hover:bg-paper-cream/20'"
+            @dragover.prevent="isDragging = true"
+            @dragleave.prevent="isDragging = false"
+            @drop.prevent="onDrop"
+          >
+            <div class="w-14 h-14 rounded-2xl bg-forest-950/5 text-forest-900 flex items-center justify-center shadow-xs">
+              <Upload :size="24" />
+            </div>
+
+            <div class="space-y-1">
+              <p class="text-xs sm:text-sm font-bold text-forest-950">
+                Drag &amp; drop your workbook here, or <span class="text-forest-900 underline">browse files</span>
+              </p>
+              <p class="text-[11px] text-ink-muted">
+                Accepts Excel (.xlsx, .xls) and CSV (.csv) spreadsheets up to 50MB
+              </p>
+            </div>
+
+            <input
+              id="excel-file-picker"
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              class="hidden"
+              @change="onFileSelect"
+            />
+            <label
+              for="excel-file-picker"
+              class="bg-forest-950 text-paper text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl hover:bg-forest-900 cursor-pointer shadow-subtle inline-flex items-center gap-1.5 active:scale-[0.98] transition-all"
+            >
+              <FileSpreadsheet :size="14" class="text-gold-300" />
+              <span>Select File</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 2. Active Upload / Processing Telemetry Dashboard -->
+        <div v-else class="p-6 bg-paper-cream/60 border border-gold-400/80 rounded-2xl space-y-5 shadow-soft">
+          
+          <!-- Top Header State -->
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div
+                class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                :class="{
+                  'bg-gold-500 text-forest-950 animate-pulse': uploadStage === 'uploading' || uploadStage === 'queued',
+                  'bg-forest-950 text-gold-300': uploadStage === 'processing',
+                  'bg-emerald-100 text-emerald-800': uploadStage === 'completed',
+                  'bg-red-100 text-red-800': uploadStage === 'failed',
+                }"
+              >
+                <RefreshCw v-if="uploadStage === 'uploading' || uploadStage === 'processing'" :size="18" class="animate-spin" />
+                <CheckCircle2 v-else-if="uploadStage === 'completed'" :size="20" />
+                <AlertCircle v-else-if="uploadStage === 'failed'" :size="20" />
+                <FileSpreadsheet v-else :size="18" />
+              </div>
+
+              <div>
+                <span class="text-[10px] font-mono uppercase font-bold tracking-wider text-ink-muted block">
+                  Status:
+                  <span
+                    class="uppercase font-bold"
+                    :class="{
+                      'text-gold-600': uploadStage === 'uploading' || uploadStage === 'queued',
+                      'text-forest-900': uploadStage === 'processing',
+                      'text-emerald-800': uploadStage === 'completed',
+                      'text-red-700': uploadStage === 'failed',
+                    }"
+                  >
+                    {{ uploadStage }}
+                  </span>
+                </span>
+                <h3 class="font-display font-bold text-sm sm:text-base text-forest-950 truncate max-w-sm">
+                  {{ uploadedFileName }}
+                </h3>
+              </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex items-center gap-2">
+              <button
+                v-if="uploadStage === 'completed' || uploadStage === 'failed'"
+                type="button"
+                class="px-3.5 py-1.5 bg-white border border-paper-border rounded-xl text-xs font-semibold hover:bg-slate-100 text-forest-950 cursor-pointer shadow-2xs"
+                @click="resetImport"
+              >
+                Upload Another File
+              </button>
+              <button
+                v-if="uploadStage === 'completed'"
+                type="button"
+                class="px-3.5 py-1.5 bg-forest-950 text-paper rounded-xl text-xs font-bold hover:bg-forest-900 cursor-pointer shadow-subtle"
+                @click="showCompletionModal = true"
+              >
+                View Summary
+              </button>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs font-mono font-bold text-forest-950">
+              <span v-if="uploadStage === 'uploading'">Uploading to pipeline ({{ uploadProgress }}%)...</span>
+              <span v-else-if="uploadStage === 'queued'">Job queued in BullMQ worker. Awaiting worker slot...</span>
+              <span v-else-if="uploadStage === 'processing'">
+                Processing row {{ jobData?.processed_rows || 0 }} of {{ jobData?.total_rows || '...' }}
+              </span>
+              <span v-else-if="uploadStage === 'completed'">Ingestion Complete (100%)</span>
+              <span v-else>Job Terminated with Errors</span>
+
+              <span>{{ progressPercentage }}%</span>
+            </div>
+
+            <div class="w-full bg-paper-canvas rounded-full h-3 overflow-hidden border border-paper-border">
+              <div
+                class="h-full transition-all duration-300 rounded-full"
+                :class="{
+                  'bg-gold-500': uploadStage === 'uploading' || uploadStage === 'queued',
+                  'bg-forest-950': uploadStage === 'processing',
+                  'bg-emerald-600': uploadStage === 'completed',
+                  'bg-red-600': uploadStage === 'failed',
+                }"
+                :style="{ width: `${progressPercentage}%` }"
+              />
+            </div>
+          </div>
+
+          <!-- Live Deduplication Telemetry Tiles -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+            <!-- Metric 1: Inserted -->
+            <div class="bg-white p-3 rounded-xl border border-paper-border space-y-0.5 shadow-2xs">
+              <div class="flex items-center gap-1.5 text-emerald-800 text-[10px] font-mono uppercase font-bold">
+                <PlusCircle :size="12" />
+                <span>New Titles</span>
+              </div>
+              <p class="font-mono text-lg font-bold text-forest-950 tabular-figure">
+                {{ jobData?.inserted_rows || 0 }}
+              </p>
+            </div>
+
+            <!-- Metric 2: Updated (Deduplicated) -->
+            <div class="bg-white p-3 rounded-xl border border-paper-border space-y-0.5 shadow-2xs">
+              <div class="flex items-center gap-1.5 text-gold-600 text-[10px] font-mono uppercase font-bold">
+                <CopyCheck :size="12" />
+                <span>Deduplicated</span>
+              </div>
+              <p class="font-mono text-lg font-bold text-gold-600 tabular-figure">
+                {{ jobData?.updated_rows || 0 }}
+              </p>
+            </div>
+
+            <!-- Metric 3: Skipped -->
+            <div class="bg-white p-3 rounded-xl border border-paper-border space-y-0.5 shadow-2xs">
+              <div class="flex items-center gap-1.5 text-ink-muted text-[10px] font-mono uppercase font-bold">
+                <Layers :size="12" />
+                <span>Skipped</span>
+              </div>
+              <p class="font-mono text-lg font-bold text-ink-muted tabular-figure">
+                {{ jobData?.skipped_rows || 0 }}
+              </p>
+            </div>
+
+            <!-- Metric 4: Failed Errors -->
+            <div class="bg-white p-3 rounded-xl border border-paper-border space-y-0.5 shadow-2xs">
+              <div class="flex items-center gap-1.5 text-red-700 text-[10px] font-mono uppercase font-bold">
+                <AlertTriangle :size="12" />
+                <span>Failed Rows</span>
+              </div>
+              <p class="font-mono text-lg font-bold text-red-700 tabular-figure">
+                {{ jobData?.error_rows?.length || 0 }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Active Error Warning Strip -->
+          <div
+            v-if="jobData?.error_rows && jobData.error_rows.length > 0"
+            class="p-3.5 bg-red-50 border border-red-200 rounded-xl space-y-2 text-xs"
+          >
+            <div class="flex items-center justify-between font-bold text-red-800">
+              <span class="flex items-center gap-1.5">
+                <AlertCircle :size="14" /> {{ jobData.error_rows.length }} Row(s) encountered issues:
+              </span>
+              <button
+                type="button"
+                class="text-[11px] underline cursor-pointer hover:text-red-950"
+                @click="showCompletionModal = true"
+              >
+                Inspect All
+              </button>
+            </div>
+            <div class="max-h-24 overflow-y-auto space-y-1 text-red-700 font-mono text-[11px]">
+              <div v-for="(err, i) in jobData.error_rows.slice(0, 3)" :key="i">
+                Row {{ err.row }}: {{ err.error }} <span v-if="err.title">({{ err.title }})</span>
+              </div>
+              <div v-if="jobData.error_rows.length > 3" class="text-ink-muted italic">
+                + {{ jobData.error_rows.length - 3 }} more errors...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Google Sheet Option (Available when Idle) -->
+        <div v-if="uploadStage === 'idle'" class="space-y-2.5 pt-4 border-t border-paper-border">
+          <label class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono block">
+            2. Or Ingest Live via Public Google Sheet URL
+          </label>
+
+          <form class="flex gap-2.5" @submit.prevent="handleGoogleSheetSubmit">
+            <input
+              v-model="googleSheetUrl"
+              type="url"
+              placeholder="https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"
+              class="flex-1 px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+              :disabled="isSubmittingSheet"
+            />
+            <button
+              type="submit"
+              class="bg-forest-950 text-paper text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl hover:bg-forest-900 disabled:opacity-50 cursor-pointer flex items-center gap-1.5 transition-all shadow-subtle"
+              :disabled="!googleSheetUrl || isSubmittingSheet"
+            >
+              <RefreshCw v-if="isSubmittingSheet" :size="13" class="animate-spin" />
+              <span>Import Sheet</span>
+            </button>
+          </form>
+          <p class="text-[11px] text-ink-muted">
+            Ensure your Google Sheet link access is set to <em>"Anyone with the link can view"</em>.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIALOGUE MODAL: Ingestion Completion & Deduplication Summary -->
+    <Teleport to="body">
+      <div
+        v-if="showCompletionModal"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-forest-950/70 backdrop-blur-xs"
+        @click.self="showCompletionModal = false"
+      >
+        <div
+          class="bg-white rounded-2xl shadow-2xl border border-paper-border max-w-xl w-full p-6 sm:p-7 space-y-5 animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col"
+        >
+          <!-- Modal Header -->
+          <div class="flex items-start justify-between pb-3 border-b border-paper-border">
+            <div class="flex items-center gap-3">
+              <div
+                class="w-10 h-10 rounded-xl flex items-center justify-center"
+                :class="jobData?.status === 'done' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'"
+              >
+                <CheckCircle2 v-if="jobData?.status === 'done'" :size="20" />
+                <AlertTriangle v-else :size="20" />
+              </div>
+              <div>
+                <h3 class="font-display font-bold text-base text-forest-950">
+                  {{ jobData?.status === 'done' ? 'Catalog Ingestion Complete' : 'Ingestion Pipeline Report' }}
+                </h3>
+                <p class="text-xs text-ink-muted">
+                  Batch summary with duplicate tracking and error forensics.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="text-ink-muted hover:text-forest-950 p-1 cursor-pointer"
+              @click="showCompletionModal = false"
+            >
+              <X :size="18" />
+            </button>
+          </div>
+
+          <!-- Summary Metric Blocks -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-0.5">
+              <span class="text-[10px] uppercase font-mono font-bold text-emerald-900 block">Created</span>
+              <span class="text-xl font-mono font-extrabold text-emerald-950">{{ jobData?.inserted_rows || 0 }}</span>
+            </div>
+
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-center space-y-0.5">
+              <span class="text-[10px] uppercase font-mono font-bold text-amber-900 block">Deduplicated</span>
+              <span class="text-xl font-mono font-extrabold text-amber-950">{{ jobData?.updated_rows || 0 }}</span>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-0.5">
+              <span class="text-[10px] uppercase font-mono font-bold text-slate-700 block">Skipped / Failed</span>
+              <span class="text-xl font-mono font-extrabold text-slate-900">
+                {{ (jobData?.skipped_rows || 0) + (jobData?.error_rows?.length || 0) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Error Rows Inspection Panel -->
+          <div v-if="jobData?.error_rows && jobData.error_rows.length > 0" class="flex-1 min-h-0 space-y-2 pt-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-red-800 uppercase font-mono">
+                Row Error Forensics ({{ jobData.error_rows.length }})
+              </span>
+              <div class="relative w-44">
+                <Search :size="12" class="absolute left-2.5 top-2 text-ink-subtle pointer-events-none" />
+                <input
+                  v-model="errorSearchQuery"
+                  type="text"
+                  placeholder="Filter errors..."
+                  class="w-full pl-7 pr-2 py-1 border border-paper-border rounded-lg text-[11px] outline-none"
+                />
+              </div>
+            </div>
+
+            <div class="max-h-48 overflow-y-auto border border-red-200 rounded-xl bg-red-50/40 divide-y divide-red-100 text-xs">
+              <div
+                v-for="(err, idx) in filteredErrors"
+                :key="idx"
+                class="p-2.5 flex items-start justify-between gap-3 text-red-900"
+              >
+                <div>
+                  <strong>Row {{ err.row }}:</strong> {{ err.error }}
+                  <span v-if="err.title" class="text-ink-muted block text-[11px]">Title: {{ err.title }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p v-else class="text-xs text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+            âœ“ Zero row errors encountered. All spreadsheet lines were ingested and verified successfully.
+          </p>
+
+          <!-- Modal Action Buttons -->
+          <div class="pt-3 border-t border-paper-border flex flex-wrap justify-between gap-2.5 items-center">
+            <button
+              type="button"
+              class="px-4 py-2 text-xs font-semibold text-ink-muted hover:text-forest-950 cursor-pointer"
+              @click="resetImport"
+            >
+              Import Another File
+            </button>
+
+            <NuxtLink
+              to="/admin/books"
+              class="bg-forest-950 hover:bg-forest-900 text-paper text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl shadow-subtle flex items-center gap-1.5 transition-all"
+            >
+              <BookOpen :size="14" class="text-gold-300" />
+              <span>Go to Books Catalog</span>
+            </NuxtLink>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </AdminLayout>
+</template>
+</file>
+
 <file path="components/storefront/BookCard.vue">
 <!-- components/storefront/BookCard.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Star, BookOpen } from 'lucide-vue-next';
+import { Star } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat } from '~/types';
@@ -12928,38 +12965,29 @@ const { addItem, openDrawer } = useCart();
 const { push: pushToast } = useToast();
 
 const imageFailed = ref(false);
+const selectedFormatId = ref<string>('');
 
 watch(
   () => props.book,
-  () => {
+  (newBook) => {
     imageFailed.value = false;
-  }
+    if (newBook?.formats && newBook.formats.length > 0) {
+      if (!newBook.formats.some((f) => f.id === selectedFormatId.value)) {
+        const sorted = [...newBook.formats].sort((a, b) => a.price - b.price);
+        selectedFormatId.value = sorted[0].id;
+      }
+    } else {
+      selectedFormatId.value = '';
+    }
+  },
+  { immediate: true }
 );
 
-const coverImage = computed(() => {
-  if (!props.book) return null;
-  const rawImg: unknown = props.book.images?.[0];
+const availableFormats = computed<ProductFormat[]>(() => props.book?.formats || []);
 
-  if (typeof rawImg === 'string' && rawImg.trim().length > 5) {
-    return rawImg.trim();
-  }
-  if (rawImg && typeof rawImg === 'object' && 'image_url' in rawImg) {
-    const url = (rawImg as { image_url?: string }).image_url;
-    if (typeof url === 'string' && url.trim().length > 5) return url.trim();
-  }
-  const fallback = (props.book as any).cover_image_url;
-  if (typeof fallback === 'string' && fallback.trim().length > 5) return fallback.trim();
-  return null;
-});
-
-function handleImageError() {
-  imageFailed.value = true;
-}
-
-// Active Format & Pricing
 const activeFormat = computed<ProductFormat | undefined>(() => {
-  if (!props.book.formats || props.book.formats.length === 0) return undefined;
-  return [...props.book.formats].sort((a, b) => a.price - b.price)[0];
+  if (!props.book?.formats || props.book.formats.length === 0) return undefined;
+  return props.book.formats.find((f) => f.id === selectedFormatId.value) || props.book.formats[0];
 });
 
 const currentPrice = computed<number>(() => {
@@ -12968,9 +12996,7 @@ const currentPrice = computed<number>(() => {
 });
 
 const originalPrice = computed<number | null>(() => {
-  if (activeFormat.value?.compare_at_price) {
-    return activeFormat.value.compare_at_price;
-  }
+  if (activeFormat.value?.compare_at_price) return activeFormat.value.compare_at_price;
   return props.book.compare_at_price || null;
 });
 
@@ -12981,8 +13007,31 @@ const discountPercentage = computed<number>(() => {
   return Math.round(((orig - curr) / orig) * 100);
 });
 
+const coverImage = computed(() => {
+  if (!props.book) return null;
+  const rawImg: unknown = props.book.images?.[0];
+  if (typeof rawImg === 'string' && rawImg.trim().length > 5) return rawImg.trim();
+  if (rawImg && typeof rawImg === 'object' && 'image_url' in rawImg) {
+    const url = (rawImg as { image_url?: string }).image_url;
+    if (typeof url === 'string' && url.trim().length > 5) return url.trim();
+  }
+  const fallback = (props.book as any).cover_image_url;
+  if (typeof fallback === 'string' && fallback.trim().length > 5) return fallback.trim();
+  return null;
+});
+
+function handleImageError(): void {
+  imageFailed.value = true;
+}
+
 function formatCurrency(val: number): string {
   return `KSh ${val.toLocaleString('en-KE')}`;
+}
+
+function selectFormat(fmtId: string, event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
+  selectedFormatId.value = fmtId;
 }
 
 function handleCardClick(event: Event): void {
@@ -12991,94 +13040,150 @@ function handleCardClick(event: Event): void {
     emit('requestSeed', props.book.name, props.book.author || undefined);
   }
 }
+
+function handleAddToCart(event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (props.book.isSeed) {
+    emit('requestSeed', props.book.name, props.book.author || undefined);
+    return;
+  }
+
+  const fmt = activeFormat.value;
+  const formatType = fmt ? fmt.format : 'hardcopy';
+  const formatId = fmt ? fmt.id : 'default';
+
+  addItem({
+    productId: props.book.id,
+    formatId,
+    title: props.book.name,
+    format: formatType,
+    price: currentPrice.value,
+    compare_at_price: originalPrice.value,
+    quantity: 1,
+    coverUrl: coverImage.value,
+    author: props.book.author,
+  });
+
+  pushToast({
+    message: `Added "${props.book.name}" (${formatType.toUpperCase()}) to cart!`,
+    variant: 'success',
+  });
+
+  openDrawer();
+}
 </script>
 
 <template>
-  <div class="flex flex-col items-center text-center group select-none max-w-[165px] sm:max-w-[180px] mx-auto w-full transition-all duration-300">
-    <!-- Slender 3:4.4 Book Cover with Floating Red Discount Badge -->
+  <!-- Card Container: Reduced by 25% (94px mobile, 105px desktop, p-2 inner padding) -->
+  <div class="flex flex-col items-center text-center bg-white rounded-xl p-2 border border-stone-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_6px_18px_rgba(0,0,0,0.07)] transition-all duration-300 w-full max-w-[94px] sm:max-w-[105px] select-none">
+    
+    <!-- Cover Link -->
     <NuxtLink
       :to="book.isSeed ? '#' : `/book/${book.slug}`"
-      class="block relative w-full aspect-[1/1.45] rounded-lg overflow-visible mb-2.5 transition-transform duration-300 group-hover:-translate-y-1.5 cursor-pointer"
+      class="block relative w-full aspect-[1/1.45] rounded overflow-visible mb-1.5 transition-transform duration-300 hover:-translate-y-0.5 cursor-pointer"
       @click="handleCardClick"
     >
-      <!-- Circular Red -XX% Badge (Offset Top-Left) -->
+      <!-- Circular Red -XX% Badge (Scaled down by 25%) -->
       <div
         v-if="discountPercentage > 0"
-        class="absolute -top-2 -left-2 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#E53935] text-white flex items-center justify-center font-bold text-[9px] sm:text-[10px] font-sans shadow-md border-[1.5px] border-white tracking-tight"
+        class="absolute -top-1 -left-1 z-20 w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#E53935] text-white flex items-center justify-center font-bold text-[7px] sm:text-[7.5px] font-sans shadow-xs border border-white tracking-tight"
       >
         -{{ discountPercentage }}%
       </div>
 
-      <!-- Book Frame with Soft Ambient Shadow -->
-      <div class="w-full h-full rounded-md overflow-hidden bg-stone-100 shadow-[0_8px_20px_-4px_rgba(0,0,0,0.16)] border border-stone-200/70 relative">
-        <!-- Elegant Jacket Fallback if Image Fails -->
+      <!-- Book Frame -->
+      <div class="w-full h-full rounded overflow-hidden bg-stone-100 shadow-[0_3px_8px_rgba(0,0,0,0.1)] border border-stone-200/60 relative">
+        <!-- Jacket Fallback -->
         <div
           v-if="imageFailed || !coverImage"
-          class="w-full h-full flex flex-col justify-between p-3 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none"
+          class="w-full h-full flex flex-col justify-between p-1.5 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none"
         >
-          <div class="space-y-1">
-            <span class="text-[7px] font-mono uppercase tracking-widest text-[#2EE59D] font-bold block truncate">
+          <div class="space-y-0.5">
+            <span class="text-[5.5px] font-mono uppercase tracking-widest text-[#2EE59D] font-bold block truncate">
               {{ book.category_name || 'Book' }}
             </span>
-            <h4 class="font-display font-bold text-[11px] leading-tight line-clamp-3 text-white">
+            <h4 class="font-display font-bold text-[8px] leading-tight line-clamp-3 text-white">
               {{ book.name }}
             </h4>
           </div>
-          <span class="text-[8px] font-mono text-white/70 truncate block pt-1 border-t border-white/10">
+          <span class="text-[6px] font-mono text-white/70 truncate block pt-0.5 border-t border-white/10">
             {{ book.author || 'Edition' }}
           </span>
         </div>
 
-        <!-- Cover Image -->
         <img
           v-else
           :src="coverImage"
           :alt="book.name"
-          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          class="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
           loading="lazy"
-          width="180"
-          height="260"
+          width="105"
+          height="152"
+          referrerpolicy="no-referrer"
           @error="handleImageError"
         />
       </div>
     </NuxtLink>
 
-    <!-- Meta Details (Exact Spacing & Hierarchy from Screenshot) -->
-    <div class="w-full space-y-0.5 px-0.5">
-      <!-- 5 Small Golden Stars -->
-      <div class="flex items-center justify-center gap-0.5 text-[#FFB300] mb-0.5">
-        <Star v-for="i in 5" :key="i" :size="9" class="fill-current" />
+    <!-- Meta Details (Scaled down by 25%) -->
+    <div class="w-full space-y-0.5 flex flex-col flex-1 justify-between">
+      <div>
+        <!-- 5 Golden Stars -->
+        <div class="flex items-center justify-center gap-0.5 text-[#FFB300] mb-0.5">
+          <Star v-for="i in 5" :key="i" :size="6.5" class="fill-current" />
+        </div>
+
+        <!-- Title -->
+        <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block w-full" @click="handleCardClick">
+          <h3 class="font-display text-[9px] sm:text-[9.5px] font-bold text-[#141E1A] hover:text-[#F05A36] transition-colors truncate leading-tight">
+            {{ book.name }}
+          </h3>
+        </NuxtLink>
+
+        <!-- Format Toggle Pills -->
+        <div class="flex items-center justify-center gap-0.5 pt-0.5 flex-wrap">
+          <template v-if="availableFormats.length > 1">
+            <button
+              v-for="fmt in availableFormats"
+              :key="fmt.id"
+              type="button"
+              class="text-[6px] sm:text-[6.5px] font-mono font-bold uppercase px-1 py-[1px] rounded-full transition-all cursor-pointer select-none leading-none"
+              :class="activeFormat?.id === fmt.id ? 'bg-forest-950 text-white shadow-xs' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
+              @click="selectFormat(fmt.id, $event)"
+            >
+              {{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}
+            </button>
+          </template>
+          <span v-else class="text-[6px] sm:text-[6.5px] font-mono font-medium uppercase tracking-wider text-[#6B7280] bg-stone-100 px-1 py-[1px] rounded-full leading-none">
+            {{ activeFormat?.format === 'hardcopy' ? 'Print' : (activeFormat ? activeFormat.format.toUpperCase() : 'Print') }}
+          </span>
+        </div>
+
+        <!-- Price Row -->
+        <div class="flex items-center justify-center gap-1 pt-0.5 font-mono leading-none">
+          <span class="text-[9px] sm:text-[10px] font-bold text-[#141E1A]">
+            {{ formatCurrency(currentPrice) }}
+          </span>
+          <span
+            v-if="originalPrice && originalPrice > currentPrice"
+            class="text-[7.5px] sm:text-[8px] text-[#9CA3AF] line-through font-normal"
+          >
+            {{ formatCurrency(originalPrice) }}
+          </span>
+        </div>
       </div>
 
-      <!-- Book Title -->
-      <NuxtLink
-        :to="book.isSeed ? '#' : `/book/${book.slug}`"
-        class="block"
-        @click="handleCardClick"
-      >
-        <h3 class="font-display text-xs font-bold text-[#141E1A] group-hover:text-[#F05A36] transition-colors line-clamp-1 leading-snug">
-          {{ book.name }}
-        </h3>
-      </NuxtLink>
-
-      <!-- Format Tag (Small Subtle Pill) -->
-      <div class="flex items-center justify-center pt-0.5">
-        <span class="text-[8px] font-mono font-medium uppercase tracking-wider text-[#6B7280] bg-stone-100 px-1.5 py-0.2 rounded">
-          {{ activeFormat?.format === 'hardcopy' ? 'Hardcover' : 'Online store' }}
-        </span>
-      </div>
-
-      <!-- Price Row -->
-      <div class="flex items-center justify-center gap-1.5 pt-0.5 font-mono leading-none">
-        <span class="text-xs font-bold text-[#141E1A]">
-          {{ formatCurrency(currentPrice) }}
-        </span>
-        <span
-          v-if="originalPrice && originalPrice > currentPrice"
-          class="text-[10px] text-[#9CA3AF] line-through font-normal"
+      <!-- Minimalistic Add Button (Scaled down by 25%) -->
+      <div class="w-full pt-1">
+        <button
+          type="button"
+          class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-800 text-white text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider py-1 px-1.5 rounded shadow-xs transition-all cursor-pointer select-none active:scale-[0.97]"
+          @click="handleAddToCart"
         >
-          {{ formatCurrency(originalPrice) }}
-        </span>
+          Add
+        </button>
       </div>
     </div>
   </div>
