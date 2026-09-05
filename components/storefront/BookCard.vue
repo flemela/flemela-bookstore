@@ -37,16 +37,11 @@ watch(
   { immediate: true }
 );
 
-const availableFormats = computed<ProductFormat[]>(() => {
-  return props.book?.formats || [];
-});
+const availableFormats = computed<ProductFormat[]>(() => props.book?.formats || []);
 
 const activeFormat = computed<ProductFormat | undefined>(() => {
   if (!props.book?.formats || props.book.formats.length === 0) return undefined;
-  return (
-    props.book.formats.find((f) => f.id === selectedFormatId.value) ||
-    props.book.formats[0]
-  );
+  return props.book.formats.find((f) => f.id === selectedFormatId.value) || props.book.formats[0];
 });
 
 const currentPrice = computed<number>(() => {
@@ -55,9 +50,7 @@ const currentPrice = computed<number>(() => {
 });
 
 const originalPrice = computed<number | null>(() => {
-  if (activeFormat.value?.compare_at_price) {
-    return activeFormat.value.compare_at_price;
-  }
+  if (activeFormat.value?.compare_at_price) return activeFormat.value.compare_at_price;
   return props.book.compare_at_price || null;
 });
 
@@ -71,10 +64,7 @@ const discountPercentage = computed<number>(() => {
 const coverImage = computed(() => {
   if (!props.book) return null;
   const rawImg: unknown = props.book.images?.[0];
-
-  if (typeof rawImg === 'string' && rawImg.trim().length > 5) {
-    return rawImg.trim();
-  }
+  if (typeof rawImg === 'string' && rawImg.trim().length > 5) return rawImg.trim();
   if (rawImg && typeof rawImg === 'object' && 'image_url' in rawImg) {
     const url = (rawImg as { image_url?: string }).image_url;
     if (typeof url === 'string' && url.trim().length > 5) return url.trim();
@@ -140,33 +130,34 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <div class="flex flex-col items-center text-center group select-none max-w-[165px] sm:max-w-[180px] mx-auto w-full transition-all duration-300">
-    <!-- Book Cover Frame -->
+  <!-- Card Container: Matches the subtle white/cream elevated card backdrop from the screenshot -->
+  <div class="flex flex-col items-center text-center bg-white rounded-2xl p-3 border border-stone-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 w-full select-none">
+    
+    <!-- Cover Link -->
     <NuxtLink
       :to="book.isSeed ? '#' : `/book/${book.slug}`"
-      class="block relative w-full aspect-[1/1.45] rounded-lg overflow-visible mb-2.5 transition-transform duration-300 group-hover:-translate-y-1.5 cursor-pointer"
+      class="block relative w-full aspect-[1/1.45] rounded-lg overflow-visible mb-2.5 transition-transform duration-300 hover:-translate-y-1 cursor-pointer"
       @click="handleCardClick"
     >
       <!-- Circular Red -XX% Badge -->
       <div
         v-if="discountPercentage > 0"
-        class="absolute -top-2 -left-2 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#E53935] text-white flex items-center justify-center font-bold text-[9px] sm:text-[10px] font-sans shadow-md border-[1.5px] border-white tracking-tight"
+        class="absolute -top-1.5 -left-1.5 z-20 w-7 h-7 rounded-full bg-[#E53935] text-white flex items-center justify-center font-bold text-[9px] font-sans shadow-md border border-white tracking-tight"
       >
         -{{ discountPercentage }}%
       </div>
 
-      <!-- Book Frame with Soft Ambient Shadow -->
-      <div class="w-full h-full rounded-md overflow-hidden bg-stone-100 shadow-[0_8px_20px_-4px_rgba(0,0,0,0.16)] border border-stone-200/70 relative">
-        <!-- Elegant Jacket Fallback -->
+      <!-- Book Frame -->
+      <div class="w-full h-full rounded-md overflow-hidden bg-stone-100 shadow-[0_4px_12px_rgba(0,0,0,0.12)] border border-stone-200/60 relative">
         <div
           v-if="imageFailed || !coverImage"
-          class="w-full h-full flex flex-col justify-between p-3 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none"
+          class="w-full h-full flex flex-col justify-between p-2.5 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none"
         >
           <div class="space-y-1">
             <span class="text-[7px] font-mono uppercase tracking-widest text-[#2EE59D] font-bold block truncate">
               {{ book.category_name || 'Book' }}
             </span>
-            <h4 class="font-display font-bold text-[11px] leading-tight line-clamp-3 text-white">
+            <h4 class="font-display font-bold text-[10.5px] leading-tight line-clamp-3 text-white">
               {{ book.name }}
             </h4>
           </div>
@@ -175,62 +166,48 @@ function handleAddToCart(event: Event): void {
           </span>
         </div>
 
-        <!-- Cover Image -->
         <img
           v-else
           :src="coverImage"
           :alt="book.name"
-          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          class="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
           loading="lazy"
-          width="180"
-          height="260"
           referrerpolicy="no-referrer"
           @error="handleImageError"
         />
       </div>
     </NuxtLink>
 
-    <!-- Meta Details & Actions -->
-    <div class="w-full space-y-1 px-0.5 flex flex-col flex-1 justify-between">
+    <!-- Meta Details -->
+    <div class="w-full space-y-1 flex flex-col flex-1 justify-between">
       <div>
-        <!-- 5 Small Golden Stars -->
+        <!-- 5 Golden Stars -->
         <div class="flex items-center justify-center gap-0.5 text-[#FFB300] mb-0.5">
-          <Star v-for="i in 5" :key="i" :size="9" class="fill-current" />
+          <Star v-for="i in 5" :key="i" :size="8.5" class="fill-current" />
         </div>
 
-        <!-- Book Title -->
-        <NuxtLink
-          :to="book.isSeed ? '#' : `/book/${book.slug}`"
-          class="block"
-          @click="handleCardClick"
-        >
-          <h3 class="font-display text-xs font-bold text-[#141E1A] group-hover:text-[#F05A36] transition-colors line-clamp-1 leading-snug">
+        <!-- Title -->
+        <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block w-full" @click="handleCardClick">
+          <h3 class="font-display text-xs font-bold text-[#141E1A] hover:text-[#F05A36] transition-colors truncate leading-snug">
             {{ book.name }}
           </h3>
         </NuxtLink>
 
         <!-- Format Toggle Pills -->
-        <div class="flex items-center justify-center gap-1 pt-1">
+        <div class="flex items-center justify-center gap-1 pt-1 flex-wrap">
           <template v-if="availableFormats.length > 1">
             <button
               v-for="fmt in availableFormats"
               :key="fmt.id"
               type="button"
-              class="text-[8px] sm:text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full transition-all cursor-pointer select-none"
-              :class="
-                activeFormat?.id === fmt.id
-                  ? 'bg-forest-950 text-white shadow-xs'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              "
+              class="text-[8px] font-mono font-bold uppercase px-2 py-0.5 rounded-full transition-all cursor-pointer select-none leading-none"
+              :class="activeFormat?.id === fmt.id ? 'bg-forest-950 text-white shadow-xs' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
               @click="selectFormat(fmt.id, $event)"
             >
               {{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}
             </button>
           </template>
-          <span
-            v-else
-            class="text-[8px] font-mono font-medium uppercase tracking-wider text-[#6B7280] bg-stone-100 px-2 py-0.5 rounded-full"
-          >
+          <span v-else class="text-[8px] font-mono font-medium uppercase tracking-wider text-[#6B7280] bg-stone-100 px-2 py-0.5 rounded-full leading-none">
             {{ activeFormat?.format === 'hardcopy' ? 'Print' : (activeFormat ? activeFormat.format.toUpperCase() : 'Print') }}
           </span>
         </div>
@@ -240,20 +217,17 @@ function handleAddToCart(event: Event): void {
           <span class="text-xs font-bold text-[#141E1A]">
             {{ formatCurrency(currentPrice) }}
           </span>
-          <span
-            v-if="originalPrice && originalPrice > currentPrice"
-            class="text-[10px] text-[#9CA3AF] line-through font-normal"
-          >
+          <span v-if="originalPrice && originalPrice > currentPrice" class="text-[10px] text-[#9CA3AF] line-through font-normal">
             {{ formatCurrency(originalPrice) }}
           </span>
         </div>
       </div>
 
-      <!-- Minimalistic Brand Green "Add" Button -->
-      <div class="w-full pt-1.5">
+      <!-- Add Button in Brand Green -->
+      <div class="w-full pt-2">
         <button
           type="button"
-          class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-800 text-white text-xs font-bold uppercase tracking-wider py-1.5 px-3 rounded-lg shadow-subtle hover:shadow-md transition-all cursor-pointer select-none active:scale-[0.98]"
+          class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-800 text-white text-[11px] font-bold uppercase tracking-wider py-1.5 px-3 rounded-lg shadow-xs hover:shadow-sm transition-all cursor-pointer select-none active:scale-[0.98]"
           @click="handleAddToCart"
         >
           Add

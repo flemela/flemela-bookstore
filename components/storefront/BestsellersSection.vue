@@ -16,13 +16,13 @@ const emit = defineEmits<{
 }>();
 
 const bestsellerBooks = computed(() => {
-  const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
-  return mergeWithSeeds(props.books, combinedSeeds, 6);
+  const combined = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
+  return mergeWithSeeds(props.books, combined, 6);
 });
 </script>
 
 <template>
-  <section class="py-12 sm:py-16 px-4 max-w-6xl mx-auto w-full space-y-6">
+  <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-stone-200 pb-3">
       <div>
@@ -37,7 +37,7 @@ const bestsellerBooks = computed(() => {
         </p>
         <button
           type="button"
-          class="bg-[#F05A36] hover:bg-[#D94827] text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full transition-all shadow-xs cursor-pointer flex-shrink-0"
+          class="bg-[#F05A36] hover:bg-[#D94827] text-white text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full transition-all shadow-xs cursor-pointer flex-shrink-0"
           @click="emit('seeMore')"
         >
           See More
@@ -45,11 +45,10 @@ const bestsellerBooks = computed(() => {
       </div>
     </div>
 
-    <!-- Grid Layout: 6 Books (2x3 or 3x2) + Dark Promo Card -->
+    <!-- 12-Column Split: 8 Cols for 6 Books (3x2) + 4 Cols for Dark Promo Card -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-      
       <!-- 6 Books: 3 Columns x 2 Rows -->
-      <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-6">
+      <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5">
         <BookCard
           v-for="book in bestsellerBooks"
           :key="book.id"
@@ -58,10 +57,8 @@ const bestsellerBooks = computed(() => {
         />
       </div>
 
-      <!-- Reference Dark Pine Promo Card (Spans 4 columns) -->
+      <!-- Right Pine Promo Card -->
       <div class="lg:col-span-4 bg-[#052219] text-white rounded-2xl p-6 sm:p-8 flex flex-col justify-between items-center text-center shadow-md relative overflow-hidden">
-        
-        <!-- Arched Window Frame with Books Graphic -->
         <div class="w-28 h-36 rounded-t-full bg-[#2CD4BF]/20 border-2 border-[#2CD4BF]/40 flex items-center justify-center p-3 shadow-inner my-2">
           <div class="w-20 h-28 bg-white/10 rounded-t-full flex items-center justify-center text-3xl">
             📚
@@ -77,7 +74,6 @@ const bestsellerBooks = computed(() => {
           </p>
         </div>
 
-        <!-- Coral CTA Button -->
         <button
           type="button"
           class="w-full bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase tracking-wider py-3.5 rounded-xl transition-all shadow-md cursor-pointer active:scale-95"
@@ -86,7 +82,6 @@ const bestsellerBooks = computed(() => {
           Get This Offer
         </button>
       </div>
-
     </div>
   </section>
 </template>

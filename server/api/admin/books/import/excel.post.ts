@@ -1,6 +1,6 @@
-// =============================================================================
 // server/api/admin/books/import/excel.post.ts
-// Proxies multipart spreadsheet uploads securely to Soko background BullMQ queue.
+// =============================================================================
+// Proxies multipart spreadsheet uploads securely to Soko backend using H3 stream proxy.
 // =============================================================================
 
 export default defineEventHandler(async (event) => {
@@ -14,29 +14,9 @@ export default defineEventHandler(async (event) => {
   const backendBaseUrl = config.sokoApiBaseUrl.replace(/\/$/, '');
   const targetUrl = `${backendBaseUrl}/books/import/excel`;
 
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const incomingContentType = getHeader(event, 'content-type');
-  if (incomingContentType) {
-    headers['content-type'] = incomingContentType;
-  }
-
-  try {
-    const response = await fetch(targetUrl, {
-      method: 'POST',
-      headers,
-      body: event.node.req as any,
-      duplex: 'half',
-    } as any);
-
-    const data = await response.json();
-    return data;
-  } catch (err: any) {
-    throw createError({
-      statusCode: err.statusCode || 500,
-      statusMessage: err.message || 'Spreadsheet upload forwarding failed',
-    });
-  }
+  return proxyRequest(event, targetUrl, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 });
