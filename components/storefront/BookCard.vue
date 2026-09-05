@@ -21,15 +21,36 @@ const { push: pushToast } = useToast();
 const imageFailed = ref(false);
 const selectedFormatId = ref<string>('');
 
-// Auto-select lowest priced or first format
+// Synchronize PDF and EPUB so both digital editions share identical pricing & comparison
+const availableFormats = computed<ProductFormat[]>(() => {
+  if (!props.book?.formats || props.book.formats.length === 0) return [];
+
+  const pdf = props.book.formats.find((f) => f.format === 'pdf');
+  const epub = props.book.formats.find((f) => f.format === 'epub');
+  const digitalPrice = pdf?.price ?? epub?.price ?? 149;
+  const digitalCompareAt = pdf?.compare_at_price ?? epub?.compare_at_price ?? null;
+
+  return props.book.formats.map((f) => {
+    if (f.format === 'pdf' || f.format === 'epub') {
+      return {
+        ...f,
+        price: digitalPrice,
+        compare_at_price: digitalCompareAt,
+      };
+    }
+    return f;
+  });
+});
+
+// Default to Hardcopy (Print) if available, or first format
 watch(
-  () => props.book,
-  (newBook) => {
+  availableFormats,
+  (fmts) => {
     imageFailed.value = false;
-    if (newBook?.formats && newBook.formats.length > 0) {
-      if (!newBook.formats.some((f) => f.id === selectedFormatId.value)) {
-        const sorted = [...newBook.formats].sort((a, b) => a.price - b.price);
-        selectedFormatId.value = sorted[0].id;
+    if (fmts && fmts.length > 0) {
+      if (!fmts.some((f) => f.id === selectedFormatId.value)) {
+        const hardcopy = fmts.find((f) => f.format === 'hardcopy');
+        selectedFormatId.value = (hardcopy || fmts[0]).id;
       }
     } else {
       selectedFormatId.value = '';
@@ -38,30 +59,64 @@ watch(
   { immediate: true }
 );
 
-const availableFormats = computed<ProductFormat[]>(() => props.book?.formats || []);
-
 const activeFormat = computed<ProductFormat | undefined>(() => {
-  if (!props.book?.formats || props.book.formats.length === 0) return undefined;
-  return props.book.formats.find((f) => f.id === selectedFormatId.value) || props.book.formats[0];
+  if (!availableFormats.value.length) return undefined;
+  return availableFormats.value.find((f) => f.id === selectedFormatId.value) || availableFormats.value[0];
 });
 
-const currentPrice = computed<number>(() => {
-  if (activeFormat.value) return activeFormat.value.price;
-  return props.book.price ?? 0;
+// Proportional & Non-Inverted Pricing Engine for All Formats
+const pricing = computed(() => {
+  const pBook = props.book.price ?? 0;
+  const cpBook = props.book.compare_at_price ?? null;
+
+  // Check if parent book has an active sale discount
+  const hasParentSale = Boolean(cpBook && cpBook > pBook && pBook > 0);
+  const parentDiscountRatio = hasParentSale && cpBook ? (cpBook - pBook) / cpBook : 0;
+
+  const fmt = activeFormat.value;
+  let p = fmt ? fmt.price : pBook;
+  let cp: number | null = null;
+
+  if (fmt) {
+    if (fmt.compare_at_price && fmt.compare_at_price > fmt.price) {
+      // 1. Explicit format-level compare-at price
+      cp = fmt.compare_at_price;
+    } else if (fmt.format === 'hardcopy') {
+      // 2. Hardcopy inherits book compare_at_price
+      cp = cpBook;
+    } else if (hasParentSale && parentDiscountRatio > 0 && parentDiscountRatio < 1) {
+      // 3. Digital format (PDF/EPUB): compute proportional digital original price
+      // so strikethrough is neither missing nor comparing against 1,800 KSh hardcover
+      cp = Math.round(fmt.price / (1 - parentDiscountRatio));
+    }
+  } else {
+    cp = cpBook;
+  }
+
+  // Calculate true % price is down by
+  if (cp !== null && cp !== undefined && cp > 0 && p > 0 && cp !== p) {
+    const minP = Math.min(p, cp);
+    const maxP = Math.max(p, cp);
+    const diff = maxP - minP;
+    const percentDown = Math.round((diff / maxP) * 100);
+
+    return {
+      currentPrice: minP,
+      originalPrice: maxP,
+      discountPercentage: percentDown > 0 ? percentDown : 0,
+    };
+  }
+
+  return {
+    currentPrice: p,
+    originalPrice: null,
+    discountPercentage: 0,
+  };
 });
 
-const originalPrice = computed<number | null>(() => {
-  if (activeFormat.value?.compare_at_price) return activeFormat.value.compare_at_price;
-  return props.book.compare_at_price || null;
-});
-
-// Strictly returns 0 if there is no genuine discount
-const discountPercentage = computed<number>(() => {
-  const orig = originalPrice.value;
-  const curr = currentPrice.value;
-  if (!orig || orig <= curr || curr <= 0) return 0;
-  return Math.round(((orig - curr) / orig) * 100);
-});
+const currentPrice = computed<number>(() => pricing.value.currentPrice);
+const originalPrice = computed<number | null>(() => pricing.value.originalPrice);
+const discountPercentage = computed<number>(() => pricing.value.discountPercentage);
 
 const coverImage = computed(() => {
   if (!props.book) return null;
@@ -92,6 +147,8 @@ function formatBadge(badgeStr?: string | null): string {
       return '⭐ #1 PICK';
     case 'DEAL_OF_WEEK':
       return '🏷️ DEAL';
+    case 'LIMITED_TIME':
+      return '⏳ LIMITED';
     default:
       return badgeStr.replace(/_/g, ' ');
   }
@@ -191,7 +248,7 @@ function handleAddToCart(event: Event): void {
           @error="handleImageError"
         />
 
-        <!-- Top-Right Percentage Discount Badge: ONLY RENDERED IF GENUINE DISCOUNT EXISTS -->
+        <!-- Top-Right Percentage Discount Badge -->
         <span
           v-if="discountPercentage > 0"
           class="absolute top-1.5 right-1.5 bg-red-600 text-white font-mono font-extrabold text-[8px] px-1.5 py-0.5 rounded shadow-xs z-10"
@@ -199,7 +256,7 @@ function handleAddToCart(event: Event): void {
           -{{ discountPercentage }}%
         </span>
 
-        <!-- Top-Left Promotional Badge Tag: ONLY RENDERED IF BADGE EXISTS -->
+        <!-- Top-Left Promotional Badge Tag -->
         <span
           v-if="book.badge"
           class="absolute top-1.5 left-1.5 bg-[#052219] text-[#2EE59D] font-mono font-bold text-[7.5px] px-1.5 py-0.5 rounded uppercase z-10"
@@ -220,7 +277,7 @@ function handleAddToCart(event: Event): void {
         {{ displayAuthor }}
       </p>
 
-      <!-- Format Toggle Pills -->
+      <!-- Format Toggle Pills (PDF and EPUB always identical price) -->
       <div class="flex items-center justify-start gap-1 pt-1.5 flex-wrap">
         <template v-if="availableFormats.length > 1">
           <button
@@ -243,19 +300,19 @@ function handleAddToCart(event: Event): void {
       </div>
     </div>
 
-    <!-- Bottom Bar: Price (Strikethrough only when discounted) + Cart Quick-Add Button -->
+    <!-- Bottom Bar: Stable Price Box (Zero Layout Shift) + Add Button -->
     <div class="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
-      <div class="min-w-0">
-        <!-- Strikethrough Original Price: ONLY SHOWN WHEN DISCOUNT EXISTS -->
+      <div class="min-w-0 flex flex-col justify-center min-h-[22px]">
+        <!-- Strikethrough Original Price: Active for both physical and digital sales -->
         <span
           v-if="originalPrice && originalPrice > currentPrice"
           class="text-[8px] sm:text-[8.5px] text-slate-400 line-through font-mono block leading-none"
         >
           {{ formatCurrency(originalPrice) }}
         </span>
-        <!-- Current Format Price -->
+        <!-- Current Selling Price -->
         <span
-          class="text-[10px] sm:text-[11px] font-extrabold font-mono leading-none"
+          class="text-[10px] sm:text-[11px] font-extrabold font-mono leading-tight"
           :class="originalPrice && originalPrice > currentPrice ? 'text-red-600' : 'text-[#141E1A]'"
         >
           {{ formatCurrency(currentPrice) }}

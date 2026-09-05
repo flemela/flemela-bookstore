@@ -1,6 +1,6 @@
 // data/seeds.ts
 // =============================================================================
-// Permanent Seed Collection with Exact Title-Matched High-Res Covers
+// Permanent Seed Collection with Proportional Digital Strikethrough Pricing
 // =============================================================================
 
 import type { Book } from '~/types';
@@ -30,7 +30,8 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     }],
     formats: [
       { id: 'seed-fmt-1', product_id: 'seed-atomic-habits', format: 'hardcopy', price: 1250, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-2', product_id: 'seed-atomic-habits', format: 'pdf', price: 199, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-2', product_id: 'seed-atomic-habits', format: 'pdf', price: 199, compare_at_price: 290, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-2b', product_id: 'seed-atomic-habits', format: 'epub', price: 199, compare_at_price: 290, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -56,7 +57,8 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     }],
     formats: [
       { id: 'seed-fmt-3', product_id: 'seed-dont-make-me-think', format: 'hardcopy', price: 1100, compare_at_price: 1550, file_url: null, file_public_id: null, file_size_bytes: null, stock: 18, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-4', product_id: 'seed-dont-make-me-think', format: 'pdf', price: 149, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-4', product_id: 'seed-dont-make-me-think', format: 'pdf', price: 149, compare_at_price: 210, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-4b', product_id: 'seed-dont-make-me-think', format: 'epub', price: 149, compare_at_price: 210, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -82,7 +84,8 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
     }],
     formats: [
       { id: 'seed-fmt-5', product_id: 'seed-psychology-of-money', format: 'hardcopy', price: 1150, compare_at_price: 1650, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-6', product_id: 'seed-psychology-of-money', format: 'epub', price: 149, compare_at_price: null, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-6', product_id: 'seed-psychology-of-money', format: 'pdf', price: 149, compare_at_price: 215, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-6b', product_id: 'seed-psychology-of-money', format: 'epub', price: 149, compare_at_price: 215, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -107,7 +110,9 @@ export const MONTHLY_TOP_SEEDS: SeedBook[] = [
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-7', product_id: 'seed-deep-work', format: 'hardcopy', price: 1100, compare_at_price: 1500, file_url: null, file_public_id: null, file_size_bytes: null, stock: 14, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-7', product_id: 'seed-deep-work', format: 'hardcopy', price: 1100, compare_at_price: 1500, file_url: null, file_public_id: null, file_size_bytes: null, stock: 14, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-7b', product_id: 'seed-deep-work', format: 'pdf', price: 149, compare_at_price: 205, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-7c', product_id: 'seed-deep-work', format: 'epub', price: 149, compare_at_price: 205, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -135,7 +140,9 @@ export const DEALS_SEEDS: SeedBook[] = [
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-8', product_id: 'seed-48-laws-of-power', format: 'hardcopy', price: 1200, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-8', product_id: 'seed-48-laws-of-power', format: 'hardcopy', price: 1200, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-8b', product_id: 'seed-48-laws-of-power', format: 'pdf', price: 199, compare_at_price: 300, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-8c', product_id: 'seed-48-laws-of-power', format: 'epub', price: 199, compare_at_price: 300, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -160,7 +167,9 @@ export const DEALS_SEEDS: SeedBook[] = [
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-9', product_id: 'seed-rich-dad-poor-dad', format: 'hardcopy', price: 850, compare_at_price: 1300, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-9', product_id: 'seed-rich-dad-poor-dad', format: 'hardcopy', price: 850, compare_at_price: 1300, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-9b', product_id: 'seed-rich-dad-poor-dad', format: 'pdf', price: 149, compare_at_price: 230, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-9c', product_id: 'seed-rich-dad-poor-dad', format: 'epub', price: 149, compare_at_price: 230, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -178,14 +187,16 @@ export const DEALS_SEEDS: SeedBook[] = [
     price: 750,
     compare_at_price: 1100,
     status: 'published',
-    badge: 'CLASSIC',
+    badge: 'DEAL_OF_WEEK',
     images: [{ 
       image_url: 'https://covers.openlibrary.org/b/isbn/9780062315007-L.jpg', 
       image_public_id: 'seed_the_alchemist', 
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-10', product_id: 'seed-the-alchemist', format: 'hardcopy', price: 750, compare_at_price: 1100, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-10', product_id: 'seed-the-alchemist', format: 'hardcopy', price: 750, compare_at_price: 1100, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-10b', product_id: 'seed-the-alchemist', format: 'pdf', price: 149, compare_at_price: 220, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-10c', product_id: 'seed-the-alchemist', format: 'epub', price: 149, compare_at_price: 220, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -203,14 +214,16 @@ export const DEALS_SEEDS: SeedBook[] = [
     price: 799,
     compare_at_price: 1200,
     status: 'published',
-    badge: 'SPECIAL',
+    badge: 'DEAL_OF_WEEK',
     images: [{ 
       image_url: 'https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg', 
       image_public_id: 'seed_1984', 
       sort_order: 0 
     }],
     formats: [
-      { id: 'seed-fmt-11', product_id: 'seed-1984', format: 'hardcopy', price: 799, compare_at_price: 1200, file_url: null, file_public_id: null, file_size_bytes: null, stock: 22, created_at: '', updated_at: '' }
+      { id: 'seed-fmt-11', product_id: 'seed-1984', format: 'hardcopy', price: 799, compare_at_price: 1200, file_url: null, file_public_id: null, file_size_bytes: null, stock: 22, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-11b', product_id: 'seed-1984', format: 'pdf', price: 149, compare_at_price: 225, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-11c', product_id: 'seed-1984', format: 'epub', price: 149, compare_at_price: 225, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
     ],
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -225,7 +238,6 @@ export function mergeWithSeeds(
 ): Book[] {
   const real = realBooks || [];
 
-  // If we have enough real books with this specific badge, return all of them
   if (real.length >= targetCount) {
     return real;
   }
@@ -233,7 +245,6 @@ export function mergeWithSeeds(
   const realSlugs = new Set(real.map((b) => b.slug.toLowerCase()));
   const realNames = new Set(real.map((b) => b.name.toLowerCase()));
 
-  // Avoid duplicate cards if a real book shares title/slug with a seed
   const eligibleSeeds = seedCollection.filter(
     (s) => !realSlugs.has(s.slug.toLowerCase()) && !realNames.has(s.name.toLowerCase())
   );

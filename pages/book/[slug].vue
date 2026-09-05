@@ -27,19 +27,95 @@ const { push: pushToast } = useToast();
 const selectedFormatId = ref<string>('');
 const quantity = ref<number>(1);
 
+// Synchronize PDF and EPUB formats so both digital editions share identical pricing and proportional strikethrough
+const availableFormats = computed<ProductFormat[]>(() => {
+  if (!book.value?.formats || book.value.formats.length === 0) return [];
+
+  const pBook = book.value.price ?? 0;
+  const cpBook = book.value.compare_at_price ?? null;
+  const hasParentSale = Boolean(cpBook && cpBook > pBook && pBook > 0);
+  const parentDiscountRatio = hasParentSale && cpBook ? (cpBook - pBook) / cpBook : 0;
+
+  const pdf = book.value.formats.find((f) => f.format === 'pdf');
+  const epub = book.value.formats.find((f) => f.format === 'epub');
+  const digitalPrice = pdf?.price ?? epub?.price ?? 149;
+
+  let digitalCompareAt: number | null = null;
+  if (pdf?.compare_at_price && pdf.compare_at_price > digitalPrice) {
+    digitalCompareAt = pdf.compare_at_price;
+  } else if (epub?.compare_at_price && epub.compare_at_price > digitalPrice) {
+    digitalCompareAt = epub.compare_at_price;
+  } else if (hasParentSale && parentDiscountRatio > 0 && parentDiscountRatio < 1) {
+    digitalCompareAt = Math.round(digitalPrice / (1 - parentDiscountRatio));
+  }
+
+  return book.value.formats.map((f) => {
+    if (f.format === 'pdf' || f.format === 'epub') {
+      return {
+        ...f,
+        price: digitalPrice,
+        compare_at_price: digitalCompareAt,
+      };
+    }
+    if (f.format === 'hardcopy') {
+      return {
+        ...f,
+        compare_at_price: f.compare_at_price || cpBook,
+      };
+    }
+    return f;
+  });
+});
+
+// Default to Hardcopy (Print) if available, or first format
 watch(
-  book,
-  (b: Book | null | undefined) => {
-    if (b && b.formats && b.formats.length > 0) {
-      const sorted = [...b.formats].sort((a, b) => a.price - b.price);
-      selectedFormatId.value = sorted[0].id;
+  availableFormats,
+  (fmts) => {
+    if (fmts && fmts.length > 0) {
+      if (!fmts.some((f) => f.id === selectedFormatId.value)) {
+        const hardcopy = fmts.find((f) => f.format === 'hardcopy');
+        selectedFormatId.value = (hardcopy || fmts[0]).id;
+      }
     }
   },
   { immediate: true }
 );
 
 const activeFormat = computed<ProductFormat | undefined>(() => {
-  return book.value?.formats?.find((f) => f.id === selectedFormatId.value);
+  return availableFormats.value.find((f) => f.id === selectedFormatId.value) || availableFormats.value[0];
+});
+
+// Resilient Non-Inverted Pricing & % Down Engine
+const activePricing = computed(() => {
+  if (!activeFormat.value) {
+    return {
+      currentPrice: book.value?.price ?? 0,
+      originalPrice: null,
+      discountPercentage: 0,
+    };
+  }
+
+  const p = activeFormat.value.price;
+  const cp = activeFormat.value.compare_at_price ?? null;
+
+  if (cp !== null && cp !== undefined && cp > 0 && p > 0 && cp !== p) {
+    const minP = Math.min(p, cp);
+    const maxP = Math.max(p, cp);
+    const diff = maxP - minP;
+    const percentDown = Math.round((diff / maxP) * 100);
+
+    return {
+      currentPrice: minP,
+      originalPrice: maxP,
+      discountPercentage: percentDown > 0 ? percentDown : 0,
+    };
+  }
+
+  return {
+    currentPrice: p,
+    originalPrice: null,
+    discountPercentage: 0,
+  };
 });
 
 // Safe cover resolution supporting string, object, or fallback SVG
@@ -76,7 +152,8 @@ function handleAddToCart(): void {
     formatId: activeFormat.value.id,
     title: book.value.name,
     format: activeFormat.value.format,
-    price: activeFormat.value.price,
+    price: activePricing.value.currentPrice,
+    compare_at_price: activePricing.value.originalPrice,
     quantity: qty,
     coverUrl: primaryImage.value,
     author: book.value.author,
@@ -118,8 +195,11 @@ function handleAddToCart(): void {
               height="426"
               @error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'"
             />
-            <div v-if="book.badge" class="absolute top-3 left-3 z-10">
-              <span class="text-[9px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded bg-forest-950 text-white shadow-sm">
+            <div v-if="activePricing.discountPercentage > 0 || book.badge" class="absolute top-3 left-3 z-10 flex flex-col gap-1">
+              <span v-if="activePricing.discountPercentage > 0" class="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-red-600 text-white shadow-sm">
+                -{{ activePricing.discountPercentage }}% OFF
+              </span>
+              <span v-if="book.badge" class="text-[9px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded bg-forest-950 text-white shadow-sm">
                 ★ {{ book.badge }}
               </span>
             </div>
@@ -140,7 +220,7 @@ function handleAddToCart(): void {
             </p>
           </div>
 
-          <!-- Format Choice -->
+          <!-- Format Choice (PDF & EPUB strictly identical price) -->
           <div class="space-y-2.5 pt-3 border-t border-ink-border">
             <label class="text-xs font-bold uppercase text-forest-950 tracking-wider block font-sans">
               Choose Reading Format:
@@ -148,7 +228,7 @@ function handleAddToCart(): void {
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <label
-                v-for="fmt in book.formats"
+                v-for="fmt in availableFormats"
                 :key="fmt.id"
                 class="border rounded p-3 flex flex-col justify-between cursor-pointer transition-all text-left"
                 :class="selectedFormatId === fmt.id ? 'border-forest-900 bg-paper-cream ring-1 ring-forest-900' : 'border-ink-border hover:border-forest-800/40 bg-paper-surface'"
@@ -157,7 +237,7 @@ function handleAddToCart(): void {
 
                 <div class="space-y-1">
                   <div class="flex justify-between items-center text-xs font-bold text-forest-950 uppercase">
-                    <span>{{ fmt.format }}</span>
+                    <span>{{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}</span>
                     <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="12" class="text-forest-800" />
                   </div>
                   <span class="text-[9px] text-ink-muted block leading-tight font-mono">
@@ -165,8 +245,16 @@ function handleAddToCart(): void {
                   </span>
                 </div>
 
-                <div class="pt-2 mt-2 border-t border-ink-border/50 font-mono text-xs font-extrabold text-forest-950">
-                  {{ formatCurrency(fmt.price) }}
+                <div class="pt-2 mt-2 border-t border-ink-border/50 flex items-center justify-between gap-1 font-mono text-xs">
+                  <span class="font-extrabold text-forest-950">
+                    {{ formatCurrency(fmt.price) }}
+                  </span>
+                  <span
+                    v-if="fmt.compare_at_price && fmt.compare_at_price > fmt.price"
+                    class="text-[10px] text-ink-muted line-through opacity-70"
+                  >
+                    {{ formatCurrency(fmt.compare_at_price) }}
+                  </span>
                 </div>
               </label>
             </div>
@@ -181,11 +269,11 @@ function handleAddToCart(): void {
 
             <button
               type="button"
-              class="flex-1 bg-forest-950 text-white hover:bg-forest-800 font-sans font-bold text-xs uppercase py-3.5 px-5 rounded shadow-subtle transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98]"
+              class="flex-1 bg-forest-950 text-white hover:bg-forest-900 font-sans font-bold text-xs uppercase py-3.5 px-5 rounded shadow-subtle transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98]"
               @click="handleAddToCart"
             >
               <ShoppingBag :size="15" />
-              <span>Add to Cart • {{ activeFormat ? formatCurrency(activeFormat.price * (activeFormat.format === 'hardcopy' ? quantity : 1)) : '' }}</span>
+              <span>Add to Cart • {{ activeFormat ? formatCurrency(activePricing.currentPrice * (activeFormat.format === 'hardcopy' ? quantity : 1)) : '' }}</span>
             </button>
           </div>
 

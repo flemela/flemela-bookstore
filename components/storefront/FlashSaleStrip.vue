@@ -35,33 +35,83 @@ function formatCurrency(val: number): string {
   return `KSh ${val.toLocaleString('en-KE')}`;
 }
 
+// Synchronize PDF and EPUB so both digital formats share identical pricing
+function getNormalizedFormats(book: Book): ProductFormat[] {
+  if (!book.formats || book.formats.length === 0) return [];
+
+  const pdf = book.formats.find((f) => f.format === 'pdf');
+  const epub = book.formats.find((f) => f.format === 'epub');
+  const digitalPrice = pdf?.price ?? epub?.price ?? 149;
+  const digitalCompareAt = pdf?.compare_at_price ?? epub?.compare_at_price ?? null;
+
+  return book.formats.map((f) => {
+    if (f.format === 'pdf' || f.format === 'epub') {
+      return {
+        ...f,
+        price: digitalPrice,
+        compare_at_price: digitalCompareAt,
+      };
+    }
+    return f;
+  });
+}
+
 function getSelectedFormat(book: Book): ProductFormat | undefined {
-  if (!book.formats || book.formats.length === 0) return undefined;
+  const fmts = getNormalizedFormats(book);
+  if (!fmts.length) return undefined;
+
   const selectedId = selectedFormats.value[book.id];
   if (selectedId) {
-    const found = book.formats.find((f) => f.id === selectedId);
+    const found = fmts.find((f) => f.id === selectedId);
     if (found) return found;
   }
-  const sorted = [...book.formats].sort((a, b) => a.price - b.price);
-  return sorted[0];
+
+  // Default to Hardcopy (Print) if available, or first format
+  const hardcopy = fmts.find((f) => f.format === 'hardcopy');
+  return hardcopy || fmts[0];
 }
 
-function getBookCurrentPrice(book: Book): number {
+function getBookPricing(book: Book) {
+  const pBook = book.price ?? 0;
+  const cpBook = book.compare_at_price ?? null;
+  const hasParentSale = Boolean(cpBook && cpBook > pBook && pBook > 0);
+  const parentDiscountRatio = hasParentSale && cpBook ? (cpBook - pBook) / cpBook : 0;
+
   const fmt = getSelectedFormat(book);
-  return fmt ? fmt.price : book.price;
-}
+  let p = fmt ? fmt.price : pBook;
+  let cp: number | null = null;
 
-function getBookOriginalPrice(book: Book): number | null {
-  const fmt = getSelectedFormat(book);
-  if (fmt?.compare_at_price) return fmt.compare_at_price;
-  return book.compare_at_price || null;
-}
+  if (fmt) {
+    if (fmt.compare_at_price && fmt.compare_at_price > fmt.price) {
+      cp = fmt.compare_at_price;
+    } else if (fmt.format === 'hardcopy') {
+      cp = cpBook;
+    } else if (hasParentSale && parentDiscountRatio > 0 && parentDiscountRatio < 1) {
+      // Proportional digital strikethrough for eBooks
+      cp = Math.round(fmt.price / (1 - parentDiscountRatio));
+    }
+  } else {
+    cp = cpBook;
+  }
 
-function getBookDiscount(book: Book): number {
-  const orig = getBookOriginalPrice(book);
-  const curr = getBookCurrentPrice(book);
-  if (!orig || orig <= curr || curr <= 0) return 0;
-  return Math.round(((orig - curr) / orig) * 100);
+  if (cp !== null && cp !== undefined && cp > 0 && p > 0 && cp !== p) {
+    const minP = Math.min(p, cp);
+    const maxP = Math.max(p, cp);
+    const diff = maxP - minP;
+    const percentDown = Math.round((diff / maxP) * 100);
+
+    return {
+      currentPrice: minP,
+      originalPrice: maxP,
+      discountPercentage: percentDown > 0 ? percentDown : 0,
+    };
+  }
+
+  return {
+    currentPrice: p,
+    originalPrice: null,
+    discountPercentage: 0,
+  };
 }
 
 function formatBadge(badgeStr?: string | null): string {
@@ -87,7 +137,7 @@ function handleQuickAdd(book: Book, event: Event): void {
   event.stopPropagation();
 
   const fmt = getSelectedFormat(book);
-  const priceToUse = getBookCurrentPrice(book);
+  const pricing = getBookPricing(book);
   const formatType = fmt ? fmt.format : 'hardcopy';
   const formatId = fmt ? fmt.id : 'default';
 
@@ -96,8 +146,8 @@ function handleQuickAdd(book: Book, event: Event): void {
     formatId,
     title: book.name,
     format: formatType,
-    price: priceToUse,
-    compare_at_price: getBookOriginalPrice(book),
+    price: pricing.currentPrice,
+    compare_at_price: pricing.originalPrice,
     quantity: 1,
     coverUrl: book.images?.[0]?.image_url || (book as any).cover_image_url || null,
     author: book.author,
@@ -184,12 +234,12 @@ function handleQuickAdd(book: Book, event: Event): void {
                 referrerpolicy="no-referrer"
               />
 
-              <!-- Percentage Off Badge -->
+              <!-- Percentage Off Badge: Consistent on both physical and digital editions -->
               <span
-                v-if="getBookDiscount(book) > 0"
+                v-if="getBookPricing(book).discountPercentage > 0"
                 class="absolute top-1.5 right-1.5 bg-red-600 text-white font-mono font-extrabold text-[8px] px-1.5 py-0.5 rounded shadow-xs z-10"
               >
-                -{{ getBookDiscount(book) }}%
+                -{{ getBookPricing(book).discountPercentage }}%
               </span>
 
               <!-- Badge Tag on Top Left -->
@@ -210,11 +260,11 @@ function handleQuickAdd(book: Book, event: Event): void {
               {{ book.author ? (book.author.startsWith('By ') ? book.author : `By ${book.author}`) : 'Original Edition' }}
             </p>
 
-            <!-- Format Toggle Pills -->
+            <!-- Format Toggle Pills (PDF and EPUB always identical price) -->
             <div class="flex items-center justify-start gap-1 pt-1.5 flex-wrap">
-              <template v-if="book.formats && book.formats.length > 1">
+              <template v-if="getNormalizedFormats(book).length > 1">
                 <button
-                  v-for="fmt in book.formats"
+                  v-for="fmt in getNormalizedFormats(book)"
                   :key="fmt.id"
                   type="button"
                   class="text-[7px] sm:text-[7.5px] font-mono font-bold uppercase px-1.5 py-0.5 rounded-full transition-all cursor-pointer select-none leading-none"
@@ -233,20 +283,20 @@ function handleQuickAdd(book: Book, event: Event): void {
             </div>
           </div>
 
-          <!-- Bottom Bar: Price + Add Button -->
+          <!-- Bottom Bar: Stable Price Box + Add Button -->
           <div class="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
-            <div class="min-w-0">
+            <div class="min-w-0 flex flex-col justify-center min-h-[22px]">
               <span
-                v-if="getBookOriginalPrice(book) && getBookOriginalPrice(book)! > getBookCurrentPrice(book)"
+                v-if="getBookPricing(book).originalPrice && getBookPricing(book).originalPrice! > getBookPricing(book).currentPrice"
                 class="text-[8px] sm:text-[8.5px] text-slate-400 line-through font-mono block leading-none"
               >
-                {{ formatCurrency(getBookOriginalPrice(book)!) }}
+                {{ formatCurrency(getBookPricing(book).originalPrice!) }}
               </span>
               <span
-                class="text-[10px] sm:text-[11px] font-extrabold font-mono leading-none"
-                :class="getBookOriginalPrice(book) && getBookOriginalPrice(book)! > getBookCurrentPrice(book) ? 'text-red-600' : 'text-[#141E1A]'"
+                class="text-[10px] sm:text-[11px] font-extrabold font-mono leading-tight"
+                :class="getBookPricing(book).originalPrice && getBookPricing(book).originalPrice! > getBookPricing(book).currentPrice ? 'text-red-600' : 'text-[#141E1A]'"
               >
-                {{ formatCurrency(getBookCurrentPrice(book)) }}
+                {{ formatCurrency(getBookPricing(book).currentPrice) }}
               </span>
             </div>
 
