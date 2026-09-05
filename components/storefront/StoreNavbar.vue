@@ -1,38 +1,57 @@
 <!-- components/storefront/StoreNavbar.vue -->
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ShoppingBag, Heart, User, Menu, X } from 'lucide-vue-next';
+import { ShoppingBag, Heart, User, Menu, X, Search } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
+
+const emit = defineEmits<{
+  search: [query: string];
+}>();
 
 const { totalItems, openDrawer } = useCart();
 const isMobileOpen = ref(false);
+const isSearchOpen = ref(false);
+const searchInput = ref('');
 
 const navLinks = [
   { label: 'Home', href: '/' },
-  { label: 'Shop', href: '#catalog-results' },
-  { label: 'Author', href: '#deals-week' },
-  { label: 'Blog', href: '#' },
-  { label: 'Help', href: 'https://wa.me/254700000000' },
+  { label: 'Flash Sale', href: '#flash-sale' },
+  { label: 'Categories', href: '#categories-bento' },
+  { label: 'Bestsellers', href: '#catalog-results' },
+  { label: 'Deals', href: '#deals-week' },
+  { label: 'Concierge', href: 'https://wa.me/254700000000' },
 ];
+
+function submitSearch(): void {
+  if (searchInput.value.trim()) {
+    emit('search', searchInput.value.trim());
+    isSearchOpen.value = false;
+    isMobileOpen.value = false;
+  }
+}
 </script>
 
 <template>
-  <header class="bg-[#052219] text-white sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+  <header
+    class="bg-[#052219]/90 backdrop-blur-md border-b border-white/10 sticky top-0 z-40 transition-all shadow-[0_2px_12px_rgba(0,0,0,0.12)] select-none"
+  >
+    <!-- Compact Container: Height ~54px on Mobile, ~60px on Desktop -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-15 flex items-center justify-between gap-3">
       
-      <!-- Left: Logo -->
+      <!-- Left: Mobile Menu Trigger & Brand Mark -->
       <div class="flex items-center gap-3">
         <button
           type="button"
-          class="md:hidden p-1 text-white/80 hover:text-white cursor-pointer"
+          class="md:hidden p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+          aria-label="Toggle navigation menu"
           @click="isMobileOpen = !isMobileOpen"
         >
-          <component :is="isMobileOpen ? X : Menu" :size="22" />
+          <component :is="isMobileOpen ? X : Menu" :size="20" />
         </button>
 
-        <NuxtLink to="/" class="flex items-center gap-2">
-          <!-- Teal/Green Brand Mark -->
-          <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <NuxtLink to="/" class="flex items-center gap-2 group">
+          <!-- Teal/Mint Brand Mark -->
+          <svg width="26" height="26" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path
               d="M12 28C7 25 5 21 5 16C5 8.268 11.268 2 19 2C26.732 2 33 8.268 33 16C33 22 29 27 24 29"
               stroke="#2EE59D"
@@ -46,14 +65,14 @@ const navLinks = [
               stroke-linecap="round"
             />
           </svg>
-          <span class="font-sans font-bold text-xl tracking-tight text-white">
+          <span class="font-sans font-extrabold text-lg sm:text-xl tracking-tight text-white group-hover:text-[#2EE59D] transition-colors">
             Flemela
           </span>
         </NuxtLink>
       </div>
 
-      <!-- Center: Menu Links -->
-      <nav class="hidden md:flex items-center gap-9 text-xs font-semibold text-white/80">
+      <!-- Center: Desktop Menu Links -->
+      <nav aria-label="Main Navigation" class="hidden md:flex items-center gap-7 text-xs font-semibold text-white/80">
         <a
           v-for="link in navLinks"
           :key="link.label"
@@ -64,40 +83,76 @@ const navLinks = [
         </a>
       </nav>
 
-      <!-- Right: Badges -->
-      <div class="flex items-center gap-4 text-white">
-        <!-- Cart -->
+      <!-- Right: Search, Cart, Profile Actions -->
+      <div class="flex items-center gap-2 sm:gap-3.5 text-white">
+        <!-- Quick Search Toggle -->
         <button
           type="button"
-          class="relative p-1 text-white hover:text-[#2EE59D] transition-colors cursor-pointer"
+          class="p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+          aria-label="Search catalog"
+          @click="isSearchOpen = !isSearchOpen"
+        >
+          <Search :size="17" />
+        </button>
+
+        <!-- Wishlist (Desktop) -->
+        <button
+          type="button"
+          class="relative p-1.5 text-white/80 hover:text-[#F05A36] transition-colors hidden sm:block cursor-pointer"
+          aria-label="Wishlist"
+        >
+          <Heart :size="17" />
+        </button>
+
+        <!-- Cart Icon with Badge -->
+        <button
+          type="button"
+          class="relative p-1.5 text-white hover:text-[#2EE59D] transition-colors cursor-pointer"
+          aria-label="Open Cart"
           @click="openDrawer"
         >
-          <ShoppingBag :size="18" />
+          <ShoppingBag :size="17" />
           <span
-            class="absolute -top-1 -right-2 bg-[#F05A36] text-white font-mono text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+            v-if="totalItems > 0"
+            class="absolute -top-1 -right-1 bg-[#F05A36] text-white font-mono text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs"
           >
             {{ totalItems }}
           </span>
         </button>
 
-        <!-- Wishlist -->
-        <button type="button" class="relative p-1 text-white hover:text-[#F05A36] transition-colors hidden sm:block cursor-pointer">
-          <Heart :size="18" />
-          <span class="absolute -top-1 -right-2 bg-[#F05A36] text-white font-mono text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-            0
-          </span>
-        </button>
-
-        <!-- Profile -->
-        <NuxtLink to="/admin/login" class="p-1 text-white hover:text-[#2EE59D] transition-colors">
-          <User :size="18" />
+        <!-- Profile / Admin Portal -->
+        <NuxtLink
+          to="/admin/login"
+          class="p-1.5 text-white/80 hover:text-[#2EE59D] transition-colors"
+          title="Admin Portal"
+        >
+          <User :size="17" />
         </NuxtLink>
       </div>
     </div>
 
-    <!-- Mobile Drawer -->
-    <div v-if="isMobileOpen" class="md:hidden bg-[#072d21] border-t border-white/10 px-6 py-4 space-y-3">
-      <div class="flex flex-col gap-3 text-xs font-semibold">
+    <!-- Collapsible Quick Search Dropdown Bar -->
+    <div v-if="isSearchOpen" class="border-t border-white/10 px-4 py-2 bg-[#052219]/95 backdrop-blur-md">
+      <form class="max-w-2xl mx-auto flex items-center gap-2" @submit.prevent="submitSearch">
+        <input
+          v-model="searchInput"
+          type="text"
+          placeholder="Search books by title, author, or ISBN..."
+          class="flex-1 px-3.5 py-1.5 bg-white/10 border border-white/15 rounded-full text-xs text-white placeholder:text-white/50 outline-none focus:border-[#2EE59D] transition-all font-sans"
+          autofocus
+        />
+        <button
+          type="submit"
+          class="bg-[#F05A36] hover:bg-[#D94827] text-white text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full transition-all cursor-pointer"
+        >
+          Search
+        </button>
+      </form>
+    </div>
+
+    <!-- Mobile Drawer Menu -->
+    <div v-if="isMobileOpen" class="md:hidden bg-[#072d21]/95 backdrop-blur-lg border-t border-white/10 px-6 py-4 space-y-3">
+      <div class="flex flex-col gap-2.5 text-xs font-semibold">
         <a
           v-for="link in navLinks"
           :key="link.label"
@@ -107,7 +162,11 @@ const navLinks = [
         >
           {{ link.label }}
         </a>
-        <NuxtLink to="/admin/login" class="py-1.5 text-[#2EE59D] font-bold" @click="isMobileOpen = false">
+        <NuxtLink
+          to="/admin/login"
+          class="py-1.5 text-[#2EE59D] font-bold"
+          @click="isMobileOpen = false"
+        >
           Admin Portal
         </NuxtLink>
       </div>

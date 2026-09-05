@@ -72,47 +72,47 @@ function handleQuickAdd(book: Book, event: Event): void {
 <template>
   <section
     v-if="books.length > 0"
-    class="bg-[#FF8A00] text-white pt-16 sm:pt-20 pb-8 px-4 relative overflow-hidden select-none"
+    class="bg-[#FF8A00] text-white pt-4 sm:pt-6 pb-6 sm:pb-8 px-4 relative overflow-hidden select-none rounded-xl mx-2 sm:mx-4"
   >
-    <div class="max-w-6xl mx-auto space-y-4">
+    <div class="max-w-6xl mx-auto space-y-3">
       <!-- Section Header -->
       <div class="flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-full bg-[#052219] text-[#2EE59D] flex items-center justify-center shadow-xs">
-            <Zap :size="18" class="fill-[#2EE59D]" />
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#052219] text-[#2EE59D] flex items-center justify-center shadow-xs">
+            <Zap :size="15" class="fill-[#2EE59D]" />
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="font-poster text-2xl sm:text-3xl tracking-wide uppercase leading-none drop-shadow-xs">
+              <h2 class="font-poster text-xl sm:text-2xl tracking-wide uppercase leading-none drop-shadow-xs">
                 {{ title }}
               </h2>
-              <span class="bg-[#052219] text-[#2EE59D] font-mono text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full">
+              <span class="bg-[#052219] text-[#2EE59D] font-mono text-[8px] sm:text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full">
                 {{ badgeLabel }}
               </span>
             </div>
-            <p class="text-xs text-white/90 font-medium mt-0.5">
+            <p class="text-[11px] text-white/90 font-medium mt-0.5">
               Limited-quantity price cuts on reader favorites. Grab them while stocks last!
             </p>
           </div>
         </div>
 
         <!-- Desktop Navigation Arrow Buttons -->
-        <div class="hidden sm:flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-1.5">
           <button
             type="button"
-            class="w-8 h-8 rounded-full bg-[#052219]/30 hover:bg-[#052219] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
+            class="w-7 h-7 rounded-full bg-[#052219]/30 hover:bg-[#052219] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
             aria-label="Scroll left"
             @click="scrollLeft"
           >
-            <ChevronLeft :size="16" />
+            <ChevronLeft :size="15" />
           </button>
           <button
             type="button"
-            class="w-8 h-8 rounded-full bg-[#052219]/30 hover:bg-[#052219] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
+            class="w-7 h-7 rounded-full bg-[#052219]/30 hover:bg-[#052219] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
             aria-label="Scroll right"
             @click="scrollRight"
           >
-            <ChevronRight :size="16" />
+            <ChevronRight :size="15" />
           </button>
         </div>
       </div>
@@ -120,7 +120,7 @@ function handleQuickAdd(book: Book, event: Event): void {
       <!-- Single-Row Horizontal Scrollable Shelf -->
       <div
         ref="scrollContainer"
-        class="flex gap-3.5 sm:gap-5 lg:gap-6 overflow-x-auto no-scrollbar py-2 px-1 snap-x snap-mandatory"
+        class="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-1.5 px-0.5 snap-x snap-mandatory"
       >
         <div
           v-for="book in books"
@@ -128,7 +128,7 @@ function handleQuickAdd(book: Book, event: Event): void {
           class="w-[140px] sm:w-[148px] flex-shrink-0 bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all snap-start flex flex-col justify-between group select-none"
         >
           <div>
-            <!-- Book Cover: 124px wide x 170px height -->
+            <!-- Book Cover: Exactly 120-125px Wide x 170px Height -->
             <NuxtLink
               :to="`/book/${book.slug}`"
               class="block relative aspect-[1/1.37] rounded-book overflow-hidden bg-stone-100 book-cover-3d mb-2 sm:mb-2.5"

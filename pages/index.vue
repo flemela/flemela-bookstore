@@ -6,8 +6,8 @@ import HeroCarousel from '~/components/storefront/HeroCarousel.vue';
 import FlashSaleStrip from '~/components/storefront/FlashSaleStrip.vue';
 import FeaturedMonth from '~/components/storefront/FeaturedMonth.vue';
 import BentoCategories from '~/components/storefront/BentoCategories.vue';
-import DealsWeek from '~/components/storefront/DealsWeek.vue';
 import BestsellersSection from '~/components/storefront/BestsellersSection.vue';
+import DealsWeek from '~/components/storefront/DealsWeek.vue';
 import TrustStrip from '~/components/storefront/TrustStrip.vue';
 import NewsletterBanner from '~/components/storefront/NewsletterBanner.vue';
 import StoreFooter from '~/components/storefront/StoreFooter.vue';
@@ -58,7 +58,7 @@ const hasActiveFilter = computed(() => {
   return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
 });
 
-// 1. Flash Sale Strip: Specific badge filter for discounted books right under the hero
+// 1. Flash Sale Strip: Discounted books
 const flashSaleBooks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   return books.filter(
@@ -66,14 +66,14 @@ const flashSaleBooks = computed<Book[]>(() => {
   );
 });
 
-// 2. #1 Picks: ONLY books tagged with NO1_PICK take priority over monthly top seeds
+// 2. #1 Picks: Editorial curation
 const no1Picks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'NO1_PICK');
   return mergeWithSeeds(tagged, MONTHLY_TOP_SEEDS, 4);
 });
 
-// 3. Deals of the Week: Books with DEAL_OF_WEEK or active discounts merge with deal seeds
+// 3. Deals of the Week: Time-sensitive deals
 const dealBooks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const deals = books.filter(
@@ -85,7 +85,7 @@ const dealBooks = computed<Book[]>(() => {
   return mergeWithSeeds(deals, DEALS_SEEDS, 4);
 });
 
-// 4. Bestsellers: ONLY books tagged BESTSELLER take priority over combined seeds
+// 4. Bestsellers: Social proof selection
 const bestsellers = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'BESTSELLER');
@@ -93,20 +93,22 @@ const bestsellers = computed<Book[]>(() => {
   return mergeWithSeeds(tagged, combinedSeeds, 6);
 });
 
-function handleSearch(query: string, category: string): void {
+function handleSearch(query: string, category?: string): void {
   searchQuery.value = query;
-  activeCategoryFilter.value = category && category !== 'All Categories' ? category : 'ALL';
-  scrollToResults();
+  if (category && category !== 'All Categories') {
+    activeCategoryFilter.value = category;
+  }
+  scrollToSection('catalog-results');
 }
 
 function handleCategorySelect(category: string): void {
   activeCategoryFilter.value = category;
-  scrollToResults();
+  scrollToSection('catalog-results');
 }
 
-function scrollToResults(): void {
+function scrollToSection(sectionId: string): void {
   if (process.client) {
-    const el = document.getElementById('catalog-results');
+    const el = document.getElementById(sectionId);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   }
 }
@@ -120,27 +122,47 @@ function handleRequestSeed(title: string, author?: string): void {
 
 <template>
   <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased">
-    <StoreNavbar />
+    <!-- Restrained Floating Glassmorphic Header -->
+    <StoreNavbar @search="handleSearch" />
 
-    <!-- 1. Hero Carousel: Slide 0 is the permanent brand hero poster, followed by dynamic banners -->
+    <!-- 1. Hero: Compact Commerce Banner (~4:1 Desktop, ~1.65:1 Mobile) -->
     <HeroCarousel
       @search="handleSearch"
       @select-category="handleCategorySelect"
+      @navigate-flash-sale="scrollToSection('flash-sale')"
     />
 
-    <!-- 2. Single-Row Scrollable Brand Orange Flash Sale Strip -->
-    <FlashSaleStrip
-      :books="flashSaleBooks"
-      title="FLASH SALE DEALS"
-      badge-label="LIMITED TIME"
+    <!-- 2. Flash Sale: Horizontal Shopping Shelf (Tight 16-24px transition) -->
+    <div id="flash-sale" class="mt-3 sm:mt-5">
+      <FlashSaleStrip
+        :books="flashSaleBooks"
+        title="FLASH SALE DEALS"
+        badge-label="LIMITED TIME"
+      />
+    </div>
+
+    <!-- 3. #1 Picks / Featured Month: Editorial Curation -->
+    <FeaturedMonth :books="no1Picks" @request-seed="handleRequestSeed" />
+
+    <!-- 4. Book Categories: Distinct Bento Visual Experience -->
+    <BentoCategories @select="handleCategorySelect" />
+
+    <!-- 5. Bestsellers of the Month: Social Proof (6 Books + Offer Card) -->
+    <BestsellersSection
+      :books="bestsellers"
+      @request-seed="handleRequestSeed"
+      @see-more="scrollToSection('catalog-results')"
     />
 
-    <!-- 3. Main Catalog Section -->
+    <!-- 6. Deals of the Week: Live Countdown & Deal Shelf -->
+    <DealsWeek :books="dealBooks" @request-seed="handleRequestSeed" />
+
+    <!-- 7. Browse All Books: Broader Catalogue with Search & Filter Bar -->
     <section
       id="catalog-results"
       class="pt-12 sm:pt-16 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"
     >
-      <div class="flex items-center justify-between pb-3 border-b border-theme-border">
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-theme-border">
         <div>
           <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
             {{ hasActiveFilter ? 'Filtered Search Results' : 'Bookstore Inventory' }}
@@ -163,8 +185,11 @@ function handleRequestSeed(title: string, author?: string): void {
         </button>
       </div>
 
-      <!-- Real Books Grid: Exactly 4 per row desktop, 2 per row mobile, centered with symmetrical breathing room -->
-      <div v-if="filteredBooks.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center">
+      <!-- Real Books Grid: 4 cards/row desktop, 2 cards/row mobile with symmetrical side breathing room -->
+      <div
+        v-if="filteredBooks.length > 0"
+        class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center"
+      >
         <BookCard
           v-for="book in filteredBooks"
           :key="book.id"
@@ -192,25 +217,16 @@ function handleRequestSeed(title: string, author?: string): void {
       </div>
     </section>
 
-    <!-- 4. Curated Sections -->
-    <FeaturedMonth :books="no1Picks" @request-seed="handleRequestSeed" />
-
-    <BentoCategories @select="handleCategorySelect" />
-
-    <DealsWeek :books="dealBooks" @request-seed="handleRequestSeed" />
-
-    <BestsellersSection
-      :books="bestsellers"
-      @request-seed="handleRequestSeed"
-      @see-more="scrollToResults"
-    />
-
+    <!-- 8. Trust & Delivery Benefits -->
     <TrustStrip />
 
+    <!-- 9. 20% First-Order Offer -->
     <NewsletterBanner />
 
+    <!-- 10. Footer -->
     <StoreFooter />
 
+    <!-- Overlays -->
     <BookRequestModal
       :open="showRequestModal"
       :initial-title="modalInitialTitle"
@@ -219,7 +235,6 @@ function handleRequestSeed(title: string, author?: string): void {
     />
 
     <CartDrawer />
-    
     <ToastContainer />
   </div>
 </template>
