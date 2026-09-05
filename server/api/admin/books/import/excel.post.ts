@@ -1,6 +1,6 @@
 // server/api/admin/books/import/excel.post.ts
 // =============================================================================
-// Direct raw stream forwarder (Restores the 5-second upload response)
+// Direct Buffer Forwarder — TypeScript DOM / Node Buffer Type Mismatch Resolved
 // =============================================================================
 
 export default defineEventHandler(async (event) => {
@@ -11,44 +11,41 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized session' });
   }
 
+  // 1. Read the raw incoming multipart body into a memory buffer
+  const rawBody = await readRawBody(event, false);
+  if (!rawBody || rawBody.length === 0) {
+    throw createError({ statusCode: 400, statusMessage: 'No file received' });
+  }
+
   const backendBaseUrl = config.sokoApiBaseUrl.replace(/\/$/, '');
   const targetUrl = `${backendBaseUrl}/books/import/excel`;
 
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const incomingContentType = getHeader(event, 'content-type');
-  if (incomingContentType) {
-    headers['content-type'] = incomingContentType;
-  }
-
-  const incomingContentLength = getHeader(event, 'content-length');
-  if (incomingContentLength) {
-    headers['content-length'] = incomingContentLength;
-  }
+  const contentType = getHeader(event, 'content-type') || 'multipart/form-data';
 
   try {
+    // 2. Cast rawBody as any to satisfy TypeScript's DOM BodyInit definition
     const response = await fetch(targetUrl, {
       method: 'POST',
-      headers,
-      body: event.node.req as any,
-      duplex: 'half',
-    } as any);
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': contentType,
+        'Content-Length': String(rawBody.length),
+      },
+      body: rawBody as any,
+    });
 
     if (!response.ok) {
       let errorMsg = `Upload failed with HTTP ${response.status}`;
       try {
-        const errorJson: any = await response.json();
-        errorMsg = errorJson.message || errorJson.error?.message || errorMsg;
+        const errJson: any = await response.json();
+        errorMsg = errJson.message || errJson.error?.message || errorMsg;
       } catch {
-        // Fall back to HTTP status
+        // Fall back to status string
       }
       throw createError({ statusCode: response.status, statusMessage: errorMsg });
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (err: any) {
     throw createError({
       statusCode: err.statusCode || 500,
