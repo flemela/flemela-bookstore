@@ -70,8 +70,8 @@ const isSubmittingSheet = ref(false);
 
 const sampleCsvContent = [
   'Name,Description,SellerSKU,PrimaryCategory,Price_KES,Sale_Price_KES,PDF FILE,PDFS PRICE,Stock,author,Image 1,Image 2',
-  '"The Power of Mindset","<p>Change your thoughts, change your life.</p>",A1,Self-Help,1200,999,https://drive.google.com/uc?export=download&id=SAMPLE_ID,149,25,"Darren Hardy",https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600,https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600',
-  '"The Great Gatsby","<p>A classic tale of the Jazz Age.</p>",A2,Fiction,1400,1235,https://drive.google.com/uc?export=download&id=SAMPLE_ID,149,30,"F. Scott Fitzgerald",https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600,https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600',
+  '"The Power of Mindset","<p>Change your thoughts, change your life.</p>",A1,Self-Help,1200,999,,149,25,"Darren Hardy",https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600,',
+  '"The Great Gatsby","<p>A classic tale of the Jazz Age.</p>",A2,Fiction,1400,1235,,149,30,"F. Scott Fitzgerald",https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600,',
 ].join('\n');
 
 function downloadSampleTemplate(): void {
@@ -88,7 +88,7 @@ function downloadSampleTemplate(): void {
 
 const progressPercentage = computed(() => {
   if (!jobData.value || !jobData.value.total_rows || jobData.value.total_rows <= 0) {
-    return uploadStage.value === 'processing' ? 15 : 0;
+    return uploadStage.value === 'processing' ? 25 : (uploadStage.value === 'completed' ? 100 : 0);
   }
   return Math.min(100, Math.round((jobData.value.processed_rows / jobData.value.total_rows) * 100));
 });
@@ -122,11 +122,9 @@ async function handleFileUpload(file: File): Promise<void> {
     const formData = new FormData();
     formData.append('file', file);
 
-
-	const res = await new Promise<any>((resolve, reject) => {
+    const res = await new Promise<any>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/admin/books/import/excel');
-      xhr.timeout = 120000; // 120s accommodates Render cold start wake-up time
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
@@ -147,29 +145,45 @@ async function handleFileUpload(file: File): Promise<void> {
             const parsed = JSON.parse(xhr.responseText);
             reject(new Error(parsed.statusMessage || parsed.message || `Upload failed (HTTP ${xhr.status})`));
           } catch {
-            reject(new Error(`Upload failed with HTTP ${xhr.status}`));
+            reject(new Error(`Spreadsheet upload failed (HTTP ${xhr.status})`));
           }
         }
       };
 
-      xhr.ontimeout = () => {
-        reject(new Error('Server wake-up timed out. Render backend may still be starting; please retry in 10 seconds.'));
-      };
-
-      xhr.onerror = () => {
-        reject(new Error('Network connection error while uploading spreadsheet'));
-      };
-
+      xhr.onerror = () => reject(new Error('Network connection error while uploading spreadsheet'));
       xhr.send(formData);
-    });							 
-    const jobId = res?.data?.jobId || res?.jobId;
-    if (!jobId) {
-      throw new Error('Server did not return a valid ingestion job ticket.');
+    });
+
+    const jobResult = res?.data || res;
+    const jobId = jobResult?.id || jobResult?.jobId;
+
+    if (!jobId && !jobResult?.status) {
+      throw new Error('Server did not return a valid ingestion ticket.');
     }
 
+    // Direct completion (synchronous execution on backend)
+    if (jobResult.status === 'done') {
+      jobData.value = jobResult;
+      uploadStage.value = 'completed';
+      showCompletionModal.value = true;
+      pushToast({
+        message: `Import complete: ${jobResult.inserted_rows || 0} new added, ${jobResult.updated_rows || 0} deduplicated & updated.`,
+        variant: 'success',
+      });
+      return;
+    }
+
+    if (jobResult.status === 'failed') {
+      jobData.value = jobResult;
+      uploadStage.value = 'failed';
+      showCompletionModal.value = true;
+      pushToast({ message: 'Ingestion pipeline halted due to spreadsheet errors.', variant: 'error' });
+      return;
+    }
+
+    // Asynchronous polling fallback
     activeJobId.value = jobId;
-    uploadStage.value = 'queued';
-    pushToast({ message: 'Spreadsheet received! Queued for background deduplication.', variant: 'info' });
+    uploadStage.value = jobResult.status || 'processing';
     startPollingJob(jobId);
   } catch (err: any) {
     uploadStage.value = 'idle';
@@ -313,7 +327,7 @@ function onFileSelect(e: Event): void {
           <div class="space-y-1">
             <h4 class="font-bold text-forest-950 font-sans">Active Deduplication Shield</h4>
             <p class="text-[11px] text-ink-muted leading-relaxed">
-              Before inserting, the background worker performs a pre-flight scan against your active inventory. If an existing <strong>SKU</strong> or exact <strong>Title</strong> matches, it updates the pricing, formats, synopsis, and increments stock instead of spawning duplicate entries.
+              Before inserting, the ingestion worker performs a pre-flight scan against your active inventory. If an existing <strong>SKU</strong> or exact <strong>Title</strong> matches, it updates the pricing, formats, and stock instead of spawning duplicate entries.
             </p>
           </div>
         </div>
@@ -427,8 +441,8 @@ function onFileSelect(e: Event): void {
           <!-- Progress Bar -->
           <div class="space-y-1.5">
             <div class="flex justify-between text-xs font-mono font-bold text-forest-950">
-              <span v-if="uploadStage === 'uploading'">Uploading to pipeline ({{ uploadProgress }}%)...</span>
-              <span v-else-if="uploadStage === 'queued'">Job queued in BullMQ worker. Awaiting worker slot...</span>
+              <span v-if="uploadStage === 'uploading'">Uploading file ({{ uploadProgress }}%)...</span>
+              <span v-else-if="uploadStage === 'queued'">Queued for ingestion...</span>
               <span v-else-if="uploadStage === 'processing'">
                 Processing row {{ jobData?.processed_rows || 0 }} of {{ jobData?.total_rows || '...' }}
               </span>
