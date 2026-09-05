@@ -123,43 +123,10 @@ async function handleFileUpload(file: File): Promise<void> {
     formData.append('file', file);
 
 
-	  /*
-    const res = await new Promise<any>((resolve, reject) => {
+	const res = await new Promise<any>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/admin/books/import/excel');
-
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          uploadProgress.value = Math.round((e.loaded / e.total) * 100);
-        }
-      };
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            resolve(JSON.parse(xhr.responseText));
-          } catch {
-            resolve({ success: true });
-          }
-        } else {
-          try {
-            const parsed = JSON.parse(xhr.responseText);
-            reject(new Error(parsed.statusMessage || parsed.message || `Upload failed (HTTP ${xhr.status})`));
-          } catch {
-            reject(new Error(`Spreadsheet upload failed (HTTP ${xhr.status})`));
-          }
-        }
-      };
-
-      xhr.onerror = () => reject(new Error('Network connection error while uploading spreadsheet'));
-      xhr.send(formData);
-    });
-
-*/
-	  const res = await new Promise<any>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/admin/books/import/excel');
-      xhr.timeout = 60000; // 60s hard timeout prevents browser from hanging indefinitely
+      xhr.timeout = 120000; // 120s accommodates Render cold start wake-up time
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
@@ -186,7 +153,7 @@ async function handleFileUpload(file: File): Promise<void> {
       };
 
       xhr.ontimeout = () => {
-        reject(new Error('Upload timed out. Check your connection or file size and try again.'));
+        reject(new Error('Server wake-up timed out. Render backend may still be starting; please retry in 10 seconds.'));
       };
 
       xhr.onerror = () => {
@@ -194,8 +161,7 @@ async function handleFileUpload(file: File): Promise<void> {
       };
 
       xhr.send(formData);
-    });
-											 
+    });							 
     const jobId = res?.data?.jobId || res?.jobId;
     if (!jobId) {
       throw new Error('Server did not return a valid ingestion job ticket.');

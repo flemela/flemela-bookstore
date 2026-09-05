@@ -1,7 +1,11 @@
 // server/api/admin/books/import/excel.post.ts
 // =============================================================================
-// Robust multipart forwarder: extracts file buffer safely and posts to Soko API
+// Protocol-aware streaming forwarder supporting Render HTTPS (443) & local HTTP
 // =============================================================================
+
+import http from 'http';
+import https from 'https';
+import { URL } from 'url';
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
@@ -11,64 +15,62 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized session' });
   }
 
-  // 1. Read multipart data directly from the incoming event using H3 native parser
-  const multiPartData = await readMultipartFormData(event);
-  if (!multiPartData || multiPartData.length === 0) {
-    throw createError({ statusCode: 400, statusMessage: 'No file uploaded' });
-  }
-
-  const fileItem = multiPartData.find((item) => item.name === 'file');
-  if (!fileItem || !fileItem.data) {
-    throw createError({ statusCode: 400, statusMessage: 'Spreadsheet file is required' });
-  }
-
-  // 2. Build a clean, standard Web FormData object with the raw file buffer
-  const formData = new FormData();
-  const blob = new Blob([new Uint8Array(fileItem.data) as any], {
-    type: fileItem.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-  formData.append('file', blob, fileItem.filename || 'import.xlsx');
-
   const backendBaseUrl = config.sokoApiBaseUrl.replace(/\/$/, '');
-  const targetUrl = `${backendBaseUrl}/books/import/excel`;
+  const targetUrl = new URL(`${backendBaseUrl}/books/import/excel`);
 
-  // 3. Post to Soko API with a dedicated 60-second timeout to prevent infinite hanging
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  // Detect whether target is HTTPS (Render production) or HTTP (local dev)
+  const isHttps = targetUrl.protocol === 'https:';
+  const transport = isHttps ? https : http;
+  const defaultPort = isHttps ? 443 : 3000;
 
-  try {
-    const response = await fetch(targetUrl, {
+  return new Promise((resolve, reject) => {
+    const headers: Record<string, string | string[] | undefined> = {
+      ...event.node.req.headers,
+      host: targetUrl.host,
+      authorization: `Bearer ${token}`,
+    };
+
+    const options = {
+      protocol: targetUrl.protocol,
+      hostname: targetUrl.hostname,
+      port: targetUrl.port || defaultPort,
+      path: targetUrl.pathname + targetUrl.search,
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-      signal: controller.signal,
+      headers,
+    };
+
+    const proxyReq = transport.request(options, (proxyRes) => {
+      let data = '';
+      proxyRes.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      proxyRes.on('end', () => {
+        const statusCode = proxyRes.statusCode || 200;
+        if (statusCode >= 200 && statusCode < 300) {
+          try {
+            resolve(JSON.parse(data));
+          } catch {
+            resolve({ success: true, data });
+          }
+        } else {
+          let errorMsg = `Upload failed with HTTP ${statusCode}`;
+          try {
+            const errJson = JSON.parse(data);
+            errorMsg = errJson.message || errJson.error?.message || errorMsg;
+          } catch {
+            // Use default error string
+          }
+          reject(createError({ statusCode, statusMessage: errorMsg }));
+        }
+      });
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      let errorMsg = `Upload failed with HTTP ${response.status}`;
-      try {
-        const errorJson: any = await response.json();
-        errorMsg = errorJson.message || errorJson.error?.message || errorMsg;
-      } catch {
-        // Fall back to HTTP status
-      }
-      throw createError({ statusCode: response.status, statusMessage: errorMsg });
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (err: any) {
-    clearTimeout(timeoutId);
-    if (err.name === 'AbortError') {
-      throw createError({ statusCode: 504, statusMessage: 'Upload timed out after 60 seconds' });
-    }
-    throw createError({
-      statusCode: err.statusCode || 500,
-      statusMessage: err.statusMessage || err.message || 'Failed to forward spreadsheet to backend',
+    proxyReq.on('error', (err) => {
+      reject(createError({ statusCode: 502, statusMessage: `Proxy connection error: ${err.message}` }));
     });
-  }
+
+    // Pipe raw incoming file stream directly to the backend
+    event.node.req.pipe(proxyReq);
+  });
 });
