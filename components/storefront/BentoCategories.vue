@@ -6,41 +6,40 @@ const emit = defineEmits<{
   select: [category: string];
 }>();
 
-// Color-sampled directly from reference screenshot with 100% saturation parity
 const bentoItems = [
   {
     name: 'Fiction & Literature',
     title: 'FICTION',
     count: '234 Books',
-    bg: '#2A805A', // Vibrant Emerald
-    cover: 'https://books.google.com/books/content?id=kotPYEqCoach&printsec=frontcover&img=1&zoom=1',
+    bg: '#2A805A',
+    cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80',
   },
   {
     name: 'Psychology & Self-Help',
     title: 'THRILLER',
     count: '189 Books',
-    bg: '#E5A636', // Punchy Golden Amber
+    bg: '#E5A636',
   },
   {
     name: 'Christian Books',
     title: 'FANTASY',
     count: '142 Books',
-    bg: '#189CB0', // Electric Teal/Lagoon
-    cover: 'https://books.google.com/books/content?id=FzVjBgAAQBAJ&printsec=frontcover&img=1&zoom=1',
+    bg: '#189CB0',
+    cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&auto=format&fit=crop&q=80',
   },
   {
     name: 'Education & Textbooks',
     title: 'NONFICTION',
     count: '156 Books',
-    bg: '#EE5335', // Vivid Vermilion Coral
-    cover: 'https://books.google.com/books/content?id=1myBAgAAQBAJ&printsec=frontcover&img=1&zoom=1',
+    bg: '#EE5335',
+    cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400&auto=format&fit=crop&q=80',
   },
   {
     name: 'Business & Finance',
     title: 'ROMANCE',
     count: '210 Books',
-    bg: '#7A62B3', // Saturated Royal Lavender
-    cover: 'https://books.google.com/books/content?id=Yw32DwAAQBAJ&printsec=frontcover&img=1&zoom=1',
+    bg: '#7A62B3',
+    cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&auto=format&fit=crop&q=80',
   },
 ];
 </script>
@@ -48,7 +47,7 @@ const bentoItems = [
 <template>
   <section id="categories-bento" class="py-12 sm:py-16 px-4 max-w-6xl mx-auto space-y-7 select-none overflow-hidden">
     <!-- Header -->
-    <div class="text-center space-y-1.5">
+    <div class="text-center space-y-1">
       <span class="text-[10px] sm:text-[11px] font-mono uppercase font-bold tracking-widest text-[#EE5335] block">
         BOOK CATEGORIES
       </span>
@@ -57,77 +56,62 @@ const bentoItems = [
       </h2>
     </div>
 
-    <!-- Responsive Bento Grid: 2 Cols on Mobile, 3 Cols on Desktop -->
+    <!-- Bento Grid -->
     <div class="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4 auto-rows-[160px] sm:auto-rows-[190px]">
       
-      <!-- Card 1: Fiction (Top-Left) -->
+      <!-- Card 1: Fiction -->
       <div
         class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
         :style="{ backgroundColor: bentoItems[0].bg }"
         @click="emit('select', bentoItems[0].name)"
       >
+        <!-- Atmospheric Depth Overlay -->
+        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
+
         <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs text-white/90 font-mono font-medium">{{ bentoItems[0].count }}</span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
+          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[0].count }}</span>
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
             <ArrowUpRight :size="14" />
           </div>
         </div>
-        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10 leading-none">
-          {{ bentoItems[0].title }}
-        </h3>
+        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[0].title }}</h3>
         
-        <!-- Fluid Responsive Corner Book (Shrinks & Grows with Card) -->
-        <div class="absolute -right-2 sm:-right-3 -bottom-3 sm:-bottom-4 w-[36%] max-w-[120px] min-w-[65px] aspect-[3/4.2] rounded-md overflow-hidden shadow-2xl rotate-[10deg] group-hover:rotate-6 transition-transform duration-300 pointer-events-none">
-          <img
-            :src="bentoItems[0].cover"
-            alt=""
-            class="w-full h-full object-cover"
-            referrerpolicy="no-referrer"
-          />
+        <!-- Book with Soft Shadow & Vignette Mask -->
+        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[10deg] group-hover:rotate-6 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
+          <img :src="bentoItems[0].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         </div>
       </div>
 
-      <!-- Card 2: Center Tall Card (Thriller - Spans 2 Rows on Desktop, Full Width on Mobile) -->
+      <!-- Card 2: Center Tall Card (Thriller Cluster) -->
       <div
         class="col-span-2 md:col-span-1 md:row-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1 order-last md:order-none min-h-[220px] md:min-h-0"
         :style="{ backgroundColor: bentoItems[1].bg }"
         @click="emit('select', bentoItems[1].name)"
       >
+        <!-- Atmospheric Center Overlay -->
+        <div class="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/35 pointer-events-none z-0" />
+
         <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs text-white/90 font-mono font-medium">{{ bentoItems[1].count }}</span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
+          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[1].count }}</span>
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
             <ArrowUpRight :size="14" />
           </div>
         </div>
 
-        <!-- Fluid Fanned 3-Book Cluster (Scales smoothly without clipping) -->
-        <div class="relative w-full h-36 sm:h-48 md:h-56 flex items-center justify-center my-auto pointer-events-none">
-          <!-- Left Tilted Book -->
-          <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[3/4.2] rounded-md overflow-hidden shadow-xl -translate-x-[40%] sm:-translate-x-[45%] rotate-[-14deg] group-hover:rotate-[-10deg] transition-transform duration-300">
-            <img
-              src="https://books.google.com/books/content?id=s_4dDAAAQBAJ&printsec=frontcover&img=1&zoom=1"
-              alt=""
-              class="w-full h-full object-cover"
-              referrerpolicy="no-referrer"
-            />
+        <!-- Fanned Cluster with Shading & Vignettes -->
+        <div class="relative w-full h-36 sm:h-48 md:h-56 flex items-center justify-center my-auto pointer-events-none z-1">
+          <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[1/1.45] rounded-md overflow-hidden shadow-xl -translate-x-[42%] rotate-[-14deg] border border-white/20">
+            <img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-black/25" />
           </div>
-          <!-- Right Tilted Book -->
-          <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[3/4.2] rounded-md overflow-hidden shadow-xl translate-x-[40%] sm:translate-x-[45%] rotate-[14deg] group-hover:rotate-[10deg] transition-transform duration-300">
-            <img
-              src="https://books.google.com/books/content?id=P_zMW3EHnTEC&printsec=frontcover&img=1&zoom=1"
-              alt=""
-              class="w-full h-full object-cover"
-              referrerpolicy="no-referrer"
-            />
+          <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[1/1.45] rounded-md overflow-hidden shadow-xl translate-x-[42%] rotate-[14deg] border border-white/20">
+            <img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-black/25" />
           </div>
-          <!-- Dominant Center Book -->
-          <div class="absolute w-[36%] max-w-[115px] min-w-[68px] aspect-[3/4.2] rounded-md overflow-hidden shadow-2xl z-10 scale-105 group-hover:scale-110 transition-transform duration-300">
-            <img
-              src="https://books.google.com/books/content?id=fFCjDQAAQBAJ&printsec=frontcover&img=1&zoom=1"
-              alt=""
-              class="w-full h-full object-cover"
-              referrerpolicy="no-referrer"
-            />
+          <div class="absolute w-[36%] max-w-[115px] min-w-[68px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl z-10 scale-105 group-hover:scale-110 transition-transform duration-300 border border-white/30">
+            <img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
           </div>
         </div>
 
@@ -136,84 +120,66 @@ const bentoItems = [
         </h3>
       </div>
 
-      <!-- Card 3: Fantasy (Top-Right) -->
+      <!-- Card 3: Fantasy -->
       <div
         class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
         :style="{ backgroundColor: bentoItems[2].bg }"
         @click="emit('select', bentoItems[2].name)"
       >
+        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
         <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs text-white/90 font-mono font-medium">{{ bentoItems[2].count }}</span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
+          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[2].count }}</span>
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
             <ArrowUpRight :size="14" />
           </div>
         </div>
-        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10 leading-none">
-          {{ bentoItems[2].title }}
-        </h3>
+        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[2].title }}</h3>
         
-        <!-- Fluid Responsive Corner Book -->
-        <div class="absolute -right-2 sm:-right-3 -bottom-3 sm:-bottom-4 w-[36%] max-w-[120px] min-w-[65px] aspect-[3/4.2] rounded-md overflow-hidden shadow-2xl rotate-[-8deg] group-hover:rotate-0 transition-transform duration-300 pointer-events-none">
-          <img
-            :src="bentoItems[2].cover"
-            alt=""
-            class="w-full h-full object-cover"
-            referrerpolicy="no-referrer"
-          />
+        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[-8deg] group-hover:rotate-0 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
+          <img :src="bentoItems[2].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         </div>
       </div>
 
-      <!-- Card 4: Nonfiction (Bottom-Left) -->
+      <!-- Card 4: Nonfiction -->
       <div
         class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
         :style="{ backgroundColor: bentoItems[3].bg }"
         @click="emit('select', bentoItems[3].name)"
       >
+        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
         <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs text-white/90 font-mono font-medium">{{ bentoItems[3].count }}</span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
+          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[3].count }}</span>
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
             <ArrowUpRight :size="14" />
           </div>
         </div>
-        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10 leading-none">
-          {{ bentoItems[3].title }}
-        </h3>
+        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[3].title }}</h3>
         
-        <!-- Fluid Responsive Corner Book -->
-        <div class="absolute -right-2 sm:-right-3 -bottom-3 sm:-bottom-4 w-[36%] max-w-[120px] min-w-[65px] aspect-[3/4.2] rounded-md overflow-hidden shadow-2xl rotate-[6deg] group-hover:rotate-0 transition-transform duration-300 pointer-events-none">
-          <img
-            :src="bentoItems[3].cover"
-            alt=""
-            class="w-full h-full object-cover"
-            referrerpolicy="no-referrer"
-          />
+        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[6deg] group-hover:rotate-0 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
+          <img :src="bentoItems[3].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         </div>
       </div>
 
-      <!-- Card 5: Romance (Bottom-Right) -->
+      <!-- Card 5: Romance -->
       <div
         class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
         :style="{ backgroundColor: bentoItems[4].bg }"
         @click="emit('select', bentoItems[4].name)"
       >
+        <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
         <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs text-white/90 font-mono font-medium">{{ bentoItems[4].count }}</span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
+          <span class="text-[10px] sm:text-xs text-white/90 font-mono">{{ bentoItems[4].count }}</span>
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#141E1A] transition-colors">
             <ArrowUpRight :size="14" />
           </div>
         </div>
-        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10 leading-none">
-          {{ bentoItems[4].title }}
-        </h3>
+        <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[4].title }}</h3>
         
-        <!-- Fluid Responsive Corner Book -->
-        <div class="absolute -right-2 sm:-right-3 -bottom-3 sm:-bottom-4 w-[36%] max-w-[120px] min-w-[65px] aspect-[3/4.2] rounded-md overflow-hidden shadow-2xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300 pointer-events-none">
-          <img
-            :src="bentoItems[4].cover"
-            alt=""
-            class="w-full h-full object-cover"
-            referrerpolicy="no-referrer"
-          />
+        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
+          <img :src="bentoItems[4].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         </div>
       </div>
 
