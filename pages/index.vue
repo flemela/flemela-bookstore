@@ -163,8 +163,8 @@ function handleRequestSeed(title: string, author?: string): void {
         </button>
       </div>
 
-      <!-- Real Books Grid -->
-      <div v-if="filteredBooks.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <!-- Real Books Grid: Exactly 4 per row desktop, 2 per row mobile, centered with symmetrical breathing room -->
+      <div v-if="filteredBooks.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center">
         <BookCard
           v-for="book in filteredBooks"
           :key="book.id"

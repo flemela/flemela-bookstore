@@ -1,6 +1,6 @@
 <!-- pages/admin/books/[id]/edit.vue -->
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import {
   ArrowLeft,
   Trash2,
@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   FolderPlus,
   X,
+  Save,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import AddCategoryModal from '~/components/admin/AddCategoryModal.vue';
@@ -31,26 +32,43 @@ const { push: pushToast } = useToast();
 const bookId = computed(() => route.params.id as string);
 
 const { data: categories } = await useFetch<Array<{ id: string; name: string }>>('/api/admin/categories');
-const { data: book, refresh } = await useFetch<Book>(`/api/admin/books/${bookId.value}`);
+const { data: book, refresh, status: fetchStatus } = await useFetch<Book>(`/api/admin/books/${bookId.value}`);
 
 // Dynamic Inline Category State
 const showAddCategoryModal = ref(false);
 
+// Book Form Fields
 const name = ref('');
 const author = ref('');
 const categoryId = ref('');
 const description = ref('');
-const price = ref(999);
+const price = ref<number>(999);
 const compareAtPrice = ref<number | null>(null);
+const sku = ref('');
 const badge = ref<'BESTSELLER' | 'FLASH_SALE' | 'NO1_PICK' | 'DEAL_OF_WEEK' | 'LIMITED_TIME' | null>(null);
 const saleEndsAt = ref<string>('');
 const status = ref<'draft' | 'published' | 'archived'>('published');
 
+// Cover art state
 const coverUrl = ref('');
 const coverPublicId = ref('');
 const isUploadingCover = ref(false);
 const isSearchingCover = ref(false);
 
+// Existing Formats (Editable in-place)
+interface EditableFormat {
+  id: string;
+  format: BookFormatType;
+  price: number;
+  compare_at_price: number | null;
+  stock: number | null;
+  file_public_id: string | null;
+  isSaving: boolean;
+}
+
+const existingFormats = ref<EditableFormat[]>([]);
+
+// New Format Draft State
 const newFormatType = ref<BookFormatType>('pdf');
 const newFormatPrice = ref(149);
 const newFormatCompareAtPrice = ref<number | null>(null);
@@ -72,23 +90,90 @@ const r2ConfirmedAsset = ref<{
 const isSaving = ref(false);
 const formError = ref<string | null>(null);
 
+// -----------------------------------------------------------------------------
+// Form Autofill Engine
+// -----------------------------------------------------------------------------
+function populateForm(data: Book | null | undefined): void {
+  if (!data) return;
+
+  name.value = data.name || '';
+
+  // 1. Demux Author and Synopsis from Description
+  let extractedAuthor = data.author || '';
+  let cleanDesc = data.description || '';
+
+  if (!extractedAuthor && cleanDesc) {
+    const match = cleanDesc.match(/^(?:<p>)?(?:By|Author|Written by)[:\s]+([^<\n\r]+)(?:<\/p>|\n\n|\n|$)/i);
+    if (match && match[1]) {
+      extractedAuthor = match[1].trim();
+      cleanDesc = cleanDesc.slice(match[0].length).trim();
+    }
+  }
+
+  author.value = extractedAuthor;
+  description.value = cleanDesc;
+
+  // 2. Category & Status
+  categoryId.value = data.category_id || '';
+  status.value = data.status || 'published';
+
+  // 3. Pricing & SKU
+  price.value = data.price ? Number(data.price) : 999;
+  compareAtPrice.value = data.compare_at_price ? Number(data.compare_at_price) : null;
+  sku.value = data.sku || '';
+
+  // 4. Badge & Sale Expiration
+  badge.value = (data.badge as any) || null;
+
+  if (data.sale_ends_at) {
+    const d = new Date(data.sale_ends_at);
+    if (!isNaN(d.getTime())) {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      saleEndsAt.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } else {
+      saleEndsAt.value = '';
+    }
+  } else {
+    saleEndsAt.value = '';
+  }
+
+  // 5. Cover Image
+  const firstImg = data.images?.[0];
+  if (firstImg) {
+    coverUrl.value = typeof firstImg === 'string' ? firstImg : firstImg.image_url || '';
+    coverPublicId.value = typeof firstImg === 'object' ? firstImg.image_public_id || '' : '';
+  } else if ((data as any).cover_image_url) {
+    coverUrl.value = (data as any).cover_image_url;
+    coverPublicId.value = (data as any).cover_image_public_id || '';
+  } else {
+    coverUrl.value = '';
+    coverPublicId.value = '';
+  }
+
+  // 6. Existing Formats
+  existingFormats.value = (data.formats || []).map((f) => ({
+    id: f.id,
+    format: f.format,
+    price: Number(f.price),
+    compare_at_price: f.compare_at_price ? Number(f.compare_at_price) : null,
+    stock: f.stock !== null ? Number(f.stock) : null,
+    file_public_id: f.file_public_id,
+    isSaving: false,
+  }));
+}
+
+// Watcher guarantees immediate population on mount + whenever data loads asynchronously
+watch(
+  book,
+  (newVal) => {
+    populateForm(newVal);
+  },
+  { immediate: true }
+);
+
 onMounted(() => {
   if (book.value) {
-    name.value = book.value.name;
-    author.value = book.value.author || '';
-    categoryId.value = book.value.category_id || '';
-    description.value = book.value.description || '';
-    price.value = book.value.price || 999;
-    compareAtPrice.value = book.value.compare_at_price || null;
-    badge.value = (book.value.badge as any) || null;
-    saleEndsAt.value = book.value.sale_ends_at
-      ? new Date(book.value.sale_ends_at).toISOString().slice(0, 16)
-      : '';
-    status.value = book.value.status;
-
-    const firstImg = book.value.images?.[0];
-    coverUrl.value = typeof firstImg === 'string' ? firstImg : firstImg?.image_url || '';
-    coverPublicId.value = typeof firstImg === 'object' ? firstImg?.image_public_id || '' : '';
+    populateForm(book.value);
   }
 });
 
@@ -121,9 +206,7 @@ async function handleAutoFindCover(): Promise<void> {
       coverUrl.value = res.coverUrl;
       coverPublicId.value = `auto_${res.source || 'web'}`;
       pushToast({
-        message: `Discovered cover art from ${
-          res.source === 'googlebooks' ? 'Google Books' : 'Open Library'
-        }!`,
+        message: `Discovered cover art from ${res.source === 'googlebooks' ? 'Google Books' : 'Apple Books'}!`,
         variant: 'success',
       });
     } else {
@@ -242,7 +325,7 @@ async function handleNewEbookUpload(event: Event): Promise<void> {
 
 async function handleUpdateBook(): Promise<void> {
   if (compareAtPrice.value !== null && compareAtPrice.value <= price.value) {
-    formError.value = 'Original compare-at price must be strictly greater than selling price.';
+    formError.value = 'Original strike-through price must be strictly greater than selling price.';
     return;
   }
 
@@ -262,7 +345,8 @@ async function handleUpdateBook(): Promise<void> {
         category_id: categoryId.value || null,
         description: formattedDescription,
         price: Number(price.value),
-        compare_at_price: compareAtPrice.value || null,
+        compare_at_price: compareAtPrice.value ? Number(compareAtPrice.value) : null,
+        sku: sku.value?.trim() || null,
         badge: badge.value || null,
         sale_ends_at: saleEndsAt.value ? new Date(saleEndsAt.value).toISOString() : null,
         status: status.value,
@@ -271,11 +355,45 @@ async function handleUpdateBook(): Promise<void> {
           : undefined,
       },
     });
+
     pushToast({ message: 'Book details updated successfully!', variant: 'success' });
+    await refresh();
   } catch (err: any) {
     formError.value = err.data?.message || err.statusMessage || 'Failed to update book';
   } finally {
     isSaving.value = false;
+  }
+}
+
+async function handleUpdateExistingFormat(fmt: EditableFormat): Promise<void> {
+  if (fmt.compare_at_price !== null && fmt.compare_at_price <= fmt.price) {
+    pushToast({
+      message: `Strike-through price for ${fmt.format.toUpperCase()} must be greater than its selling price.`,
+      variant: 'error',
+    });
+    return;
+  }
+
+  fmt.isSaving = true;
+  try {
+    await $fetch(`/api/admin/books/${bookId.value}/formats/${fmt.id}`, {
+      method: 'PATCH',
+      body: {
+        price: Number(fmt.price),
+        compare_at_price: fmt.compare_at_price ? Number(fmt.compare_at_price) : null,
+        stock: fmt.format === 'hardcopy' ? Number(fmt.stock || 0) : null,
+      },
+    });
+
+    pushToast({ message: `Updated ${fmt.format.toUpperCase()} edition!`, variant: 'success' });
+    await refresh();
+  } catch (err: any) {
+    pushToast({
+      message: err.data?.message || err.statusMessage || 'Failed to update format',
+      variant: 'error',
+    });
+  } finally {
+    fmt.isSaving = false;
   }
 }
 
@@ -287,7 +405,7 @@ async function handleAddFormat(): Promise<void> {
     newFormatCompareAtPrice.value <= newFormatPrice.value
   ) {
     pushToast({
-      message: 'Format compare-at price must be strictly greater than format selling price.',
+      message: 'Format strike-through price must be strictly greater than format selling price.',
       variant: 'error',
     });
     return;
@@ -299,9 +417,7 @@ async function handleAddFormat(): Promise<void> {
       body: {
         format: newFormatType.value,
         price: Number(newFormatPrice.value),
-        compare_at_price: newFormatCompareAtPrice.value
-          ? Number(newFormatCompareAtPrice.value)
-          : null,
+        compare_at_price: newFormatCompareAtPrice.value ? Number(newFormatCompareAtPrice.value) : null,
         stock: newFormatType.value === 'hardcopy' ? Number(newFormatStock.value || 0) : null,
         file_url: isDigital ? newFormatFileKey.value || null : null,
         file_public_id: isDigital ? newFormatFileKey.value || null : null,
@@ -345,13 +461,22 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
       </NuxtLink>
 
       <div class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-8 space-y-7">
-        <div class="pb-4 border-b border-paper-border">
-          <h1 class="font-display text-2xl font-bold text-forest-950">
-            Edit Book: {{ book?.name }}
-          </h1>
-          <p class="text-xs text-ink-muted">
-            Update metadata, dynamic category, strike-through pricing, promotional badges, and reading editions.
-          </p>
+        <div class="pb-4 border-b border-paper-border flex items-center justify-between">
+          <div>
+            <h1 class="font-display text-2xl font-bold text-forest-950">
+              Edit Book: {{ name || book?.name || 'Loading...' }}
+            </h1>
+            <p class="text-xs text-ink-muted">
+              Update catalog details, categories, strike-through discounts, and reading formats.
+            </p>
+          </div>
+
+          <span
+            v-if="fetchStatus === 'pending'"
+            class="text-[11px] font-mono text-gold-600 flex items-center gap-1.5 bg-paper-cream px-3 py-1 rounded-full border border-paper-border"
+          >
+            <RefreshCw :size="12" class="animate-spin" /> Loading data...
+          </span>
         </div>
 
         <form class="space-y-5" @submit.prevent="handleUpdateBook">
@@ -363,6 +488,7 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
                 <input
                   v-model="name"
                   type="text"
+                  placeholder="e.g. Atomic Habits"
                   class="flex-1 px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
                   required
                 />
@@ -384,13 +510,50 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
               <input
                 v-model="author"
                 type="text"
+                placeholder="e.g. James Clear"
                 class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
               />
             </div>
           </div>
 
+          <!-- 2. Pricing & SKU Row -->
+          <div class="grid sm:grid-cols-3 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-forest-950">Catalog Selling Price (KSh) *</label>
+              <input
+                v-model.number="price"
+                type="number"
+                min="0"
+                placeholder="999"
+                class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs font-mono font-bold outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+                required
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-forest-950">Strike-through Price (KSh)</label>
+              <input
+                v-model.number="compareAtPrice"
+                type="number"
+                min="0"
+                placeholder="e.g. 1500 (Optional)"
+                class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs font-mono outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-forest-950">SKU / ISBN / Barcode</label>
+              <input
+                v-model="sku"
+                type="text"
+                placeholder="e.g. 9780735211292 (Optional)"
+                class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs font-mono outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950"
+              />
+            </div>
+          </div>
+
+          <!-- 3. Category & Status -->
           <div class="grid sm:grid-cols-2 gap-4">
-            <!-- Dynamic Category Selector with Inline + New Category Trigger -->
             <div class="space-y-1.5">
               <div class="flex justify-between items-center">
                 <label class="text-xs font-semibold text-forest-950">Category</label>
@@ -425,39 +588,31 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
             </div>
           </div>
 
-          <!-- 2. Promotions & Badges -->
-          <div
-            class="p-4 bg-paper-cream/60 rounded-xl border border-paper-border grid sm:grid-cols-2 gap-4"
-          >
+          <!-- 4. Promotions & Badges -->
+          <div class="p-4 bg-paper-cream/60 rounded-xl border border-paper-border grid sm:grid-cols-2 gap-4">
             <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">
-                Promotional Badge / Placement
-              </label>
+              <label class="text-xs font-semibold text-forest-950">Promotional Badge / Placement</label>
               <select
                 v-model="badge"
                 class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 font-semibold"
               >
                 <option :value="null">None (Standard Catalog)</option>
-                <option value="BESTSELLER">🔥 Bestseller (Monthly Section)</option>
-                <option value="NO1_PICK">⭐ #1 Pick (Featured Top Slot)</option>
-                <option value="FLASH_SALE">⚡ Flash Sale (High Urgency)</option>
-                <option value="DEAL_OF_WEEK">🏷️ Deal of the Week</option>
-                <option value="LIMITED_TIME">⏳ Limited Time Sale</option>
+                <option value="BESTSELLER">ðŸ”¥ Bestseller (Monthly Section)</option>
+                <option value="NO1_PICK">â­ #1 Pick (Featured Top Slot)</option>
+                <option value="FLASH_SALE">âš¡ Flash Sale (High Urgency)</option>
+                <option value="DEAL_OF_WEEK">ðŸ·ï¸ Deal of the Week</option>
+                <option value="LIMITED_TIME">â³ Limited Time Sale</option>
               </select>
             </div>
 
             <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">
-                Sale Expiration (Optional)
-              </label>
+              <label class="text-xs font-semibold text-forest-950">Sale Expiration (Optional)</label>
               <input
                 v-model="saleEndsAt"
                 type="datetime-local"
                 class="w-full px-3 py-1.5 bg-white border border-paper-border rounded-xl text-xs font-mono outline-none focus:border-forest-900"
               />
-              <span class="text-[10px] text-ink-muted">
-                Auto-expires flash sales to keep promotions fresh.
-              </span>
+              <span class="text-[10px] text-ink-muted">Auto-expires flash sales to keep promotions fresh.</span>
             </div>
           </div>
 
@@ -466,15 +621,13 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
             <textarea
               v-model="description"
               rows="3"
+              placeholder="Synopsis and details about the book..."
               class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 resize-none"
             />
           </div>
-
-          <!-- 3. Cover Art -->
+		                    <!-- 5. Cover Art -->
           <div class="space-y-3 pt-3 border-t border-paper-border">
-            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
-              Cover Image
-            </h3>
+            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">Cover Image</h3>
             <div class="flex items-start gap-4">
               <div
                 class="w-20 h-28 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-xs"
@@ -489,6 +642,7 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
                 />
                 <BookOpen v-else :size="24" class="text-ink-muted opacity-40" />
               </div>
+
               <div class="space-y-2.5 flex-1">
                 <div class="flex flex-wrap gap-2 items-center">
                   <button
@@ -549,19 +703,19 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
           </div>
         </form>
 
-        <!-- 4. Formats Section (With Independent Format Discounts) -->
+        <!-- 6. Active Editions & Formats (Editable In-Place) -->
         <div class="pt-6 border-t border-paper-border space-y-4">
           <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
             Active Editions &amp; Formats
           </h3>
 
-          <div class="space-y-2.5">
+          <div class="space-y-3">
             <div
-              v-for="fmt in book?.formats"
+              v-for="fmt in existingFormats"
               :key="fmt.id"
-              class="p-3.5 bg-paper-canvas/60 border border-paper-border rounded-xl flex justify-between items-center text-xs"
+              class="p-4 bg-paper-canvas/60 border border-paper-border rounded-xl grid sm:grid-cols-12 gap-3 items-center text-xs"
             >
-              <div class="flex flex-wrap items-center gap-3">
+			<div class="sm:col-span-2">
                 <span class="font-bold uppercase text-forest-950 flex items-center gap-1.5 font-mono">
                   <component
                     :is="fmt.format === 'hardcopy' ? Truck : Download"
@@ -570,39 +724,78 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
                   />
                   {{ fmt.format }}
                 </span>
-                <span class="font-mono font-bold text-forest-950">KSh {{ fmt.price }}</span>
-                <span
-                  v-if="fmt.compare_at_price && fmt.compare_at_price > fmt.price"
-                  class="text-[11px] font-mono text-ink-muted line-through opacity-70"
-                >
-                  KSh {{ fmt.compare_at_price }}
-                </span>
-                <span v-if="fmt.format === 'hardcopy'" class="text-ink-muted">
-                  ({{ fmt.stock }} in stock)
-                </span>
-                <span v-else class="text-emerald-800 font-medium">
-                  {{ fmt.file_public_id ? 'Cloudflare R2 Ready âœ“' : 'Digital Edition (File Optional)' }}
+                <span v-if="fmt.format !== 'hardcopy'" class="text-[10px] text-emerald-800 font-medium block">
+                  {{ fmt.file_public_id ? 'Cloudflare R2 Ready âœ“' : 'File Optional' }}
                 </span>
               </div>
 
-              <button
-                type="button"
-                class="text-ink-muted hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                title="Remove format"
-                @click="handleDeleteFormat(fmt.id)"
-              >
-                <Trash2 :size="14" />
-              </button>
+              <!-- Price Input -->
+              <div class="sm:col-span-3 space-y-1">
+                <label class="text-[10px] text-ink-muted font-semibold">Sale Price (KSh)</label>
+                <input
+                  v-model.number="fmt.price"
+                  type="number"
+                  min="0"
+                  class="w-full px-2.5 py-1.5 bg-white border border-paper-border rounded-lg text-xs font-mono font-bold"
+                />
+              </div>
+
+              <!-- Strike-Through Price Input -->
+              <div class="sm:col-span-3 space-y-1">
+                <label class="text-[10px] text-ink-muted font-semibold">Strike-through (KSh)</label>
+                <input
+                  v-model.number="fmt.compare_at_price"
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 1500"
+                  class="w-full px-2.5 py-1.5 bg-white border border-paper-border rounded-lg text-xs font-mono"
+                />
+              </div>
+
+              <!-- Stock Input for Hardcopy -->
+              <div v-if="fmt.format === 'hardcopy'" class="sm:col-span-2 space-y-1">
+                <label class="text-[10px] text-ink-muted font-semibold">Stock Count</label>
+                <input
+                  v-model.number="fmt.stock"
+                  type="number"
+                  min="0"
+                  class="w-full px-2.5 py-1.5 bg-white border border-paper-border rounded-lg text-xs font-mono font-bold"
+                />
+              </div>
+              <div v-else class="sm:col-span-2"></div>
+
+              <!-- Actions: Save & Delete -->
+              <div class="sm:col-span-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  class="p-1.5 bg-forest-950 text-paper rounded-lg hover:bg-forest-900 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1 shadow-2xs"
+                  :disabled="fmt.isSaving"
+                  title="Update format price and stock"
+                  @click="handleUpdateExistingFormat(fmt)"
+                >
+                  <RefreshCw v-if="fmt.isSaving" :size="12" class="animate-spin" />
+                  <Save v-else :size="12" />
+                  <span class="text-[10px] font-bold uppercase">Update</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="p-1.5 text-ink-muted hover:text-red-700 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                  title="Remove format"
+                  @click="handleDeleteFormat(fmt.id)"
+                >
+                  <Trash2 :size="14" />
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- Add Format Form -->
-          <div
-            class="p-5 bg-paper-cream/60 border border-paper-border rounded-2xl space-y-3.5 shadow-2xs"
-          >
+          <!-- Add New Format Draft Form -->
+          <div class="p-5 bg-paper-cream/60 border border-paper-border rounded-2xl space-y-3.5 shadow-2xs">
             <h4 class="text-xs font-bold text-forest-950 uppercase font-mono">
-              Add Format / Edition
+              + Add Another Format / Edition
             </h4>
+
             <div class="grid sm:grid-cols-12 gap-3 items-end">
               <div class="sm:col-span-2 space-y-1">
                 <label class="text-[10px] text-ink-muted font-semibold">Format</label>
@@ -627,9 +820,7 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
               </div>
 
               <div class="sm:col-span-3 space-y-1">
-                <label class="text-[10px] text-ink-muted font-semibold">
-                  Strike-through (KSh)
-                </label>
+                <label class="text-[10px] text-ink-muted font-semibold">Strike-through (KSh)</label>
                 <input
                   v-model.number="newFormatCompareAtPrice"
                   type="number"
@@ -651,10 +842,8 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
 
               <!-- Upload File Picker with Real-Time Progress -->
               <div v-else class="sm:col-span-3 space-y-1">
-                <label class="text-[10px] text-ink-muted font-semibold">
-                  File (Cloudflare R2)
-                </label>
-                
+                <label class="text-[10px] text-ink-muted font-semibold">File (Cloudflare R2)</label>
+
                 <div v-if="isUploadingNewEbook" class="space-y-1">
                   <div class="flex justify-between text-[10px] font-mono text-forest-950 font-bold">
                     <span>Uploading...</span>
@@ -711,8 +900,7 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
         </div>
       </div>
     </div>
-
-    <!-- DIALOGUE MODAL: Cloudflare R2 Upload Verification -->
+	<!-- DIALOGUE MODAL: Cloudflare R2 Upload Verification -->
     <Teleport to="body">
       <div
         v-if="showR2SuccessModal"

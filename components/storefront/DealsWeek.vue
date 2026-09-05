@@ -56,11 +56,11 @@ onUnmounted(() => {
 });
 
 function scrollLeft(): void {
-  carouselRef.value?.scrollBy({ left: -280, behavior: 'smooth' });
+  carouselRef.value?.scrollBy({ left: -240, behavior: 'smooth' });
 }
 
 function scrollRight(): void {
-  carouselRef.value?.scrollBy({ left: 280, behavior: 'smooth' });
+  carouselRef.value?.scrollBy({ left: 240, behavior: 'smooth' });
 }
 </script>
 
@@ -126,9 +126,10 @@ function scrollRight(): void {
           </button>
         </div>
       </div>
+
       <!-- Right Column: Horizontal Deals Carousel -->
-      <div ref="carouselRef" class="lg:col-span-8 flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-2 px-1">
-        <div v-for="book in dealBooks" :key="book.id" class="w-24 sm:w-28 flex-shrink-0">
+      <div ref="carouselRef" class="lg:col-span-8 flex gap-3.5 sm:gap-5 lg:gap-6 overflow-x-auto no-scrollbar py-2 px-2 sm:px-4">
+        <div v-for="book in dealBooks" :key="book.id" class="w-[140px] sm:w-[148px] flex-shrink-0">
           <BookCard :book="book" @request-seed="(t, a) => emit('requestSeed', t, a)" />
         </div>
       </div>

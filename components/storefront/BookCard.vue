@@ -130,16 +130,15 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <!-- Card Container: Reduced by 25% (94px mobile, 105px desktop, p-2 inner padding) -->
-  <div class="flex flex-col items-center text-center bg-white rounded-xl p-2 border border-stone-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_6px_18px_rgba(0,0,0,0.07)] transition-all duration-300 w-full max-w-[94px] sm:max-w-[105px] select-none">
+  <div class="flex flex-col items-center text-center bg-white rounded-xl p-2.5 sm:p-3 border border-stone-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_6px_18px_rgba(0,0,0,0.07)] transition-all duration-300 w-full max-w-none sm:max-w-[148px] h-full select-none">
     
     <!-- Cover Link -->
     <NuxtLink
       :to="book.isSeed ? '#' : `/book/${book.slug}`"
-      class="block relative w-full aspect-[1/1.45] rounded overflow-visible mb-1.5 transition-transform duration-300 hover:-translate-y-0.5 cursor-pointer"
+      class="block relative w-full aspect-[1/1.37] rounded overflow-visible mb-2 sm:mb-2.5 transition-transform duration-300 hover:-translate-y-0.5 cursor-pointer flex-shrink-0"
       @click="handleCardClick"
     >
-      <!-- Circular Red -XX% Badge (Scaled down by 25%) -->
+      <!-- Circular Red -XX% Badge -->
       <div
         v-if="discountPercentage > 0"
         class="absolute -top-1 -left-1 z-20 w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-[#E53935] text-white flex items-center justify-center font-bold text-[7px] sm:text-[7.5px] font-sans shadow-xs border border-white tracking-tight"
@@ -152,17 +151,17 @@ function handleAddToCart(event: Event): void {
         <!-- Jacket Fallback -->
         <div
           v-if="imageFailed || !coverImage"
-          class="w-full h-full flex flex-col justify-between p-1.5 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none"
+          class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none"
         >
           <div class="space-y-0.5">
-            <span class="text-[5.5px] font-mono uppercase tracking-widest text-[#2EE59D] font-bold block truncate">
+            <span class="text-[7px] font-mono uppercase tracking-widest text-[#2EE59D] font-bold block truncate">
               {{ book.category_name || 'Book' }}
             </span>
-            <h4 class="font-display font-bold text-[8px] leading-tight line-clamp-3 text-white">
+            <h4 class="font-display font-bold text-[10px] leading-tight line-clamp-3 text-white">
               {{ book.name }}
             </h4>
           </div>
-          <span class="text-[6px] font-mono text-white/70 truncate block pt-0.5 border-t border-white/10">
+          <span class="text-[7px] font-mono text-white/70 truncate block pt-0.5 border-t border-white/10">
             {{ book.author || 'Edition' }}
           </span>
         </div>
@@ -173,25 +172,25 @@ function handleAddToCart(event: Event): void {
           :alt="book.name"
           class="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
           loading="lazy"
-          width="105"
-          height="152"
+          width="124"
+          height="170"
           referrerpolicy="no-referrer"
           @error="handleImageError"
         />
       </div>
     </NuxtLink>
 
-    <!-- Meta Details (Scaled down by 25%) -->
+    <!-- Meta Details -->
     <div class="w-full space-y-0.5 flex flex-col flex-1 justify-between">
       <div>
         <!-- 5 Golden Stars -->
         <div class="flex items-center justify-center gap-0.5 text-[#FFB300] mb-0.5">
-          <Star v-for="i in 5" :key="i" :size="6.5" class="fill-current" />
+          <Star v-for="i in 5" :key="i" :size="7.5" class="fill-current" />
         </div>
 
         <!-- Title -->
         <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block w-full" @click="handleCardClick">
-          <h3 class="font-display text-[9px] sm:text-[9.5px] font-bold text-[#141E1A] hover:text-[#F05A36] transition-colors truncate leading-tight">
+          <h3 class="font-display text-[10px] sm:text-[10.5px] font-bold text-[#141E1A] hover:text-[#F05A36] transition-colors truncate leading-tight">
             {{ book.name }}
           </h3>
         </NuxtLink>
@@ -203,37 +202,37 @@ function handleAddToCart(event: Event): void {
               v-for="fmt in availableFormats"
               :key="fmt.id"
               type="button"
-              class="text-[6px] sm:text-[6.5px] font-mono font-bold uppercase px-1 py-[1px] rounded-full transition-all cursor-pointer select-none leading-none"
+              class="text-[7px] sm:text-[7.5px] font-mono font-bold uppercase px-1.5 py-0.5 rounded-full transition-all cursor-pointer select-none leading-none"
               :class="activeFormat?.id === fmt.id ? 'bg-forest-950 text-white shadow-xs' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
               @click="selectFormat(fmt.id, $event)"
             >
               {{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}
             </button>
           </template>
-          <span v-else class="text-[6px] sm:text-[6.5px] font-mono font-medium uppercase tracking-wider text-[#6B7280] bg-stone-100 px-1 py-[1px] rounded-full leading-none">
+          <span v-else class="text-[7px] sm:text-[7.5px] font-mono font-medium uppercase tracking-wider text-[#6B7280] bg-stone-100 px-1.5 py-0.5 rounded-full leading-none">
             {{ activeFormat?.format === 'hardcopy' ? 'Print' : (activeFormat ? activeFormat.format.toUpperCase() : 'Print') }}
           </span>
         </div>
 
         <!-- Price Row -->
         <div class="flex items-center justify-center gap-1 pt-0.5 font-mono leading-none">
-          <span class="text-[9px] sm:text-[10px] font-bold text-[#141E1A]">
+          <span class="text-[10px] sm:text-[10.5px] font-bold text-[#141E1A]">
             {{ formatCurrency(currentPrice) }}
           </span>
           <span
             v-if="originalPrice && originalPrice > currentPrice"
-            class="text-[7.5px] sm:text-[8px] text-[#9CA3AF] line-through font-normal"
+            class="text-[8px] sm:text-[8.5px] text-[#9CA3AF] line-through font-normal"
           >
             {{ formatCurrency(originalPrice) }}
           </span>
         </div>
       </div>
 
-      <!-- Minimalistic Add Button (Scaled down by 25%) -->
-      <div class="w-full pt-1">
+      <!-- Minimalistic Add Button -->
+      <div class="w-full pt-1.5 sm:pt-2 mt-auto">
         <button
           type="button"
-          class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-800 text-white text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider py-1 px-1.5 rounded shadow-xs transition-all cursor-pointer select-none active:scale-[0.97]"
+          class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-800 text-white text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider py-1 px-1.5 rounded shadow-xs transition-all cursor-pointer select-none active:scale-[0.97]"
           @click="handleAddToCart"
         >
           Add

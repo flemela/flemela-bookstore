@@ -32,7 +32,7 @@ const featuredBooks = computed(() => mergeWithSeeds(props.books, MONTHLY_TOP_SEE
     </div>
 
     <!-- 4 Cards Row in exact alignment -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 w-full">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center">
       <BookCard
         v-for="book in featuredBooks"
         :key="book.id"

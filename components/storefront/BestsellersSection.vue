@@ -48,7 +48,7 @@ const bestsellerBooks = computed(() => {
     <!-- 12-Column Split: 8 Cols for 6 Books (3x2) + 4 Cols for Dark Promo Card -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
       <!-- 6 Books: 3 Columns x 2 Rows -->
-      <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5">
+      <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5 lg:gap-6 justify-items-center max-w-[540px] mx-auto lg:max-w-none px-2 sm:px-4">
         <BookCard
           v-for="book in bestsellerBooks"
           :key="book.id"
