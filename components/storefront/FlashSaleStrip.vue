@@ -183,7 +183,7 @@ function handleQuickAdd(book: Book, event: Event): void {
 <template>
   <section
     v-if="books.length > 0"
-    class="bg-[#FF8A00] text-white pt-4 sm:pt-6 pb-6 sm:pb-8 px-4 relative overflow-hidden select-none rounded-xl mx-2 sm:mx-4"
+    class="bg-[#fe0000] text-white pt-4 sm:pt-6 pb-6 sm:pb-8 px-4 relative overflow-hidden select-none rounded-xl mx-2 sm:mx-4"
   >
     <div class="max-w-6xl mx-auto space-y-3">
       <!-- Section Header -->
