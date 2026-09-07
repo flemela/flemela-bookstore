@@ -1,5 +1,5 @@
 // =============================================================================
-// server/api/admin/upload-signature.post.ts
+// flemela/server/api/admin/upload-signature.post.ts
 // Generates authenticated Cloudinary upload signatures forwarding target folder.
 // =============================================================================
 

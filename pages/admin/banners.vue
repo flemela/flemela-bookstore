@@ -39,7 +39,7 @@ interface StoreBanner {
 const { push: pushToast } = useToast();
 const { data: banners, refresh, status } = await useFetch<StoreBanner[]>('/api/admin/banners');
 
-// Modal State: Create / Edit Banner
+// Modal State
 const showModal = ref(false);
 const editingBannerId = ref<string | null>(null);
 
@@ -107,44 +107,23 @@ async function handleImageUpload(event: Event, targetField: 'image_url' | 'mobil
   else isUploadingMobile.value = true;
 
   try {
-    const sig = await $fetch<{
-      signature: string;
-      timestamp: number;
-      folder: string;
-      apiKey: string;
-      cloudName: string;
-    }>('/api/admin/upload-signature?target=store', { method: 'POST' });
-
-    if (!sig || !sig.signature || !sig.apiKey || !sig.cloudName) {
-      throw new Error('Server returned incomplete Cloudinary credentials.');
-    }
-
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('api_key', sig.apiKey);
-    formData.append('timestamp', String(sig.timestamp));
-    formData.append('signature', sig.signature);
-    formData.append('folder', sig.folder);
 
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
+    const res = await $fetch<{ url: string }>('/api/admin/banners/upload', {
       method: 'POST',
       body: formData,
     });
 
-    const data = await res.json();
-
-    if (!res.ok || !data.secure_url) {
-      const errMsg = data?.error?.message || `Cloudinary upload failed (HTTP ${res.status})`;
-      throw new Error(errMsg);
+    if (res?.url) {
+      form.value[targetField] = res.url;
+      pushToast({
+        message: `${targetField === 'image_url' ? 'Desktop' : 'Mobile'} banner uploaded successfully!`,
+        variant: 'success',
+      });
     }
-
-    form.value[targetField] = data.secure_url;
-    pushToast({
-      message: `${targetField === 'image_url' ? 'Desktop' : 'Mobile'} banner uploaded successfully!`,
-      variant: 'success',
-    });
   } catch (err: any) {
-    const message = err.message || 'Image upload failed. You can also paste a direct image URL.';
+    const message = err.data?.statusMessage || err.message || 'Image upload failed. You can paste a direct URL.';
     pushToast({ message, variant: 'error' });
   } finally {
     if (targetField === 'image_url') isUploadingDesktop.value = false;
@@ -154,7 +133,6 @@ async function handleImageUpload(event: Event, targetField: 'image_url' | 'mobil
 }
 
 async function handleSave(): Promise<void> {
-  // Desktop image is the ONLY required field
   if (!form.value.image_url.trim()) {
     pushToast({ message: 'Desktop banner image is required', variant: 'error' });
     return;
@@ -266,7 +244,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
             Hero Carousel Banners
           </h1>
           <p class="text-xs text-ink-muted mt-0.5">
-            Add full-width commerce banners. Desktop image is the only requirement—all text, links, and dates are completely optional.
+            Add full-width commerce banners. Desktop image is the only requirement—all text, buttons, and dates are optional.
           </p>
         </div>
 
@@ -291,7 +269,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
         </div>
       </div>
 
-      <!-- Banner List Table / Cards -->
+      <!-- Banner List Cards -->
       <div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft overflow-hidden">
         <div v-if="status === 'pending'" class="p-12 text-center text-xs text-ink-muted">
           Loading active banners...
@@ -320,7 +298,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
             :key="banner.id"
             class="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-paper-cream/30 transition-colors"
           >
-            <!-- Left: Reorder Arrows & Image Thumbnail -->
+            <!-- Left Details -->
             <div class="flex items-center gap-3 w-full sm:w-auto">
               <div class="flex flex-col gap-1 text-ink-muted">
                 <button
@@ -343,7 +321,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
                 </button>
               </div>
 
-              <!-- Banner Thumbnail -->
+              <!-- Banner Thumbnail: 4:1 Aspect Ratio Preview -->
               <div class="w-32 sm:w-40 aspect-[4/1] rounded-lg border border-paper-border overflow-hidden bg-forest-950 flex-shrink-0 shadow-xs relative">
                 <img :src="banner.image_url" :alt="banner.title || 'Banner'" class="w-full h-full object-cover" />
                 <span
@@ -354,7 +332,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
                 </span>
               </div>
 
-              <!-- Details -->
+              <!-- Metadata -->
               <div class="space-y-1 min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                   <h4 class="text-xs sm:text-sm font-bold text-forest-950 truncate">
@@ -379,7 +357,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               </div>
             </div>
 
-            <!-- Right: Actions -->
+            <!-- Right Actions -->
             <div class="flex items-center gap-2 self-end sm:self-center">
               <button
                 type="button"
@@ -436,7 +414,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
             <div class="space-y-1.5">
               <div class="flex justify-between items-baseline">
                 <label class="text-xs font-bold text-forest-950">
-                  Desktop Image URL *
+                  Desktop Image *
                 </label>
                 <span class="text-[10px] text-gold-600 font-mono font-bold uppercase tracking-wide">
                   Target: 4:1 (1440×360px)
@@ -446,8 +424,8 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               <div class="flex gap-2 items-center">
                 <input
                   v-model="form.image_url"
-                  type="url"
-                  placeholder="https://... (Recommended: 4:1 ratio — e.g. 1440×360px or 1920×480px)"
+                  type="text"
+                  placeholder="https://... (Recommended: ~4:1 ratio — e.g. 1440×360px or 1920×480px)"
                   class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
                   required
                 />
@@ -482,7 +460,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
             <div class="space-y-1.5 pt-1">
               <div class="flex justify-between items-baseline">
                 <label class="text-xs font-semibold text-forest-950">
-                  Mobile Image URL (Optional)
+                  Mobile Image (Optional)
                 </label>
                 <span class="text-[10px] text-ink-muted font-mono font-semibold uppercase tracking-wide">
                   Target: 1.65:1 (390×240px)
@@ -492,8 +470,8 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               <div class="flex gap-2 items-center">
                 <input
                   v-model="form.mobile_image_url"
-                  type="url"
-                  placeholder="https://... (Recommended: 1.65:1 ratio — e.g. 390×240px or 640×390px)"
+                  type="text"
+                  placeholder="https://... (Recommended: ~1.65:1 ratio — e.g. 390×240px or 640×390px)"
                   class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
                 />
                 <label class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0">
@@ -510,7 +488,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               </div>
 
               <!-- Mobile Preview Thumbnail -->
-            <div v-if="form.mobile_image_url" class="relative rounded-lg border border-paper-border overflow-hidden aspect-[1.65/1] max-w-[200px] bg-forest-950 mt-1.5">
+              <div v-if="form.mobile_image_url" class="relative rounded-lg border border-paper-border overflow-hidden aspect-[1.65/1] max-w-[200px] bg-forest-950 mt-1.5">
                 <img :src="form.mobile_image_url" alt="Mobile Preview" class="w-full h-full object-cover" />
                 <button
                   type="button"
