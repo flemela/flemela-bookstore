@@ -1,4 +1,4 @@
-<!-- flemela/pages/checkout.vue -->
+<!-- pages/checkout/index.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import {
@@ -39,7 +39,7 @@ onMounted(() => {
   }
 });
 
-// Form State
+// Customer & Order Form State
 const customerName = ref('');
 const customerPhone = ref('');
 const customerEmail = ref('');
@@ -51,9 +51,9 @@ const notes = ref('');
 const mpesaCode = ref('');
 const paymentMethod = ref<'mpesa_manual' | 'mpesa' | 'mpesa_cash'>('mpesa_manual');
 
-// Clipboard State for Till Number
+// Store Till Number
+const STORE_TILL_NUMBER = '174379';
 const isTillCopied = ref(false);
-const STORE_TILL_NUMBER = '174379'; // Buy Goods Till
 
 function copyTillNumber(): void {
   if (!navigator.clipboard) return;
@@ -63,10 +63,9 @@ function copyTillNumber(): void {
   setTimeout(() => (isTillCopied.value = false), 2200);
 }
 
-// GPS Pin Coordinates
+// GPS Pin & Haversine Delivery State
 const customerLat = ref<number | null>(null);
 const customerLng = ref<number | null>(null);
-
 const HUB_COORDS = { lat: -1.2683, lng: 36.8111, baseKm: 2.0, baseFee: 100, feePerKm: 25, maxRadiusKm: 15 };
 const deliveryFee = ref<number>(100);
 const deliveryFeeStatus = ref<'known' | 'needs_merchant_confirmation'>('known');
@@ -155,6 +154,14 @@ async function handlePlaceOrder(): Promise<void> {
   try {
     const cleanPhone = normalizeKenyanPhone(customerPhone.value);
 
+    // Save phone in session to auto-verify downloads without re-prompting
+    if (process.client) {
+      sessionStorage.setItem('flemela_last_checkout_phone', cleanPhone);
+      if (customerEmail.value.trim()) {
+        sessionStorage.setItem('flemela_last_checkout_email', customerEmail.value.trim());
+      }
+    }
+
     const payload = {
       customerName: customerName.value.trim(),
       customerPhone: cleanPhone,
@@ -186,7 +193,8 @@ async function handlePlaceOrder(): Promise<void> {
 
     clearCart();
 
-    router.push({
+    // Clean sibling route push (never trapped in nested parent)
+    await router.push({
       path: '/checkout/confirm',
       query: {
         orderId: response.orderId,
@@ -210,7 +218,7 @@ async function handlePlaceOrder(): Promise<void> {
 
     <main class="max-w-6xl mx-auto w-full py-8 px-4 sm:px-6 flex-1 space-y-6">
       
-      <!-- Back Navigation Header -->
+      <!-- Back Header -->
       <div class="flex items-center justify-between">
         <NuxtLink to="/" class="inline-flex items-center gap-1.5 text-xs font-semibold text-forest-900 hover:text-gold-600 transition-colors">
           <ArrowLeft :size="14" /> Return to Catalog
@@ -223,7 +231,7 @@ async function handlePlaceOrder(): Promise<void> {
         <!-- Left: Form Steps (7 Cols) -->
         <div class="lg:col-span-7 space-y-6">
           
-          <!-- Pure Digital eBook Alert Banner -->
+          <!-- Pure Digital eBook Notice Banner -->
           <div
             v-if="hasDigitalItems && !hasPhysicalItems"
             class="bg-emerald-50/80 border border-emerald-300/80 rounded-2xl p-4 flex items-center gap-3.5 text-xs text-emerald-950 shadow-soft"
@@ -232,12 +240,14 @@ async function handlePlaceOrder(): Promise<void> {
               <Download :size="18" />
             </div>
             <div>
-              <strong class="font-semibold text-emerald-900 block">Pure Digital Order</strong>
-              <span class="text-emerald-950/80">Your eBooks will be unlocked for instant download as soon as your payment reference is submitted.</span>
+              <strong class="font-semibold text-emerald-900 block">Instant Digital Delivery</strong>
+              <span class="text-emerald-950/80">
+                Your eBook download links and permanent email copies are unlocked immediately upon payment approval.
+              </span>
             </div>
           </div>
 
-          <!-- Step 1: Contact Information Card -->
+          <!-- Step 1: Customer Details -->
           <section aria-labelledby="step-contact-heading" class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-5">
             <div class="flex items-center gap-3 pb-3.5 border-b border-paper-border">
               <span class="w-6 h-6 rounded-full bg-forest-950 text-gold-300 text-xs font-mono font-bold flex items-center justify-center shadow-xs">1</span>
@@ -245,7 +255,7 @@ async function handlePlaceOrder(): Promise<void> {
             </div>
 
             <div class="space-y-4">
-              <!-- Customer Name -->
+              <!-- Full Name -->
               <div class="space-y-1.5">
                 <label class="text-xs font-semibold text-forest-950">Full Name *</label>
                 <div class="relative flex items-center">
@@ -260,9 +270,9 @@ async function handlePlaceOrder(): Promise<void> {
                 </div>
               </div>
 
-              <!-- Phone & Email Grid -->
+              <!-- Phone & Email -->
               <div class="grid sm:grid-cols-2 gap-4">
-                <!-- M-Pesa Phone -->
+                <!-- Phone -->
                 <div class="space-y-1.5">
                   <label class="text-xs font-semibold text-forest-950">M-Pesa Phone Number *</label>
                   <div class="relative flex items-center">
@@ -290,7 +300,7 @@ async function handlePlaceOrder(): Promise<void> {
 
                 <!-- Email -->
                 <div class="space-y-1.5">
-                  <label class="text-xs font-semibold text-forest-950">Email Address (Optional)</label>
+                  <label class="text-xs font-semibold text-forest-950">Email Address (For Digital Downloads)</label>
                   <div class="relative flex items-center">
                     <Mail :size="15" class="absolute left-3.5 text-ink-subtle pointer-events-none" />
                     <input
@@ -305,7 +315,7 @@ async function handlePlaceOrder(): Promise<void> {
             </div>
           </section>
 
-          <!-- Step 2: Physical Delivery Card -->
+          <!-- Step 2: Physical Delivery (Only rendered if physical books in cart) -->
           <section v-if="hasPhysicalItems" aria-labelledby="step-fulfillment-heading" class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-5">
             <div class="flex items-center gap-3 pb-3.5 border-b border-paper-border">
               <span class="w-6 h-6 rounded-full bg-forest-950 text-gold-300 text-xs font-mono font-bold flex items-center justify-center shadow-xs">2</span>
@@ -329,7 +339,7 @@ async function handlePlaceOrder(): Promise<void> {
                 </div>
               </div>
 
-              <!-- Interactive Pin Drop -->
+              <!-- Pin Drop on Map -->
               <div class="space-y-1.5">
                 <label class="text-[11px] font-semibold text-ink-muted flex items-center gap-1.5">
                   <MapPin :size="12" class="text-gold-600" />
@@ -376,11 +386,11 @@ async function handlePlaceOrder(): Promise<void> {
             <div v-else class="p-4 bg-paper-cream/70 rounded-xl border border-paper-border text-xs text-ink-muted space-y-1">
               <span class="font-bold text-forest-950 block font-sans">Pickup Location:</span>
               <p>Flemela Bookstore Main Counter, Sarit Centre Lower Level, Westlands, Nairobi.</p>
-              <span class="text-[11px] text-emerald-800 font-semibold block pt-1">✓ Books ready for pickup within 2 hours of payment approval.</span>
+              <span class="text-[11px] text-emerald-800 font-semibold block pt-1">✓ Books ready for collection within 2 hours of payment approval.</span>
             </div>
           </section>
 
-          <!-- Step 3: Payment Method Card -->
+          <!-- Step 3: Payment Channel Selection -->
           <section aria-labelledby="step-payment-heading" class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-5">
             <div class="flex items-center gap-3 pb-3.5 border-b border-paper-border">
               <span class="w-6 h-6 rounded-full bg-forest-950 text-gold-300 text-xs font-mono font-bold flex items-center justify-center shadow-xs">
@@ -390,8 +400,7 @@ async function handlePlaceOrder(): Promise<void> {
             </div>
 
             <div class="space-y-3.5">
-              
-              <!-- OPTION A: DIRECT MANUAL M-PESA PASS (PRIMARY) -->
+              <!-- OPTION A: DIRECT MANUAL M-PESA PASS (RECOMMENDED) -->
               <label
                 class="border-2 rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5 cursor-pointer transition-all relative overflow-hidden"
                 :class="paymentMethod === 'mpesa_manual' ? 'border-forest-900 bg-paper-cream/40 shadow-soft ring-1 ring-forest-900' : 'border-paper-border bg-white hover:border-forest-800/30'"
@@ -403,21 +412,19 @@ async function handlePlaceOrder(): Promise<void> {
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                      <strong class="text-xs sm:text-sm font-bold text-forest-950 block">Pay Directly via M-Pesa</strong>
+                      <strong class="text-xs sm:text-sm font-bold text-forest-950 block">Pay Directly to Buy Goods Till</strong>
                       <span class="bg-forest-950 text-gold-300 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                        Recommended
+                        Zero Delay
                       </span>
                     </div>
                     <p class="text-xs text-ink-muted mt-0.5 leading-relaxed">
-                      Pay directly to our store Till Number and paste your M-Pesa transaction reference code below.
+                      Send payment to our store Till Number and paste your Safaricom transaction confirmation code below.
                     </p>
                   </div>
                 </div>
 
-                <!-- Digital M-Pesa Pass -->
                 <div v-if="paymentMethod === 'mpesa_manual'" class="pt-3 border-t border-paper-border/80 space-y-3 pl-0 sm:pl-12">
-                  
-                  <!-- Till Number Chip with 1-Click Copy -->
+                  <!-- Till Number Copy Box -->
                   <div class="bg-white rounded-xl p-3.5 border border-paper-border flex flex-wrap items-center justify-between gap-3 shadow-xs">
                     <div class="space-y-0.5">
                       <span class="text-[10px] uppercase font-mono font-bold text-ink-subtle tracking-widest block">Lipa Na M-Pesa â€¢ Buy Goods Till</span>
@@ -440,8 +447,8 @@ async function handlePlaceOrder(): Promise<void> {
                   <!-- Reference Code Input -->
                   <div class="space-y-1.5">
                     <label class="text-xs font-bold text-forest-950 flex items-center justify-between">
-                      <span>M-Pesa Transaction Code *</span>
-                      <span class="text-[10px] text-ink-muted font-normal">Found in your Safaricom SMS</span>
+                      <span>Safaricom Confirmation Code *</span>
+                      <span class="text-[10px] text-ink-muted font-normal">Found in your M-Pesa SMS</span>
                     </label>
                     <input
                       v-model="mpesaCode"
@@ -466,7 +473,7 @@ async function handlePlaceOrder(): Promise<void> {
                 <div>
                   <strong class="text-xs sm:text-sm font-bold text-forest-950 block">Automated M-Pesa STK Push</strong>
                   <p class="text-xs text-ink-muted mt-0.5 leading-relaxed">
-                    Sends an automated PIN prompt to your phone screen.
+                    Sends an automated PIN prompt to your Safaricom mobile phone screen.
                   </p>
                 </div>
               </label>
@@ -492,15 +499,15 @@ async function handlePlaceOrder(): Promise<void> {
               </label>
             </div>
 
-            <!-- Order Notes -->
+            <!-- Notes -->
             <div class="space-y-1.5 pt-2">
-              <label class="text-xs font-semibold text-forest-950">Order Notes or Gate Instructions (Optional)</label>
+              <label class="text-xs font-semibold text-forest-950">Order Notes (Optional)</label>
               <div class="relative flex items-start">
                 <FileText :size="15" class="absolute left-3.5 top-3 text-ink-subtle pointer-events-none" />
                 <textarea
                   v-model="notes"
                   rows="2"
-                  placeholder="e.g. Leave with building receptionist, call on arrival..."
+                  placeholder="e.g. Leave with building security, call on arrival..."
                   class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle resize-none"
                 />
               </div>
@@ -515,7 +522,7 @@ async function handlePlaceOrder(): Promise<void> {
             <span class="text-xs font-semibold font-mono text-ink-muted">{{ totalItems }} edition(s)</span>
           </div>
 
-          <!-- Items Breakdown List -->
+          <!-- Items Breakdown -->
           <div class="space-y-3.5 max-h-72 overflow-y-auto divide-y divide-paper-border/60 pr-1">
             <div
               v-for="item in items"
@@ -541,7 +548,7 @@ async function handlePlaceOrder(): Promise<void> {
             </div>
           </div>
 
-          <!-- Totals Breakdown -->
+          <!-- Totals -->
           <div class="space-y-2.5 border-t border-paper-border pt-4 text-xs">
             <div class="flex justify-between text-ink-muted font-medium">
               <span>Books Subtotal</span>
@@ -560,7 +567,7 @@ async function handlePlaceOrder(): Promise<void> {
             </div>
 
             <div class="flex justify-between items-baseline pt-3 border-t border-paper-border text-base">
-              <span class="font-bold text-forest-950 font-sans">Total Amount</span>
+              <span class="font-bold text-forest-950 font-sans">Total Bill</span>
               <span class="font-display font-extrabold text-xl sm:text-2xl text-forest-950 font-mono tabular-figure">
                 {{ formatCurrency(totalToPay) }}
               </span>
@@ -573,7 +580,7 @@ async function handlePlaceOrder(): Promise<void> {
             <span>{{ formError }}</span>
           </div>
 
-          <!-- Submit Order Button -->
+          <!-- Checkout Action -->
           <button
             type="button"
             class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-950 text-paper font-sans font-bold text-xs uppercase tracking-wider py-4 px-6 rounded-xl shadow-medium hover:shadow-high transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
@@ -588,7 +595,7 @@ async function handlePlaceOrder(): Promise<void> {
 
           <div class="flex items-center justify-center gap-2 text-[11px] text-ink-muted pt-1">
             <ShieldCheck :size="14" class="text-forest-900 flex-shrink-0" />
-            <span>Encrypted Token Delivery &amp; Verified Physical Handover</span>
+            <span>Instant Digital Fulfillment &amp; Verified Delivery</span>
           </div>
         </div>
       </div>
