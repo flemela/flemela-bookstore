@@ -36,8 +36,8 @@ function formatDate(iso: string): string {
 async function handleConfirmPayment(orderId: string): Promise<void> {
   confirmingOrderId.value = orderId;
   try {
-    await $fetch(`/api/admin/orders/${orderId}/payment-status`, {
-      method: 'PATCH',
+    await $fetch<any>(`/api/admin/orders/${orderId}/payment-status`, {
+      method: 'PATCH' as any,
       body: { payment_status: 'paid' },
     });
 
