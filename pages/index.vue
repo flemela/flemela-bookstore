@@ -1,282 +1,242 @@
-<!-- pages/admin/index.vue -->
+<!-- pages/index.vue -->
 <script setup lang="ts">
-import { ref } from 'vue';
-import {
-  BookOpen,
-  Database,
-  Inbox,
-  TrendingUp,
-  PlusCircle,
-  FileSpreadsheet,
-  ExternalLink,
-  RefreshCw,
-  CheckCircle,
-} from 'lucide-vue-next';
-import AdminLayout from '~/components/admin/AdminLayout.vue';
-import { useToast } from '~/composables/useToast';
-import type { AdminDashboardData } from '~/server/api/admin/dashboard.get';
+import { ref, computed } from 'vue';
+import StoreNavbar from '~/components/storefront/StoreNavbar.vue';
+import HeroCarousel from '~/components/storefront/HeroCarousel.vue';
+import FlashSaleStrip from '~/components/storefront/FlashSaleStrip.vue';
+import FeaturedMonth from '~/components/storefront/FeaturedMonth.vue';
+import BentoCategories from '~/components/storefront/BentoCategories.vue';
+import BestsellersSection from '~/components/storefront/BestsellersSection.vue';
+import DealsWeek from '~/components/storefront/DealsWeek.vue';
+import TrustStrip from '~/components/storefront/TrustStrip.vue';
+import NewsletterBanner from '~/components/storefront/NewsletterBanner.vue';
+import StoreFooter from '~/components/storefront/StoreFooter.vue';
+import BookCard from '~/components/storefront/BookCard.vue';
+import CartDrawer from '~/components/storefront/CartDrawer.vue';
+import ToastContainer from '~/components/ui/ToastContainer.vue';
+import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
+import { BookOpen } from 'lucide-vue-next';
+import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import type { Book } from '~/types';
 
-definePageMeta({
-  middleware: 'admin-auth',
+const { data: realBooks } = await useFetch<Book[]>('/api/products');
+
+const activeCategoryFilter = ref<string>('ALL');
+const searchQuery = ref<string>('');
+
+const showRequestModal = ref(false);
+const modalInitialTitle = ref('');
+const modalInitialAuthor = ref('');
+
+// Dynamic Filter Engine for Main Catalog Grid
+const filteredBooks = computed(() => {
+  const books = realBooks.value || [];
+  let result = [...books];
+
+  if (activeCategoryFilter.value !== 'ALL') {
+    const filterKey = activeCategoryFilter.value.toLowerCase().trim();
+    result = result.filter((b) => {
+      const cat = (b.category_name || '').toLowerCase().trim();
+      return cat === filterKey || cat.includes(filterKey) || filterKey.includes(cat);
+    });
+  }
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    result = result.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        (b.author && b.author.toLowerCase().includes(q)) ||
+        (b.description && b.description.toLowerCase().includes(q))
+    );
+  }
+
+  return result;
 });
 
-const { push: pushToast } = useToast();
-const { data: stats, refresh, status } = await useFetch<AdminDashboardData>('/api/admin/dashboard');
+const hasActiveFilter = computed(() => {
+  return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
+});
 
-const confirmingOrderId = ref<string | null>(null);
+// -----------------------------------------------------------------------------
+// STRICT MUTUALLY EXCLUSIVE BADGE SECTIONS
+// -----------------------------------------------------------------------------
 
-function formatCurrency(val: number): string {
-  return `KSh ${val.toLocaleString('en-KE')}`;
-}
+// 1. FLASH SALE: Specifically badged FLASH_SALE / LIMITED_TIME, or unbadged books with discounts
+const flashSaleBooks = computed<Book[]>(() => {
+  const books = realBooks.value || [];
+  return books.filter((b) => {
+    if (b.badge === 'FLASH_SALE' || b.badge === 'LIMITED_TIME') return true;
+    // Only capture unbadged discounted books; never steal a book with another badge
+    if (!b.badge && b.compare_at_price && b.compare_at_price > b.price) return true;
+    return false;
+  });
+});
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' });
-}
+// 2. #1 PICKS / FEATURED MONTH: Strictly books tagged with NO1_PICK
+const no1Picks = computed<Book[]>(() => {
+  const books = realBooks.value || [];
+  const tagged = books.filter((b) => b.badge === 'NO1_PICK');
+  return mergeWithSeeds(tagged, MONTHLY_TOP_SEEDS, 4);
+});
 
-async function handleConfirmPayment(orderId: string): Promise<void> {
-  confirmingOrderId.value = orderId;
-  try {
-    await $fetch(`/api/admin/orders/${orderId}/payment-status`, {
-      method: 'PATCH' as any,
-      body: { payment_status: 'paid' },
-    });
+// 3. DEALS OF THE WEEK: Strictly books tagged with DEAL_OF_WEEK
+const dealBooks = computed<Book[]>(() => {
+  const books = realBooks.value || [];
+  const deals = books.filter((b) => b.badge === 'DEAL_OF_WEEK');
+  return mergeWithSeeds(deals, DEALS_SEEDS, 4);
+});
 
-    pushToast({ message: 'Payment confirmed! eBook downloads released.', variant: 'success' });
-    await refresh();
-  } catch (err: any) {
-    pushToast({ message: err.data?.message || 'Failed to approve payment', variant: 'error' });
-  } finally {
-    confirmingOrderId.value = null;
+// 4. BESTSELLERS: Strictly books tagged with BESTSELLER
+const bestsellers = computed<Book[]>(() => {
+  const books = realBooks.value || [];
+  const tagged = books.filter((b) => b.badge === 'BESTSELLER');
+  const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
+  return mergeWithSeeds(tagged, combinedSeeds, 6);
+});
+
+function handleSearch(query: string, category?: string): void {
+  searchQuery.value = query;
+  if (category && category !== 'All Categories') {
+    activeCategoryFilter.value = category;
   }
+  scrollToSection('catalog-results');
+}
+
+function handleCategorySelect(category: string): void {
+  activeCategoryFilter.value = category;
+  scrollToSection('catalog-results');
+}
+
+function scrollToSection(sectionId: string): void {
+  if (process.client) {
+    const el = document.getElementById(sectionId);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+function handleRequestSeed(title: string, author?: string): void {
+  modalInitialTitle.value = title;
+  modalInitialAuthor.value = author || '';
+  showRequestModal.value = true;
 }
 </script>
 
 <template>
-  <AdminLayout>
-    <div class="space-y-7 max-w-6xl mx-auto">
-      
-      <!-- Top Title Bar -->
-      <div class="flex flex-wrap items-baseline justify-between gap-4 pb-4 border-b border-paper-border">
-        <div>
-          <span class="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-gold-600 font-bold block">
-            Operations &amp; Control
-          </span>
-          <h1 class="font-display text-2xl sm:text-3xl font-bold text-forest-950">
-            Bookstore Overview
-          </h1>
-        </div>
+  <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased">
+    <!-- Floating Restrained Glassmorphic Header -->
+    <StoreNavbar @search="handleSearch" />
 
-        <div class="flex items-center gap-2.5">
-          <button
-            type="button"
-            class="px-3 py-1.5 bg-paper-surface border border-paper-border hover:border-forest-800/40 rounded-xl text-forest-950 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-soft active:scale-[0.98]"
-            @click="() => refresh()"
-          >
-            <RefreshCw :size="12" :class="{ 'animate-spin': status === 'pending' }" />
-            <span>Refresh</span>
-          </button>
+    <!-- 1. Hero Banner (~4:1 Desktop, ~1.65:1 Mobile) -->
+    <HeroCarousel
+      @search="handleSearch"
+      @select-category="handleCategorySelect"
+      @navigate-flash-sale="scrollToSection('flash-sale')"
+    />
 
-          <NuxtLink
-            to="/admin/books/new"
-            class="bg-forest-950 text-paper hover:bg-forest-900 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-medium active:scale-[0.98]"
-          >
-            <PlusCircle :size="14" class="text-gold-300" />
-            <span>Add Book</span>
-          </NuxtLink>
-        </div>
-      </div>
-
-      <!-- KPI Metrics Grid (4 Elevated Cards) -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        <!-- Metric 1: Total Titles in Catalog -->
-        <div class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border shadow-soft space-y-2 hover:shadow-card transition-shadow">
-          <div class="flex justify-between items-center text-ink-subtle">
-            <span class="text-[10px] font-mono uppercase font-bold tracking-wider">Total Catalog</span>
-            <div class="w-8 h-8 rounded-xl bg-forest-950/5 text-forest-900 flex items-center justify-center">
-              <BookOpen :size="16" />
-            </div>
-          </div>
-          <p class="text-2xl sm:text-3xl font-mono font-extrabold text-forest-950 tabular-figure">
-            {{ stats?.totalBooks ?? 0 }}
-          </p>
-          <span class="text-[11px] text-ink-muted block">Active catalog editions</span>
-        </div>
-
-        <!-- Metric 2: eBook Cloudflare R2 Storage (MB) -->
-        <div class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border shadow-soft space-y-2 hover:shadow-card transition-shadow">
-          <div class="flex justify-between items-center text-ink-subtle">
-            <span class="text-[10px] font-mono uppercase font-bold tracking-wider">eBook Storage</span>
-            <div class="w-8 h-8 rounded-xl bg-gold-500/10 text-gold-600 flex items-center justify-center">
-              <Database :size="16" />
-            </div>
-          </div>
-          <p class="text-2xl sm:text-3xl font-mono font-extrabold text-gold-600 tabular-figure">
-            {{ stats?.storageUsedMb ? `${stats.storageUsedMb} MB` : '0 MB' }}
-          </p>
-          <span class="text-[11px] text-ink-muted block">Cloudflare R2 assets</span>
-        </div>
-
-        <!-- Metric 3: Pending Order Verification Queue -->
-        <div class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border shadow-soft space-y-2 hover:shadow-card transition-shadow">
-          <div class="flex justify-between items-center text-ink-subtle">
-            <span class="text-[10px] font-mono uppercase font-bold tracking-wider">Pending Orders</span>
-            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-800 flex items-center justify-center">
-              <Inbox :size="16" />
-            </div>
-          </div>
-          <p class="text-2xl sm:text-3xl font-mono font-extrabold text-forest-950 tabular-figure">
-            {{ stats?.pendingOrders ?? 0 }}
-          </p>
-          <span class="text-[11px] text-ink-muted block">Awaiting approval</span>
-        </div>
-
-        <!-- Metric 4: Settled Revenue Today -->
-        <div class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border shadow-soft space-y-2 hover:shadow-card transition-shadow">
-          <div class="flex justify-between items-center text-ink-subtle">
-            <span class="text-[10px] font-mono uppercase font-bold tracking-wider">Today's Sales</span>
-            <div class="w-8 h-8 rounded-xl bg-forest-950/5 text-forest-900 flex items-center justify-center">
-              <TrendingUp :size="16" />
-            </div>
-          </div>
-          <p class="text-xl sm:text-2xl lg:text-3xl font-mono font-extrabold text-forest-950 tabular-figure truncate">
-            {{ stats ? formatCurrency(stats.todayRevenue) : 'KSh 0' }}
-          </p>
-          <span class="text-[11px] text-ink-muted block">Settled M-Pesa total</span>
-        </div>
-      </div>
-
-      <!-- Quick Action Navigation Tiles -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        
-        <!-- Tile A: Bulk Excel / CSV Ingestion -->
-        <NuxtLink
-          to="/admin/books/import"
-          class="bg-forest-950 text-paper p-5 sm:p-6 rounded-2xl shadow-soft hover:shadow-medium hover:-translate-y-0.5 transition-all flex items-center justify-between group"
-        >
-          <div class="space-y-1 text-left">
-            <span class="text-[9px] font-mono uppercase font-bold tracking-wider text-gold-300">Catalog Pipeline</span>
-            <h3 class="font-display font-bold text-sm sm:text-base text-paper">Bulk Excel Importer</h3>
-            <p class="text-[11px] text-paper/70 leading-normal">Ingest titles, covers, and R2 eBooks</p>
-          </div>
-          <div class="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-gold-300 flex-shrink-0 ml-3 group-hover:scale-105 transition-transform">
-            <FileSpreadsheet :size="20" />
-          </div>
-        </NuxtLink>
-
-        <!-- Tile B: Manage Books Catalog -->
-        <NuxtLink
-          to="/admin/books"
-          class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border hover:border-forest-800/30 shadow-soft hover:shadow-medium hover:-translate-y-0.5 transition-all flex items-center justify-between group"
-        >
-          <div class="space-y-1 text-left">
-            <span class="text-[9px] font-mono uppercase font-bold tracking-wider text-ink-subtle">Inventory</span>
-            <h3 class="font-display font-bold text-sm sm:text-base text-forest-950">Manage Catalog</h3>
-            <p class="text-[11px] text-ink-muted leading-normal">Set formats, prices, and physical stock</p>
-          </div>
-          <div class="w-11 h-11 rounded-xl bg-paper-cream flex items-center justify-center text-forest-900 flex-shrink-0 ml-3 group-hover:scale-105 transition-transform">
-            <BookOpen :size="20" />
-          </div>
-        </NuxtLink>
-
-        <!-- Tile C: Live Storefront Preview -->
-        <NuxtLink
-          to="/"
-          target="_blank"
-          class="bg-paper-surface p-5 sm:p-6 rounded-2xl border border-paper-border hover:border-forest-800/30 shadow-soft hover:shadow-medium hover:-translate-y-0.5 transition-all flex items-center justify-between group"
-        >
-          <div class="space-y-1 text-left">
-            <span class="text-[9px] font-mono uppercase font-bold tracking-wider text-gold-600">Reader Experience</span>
-            <h3 class="font-display font-bold text-sm sm:text-base text-forest-950">Live Bookstore</h3>
-            <p class="text-[11px] text-ink-muted leading-normal">Preview public catalog and checkout</p>
-          </div>
-          <div class="w-11 h-11 rounded-xl bg-paper-cream flex items-center justify-center text-gold-600 flex-shrink-0 ml-3 group-hover:scale-105 transition-transform">
-            <ExternalLink :size="18" />
-          </div>
-        </NuxtLink>
-      </div>
-
-      <!-- Recent Orders Table & 1-Click Approval Action -->
-      <div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft overflow-hidden">
-        <div class="px-5 py-4 border-b border-paper-border flex justify-between items-center bg-paper-cream/30">
-          <h3 class="font-display font-bold text-sm sm:text-base text-forest-950">Recent Orders</h3>
-          <span class="text-[10px] font-mono uppercase tracking-wider text-ink-muted">Live Orders Stream</span>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr class="border-b border-paper-border text-ink-subtle uppercase tracking-wider font-mono text-[9px]">
-                <th class="py-3 px-5 font-semibold">Customer</th>
-                <th class="py-3 px-5 font-semibold">Phone</th>
-                <th class="py-3 px-5 font-semibold text-right">Total</th>
-                <th class="py-3 px-5 font-semibold">Status</th>
-                <th class="py-3 px-5 font-semibold">Date</th>
-                <th class="py-3 px-5 font-semibold text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-paper-border/60">
-              <tr v-if="!stats?.recentOrders?.length">
-                <td colspan="6" class="py-10 text-center text-ink-muted text-xs">
-                  No orders recorded yet. Incoming storefront orders will display here automatically.
-                </td>
-              </tr>
-
-              <tr
-                v-for="order in stats?.recentOrders"
-                :key="order.id"
-                class="hover:bg-paper-cream/30 transition-colors"
-              >
-                <td class="py-3.5 px-5 font-semibold text-forest-950 text-xs truncate max-w-[150px]">
-                  {{ order.customerName }}
-                </td>
-                <td class="py-3.5 px-5 font-mono text-[11px] text-ink-muted">
-                  {{ order.customerPhone }}
-                </td>
-                <td class="py-3.5 px-5 text-right font-mono font-bold text-forest-950 text-xs tabular-figure">
-                  {{ formatCurrency(order.total) }}
-                </td>
-                <td class="py-3.5 px-5">
-                  <span
-                    class="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border"
-                    :class="{
-                      'bg-amber-50 text-amber-900 border-amber-200': order.status === 'pending',
-                      'bg-emerald-50 text-emerald-900 border-emerald-200': order.status === 'confirmed' || order.status === 'delivered',
-                      'bg-red-50 text-red-900 border-red-200': order.status === 'cancelled',
-                    }"
-                  >
-                    <span
-                      class="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      :class="{
-                        'bg-amber-600': order.status === 'pending',
-                        'bg-emerald-600': order.status === 'confirmed' || order.status === 'delivered',
-                        'bg-red-600': order.status === 'cancelled',
-                      }"
-                    />
-                    {{ order.status }}
-                  </span>
-                </td>
-                <td class="py-3.5 px-5 text-ink-subtle text-[11px] font-mono">
-                  {{ formatDate(order.createdAt) }}
-                </td>
-                <td class="py-3.5 px-5 text-right">
-                  <button
-                    v-if="order.status === 'pending'"
-                    type="button"
-                    class="bg-forest-950 hover:bg-forest-900 text-paper text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition-all inline-flex items-center gap-1.5 shadow-subtle cursor-pointer disabled:opacity-50 active:scale-[0.98]"
-                    :disabled="confirmingOrderId === order.id"
-                    @click="handleConfirmPayment(order.id)"
-                  >
-                    <CheckCircle :size="12" class="text-gold-300" />
-                    <span>{{ confirmingOrderId === order.id ? 'Releasing...' : 'Approve & Release' }}</span>
-                  </button>
-                  <span v-else class="text-[11px] font-medium text-emerald-800">Fulfilled ✓</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <!-- 2. Flash Sale Shelf: Specifically FLASH_SALE & LIMITED_TIME (Tight transition) -->
+    <div id="flash-sale" class="mt-3 sm:mt-5">
+      <FlashSaleStrip
+        :books="flashSaleBooks"
+        title="FLASH SALE DEALS"
+        badge-label="LIMITED TIME"
+      />
     </div>
-  </AdminLayout>
+
+    <!-- 3. #1 Picks Section: Specifically NO1_PICK -->
+    <FeaturedMonth :books="no1Picks" @request-seed="handleRequestSeed" />
+
+    <!-- 4. Book Categories (Bento Grid) -->
+    <BentoCategories @select="handleCategorySelect" />
+
+    <!-- 5. Bestsellers Section: Specifically BESTSELLER -->
+    <BestsellersSection
+      :books="bestsellers"
+      @request-seed="handleRequestSeed"
+      @see-more="scrollToSection('catalog-results')"
+    />
+
+    <!-- 6. Deals of the Week: Specifically DEAL_OF_WEEK -->
+    <DealsWeek :books="dealBooks" @request-seed="handleRequestSeed" />
+
+    <!-- 7. Browse All Books: Broader Catalogue with Search & Filter Bar -->
+    <section
+      id="catalog-results"
+      class="pt-12 sm:pt-16 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-theme-border">
+        <div>
+          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
+            {{ hasActiveFilter ? 'Filtered Search Results' : 'Bookstore Inventory' }}
+          </span>
+          <h2 class="font-display text-xl sm:text-2xl font-extrabold uppercase text-theme-ink tracking-tight">
+            {{ hasActiveFilter ? `Showing: ${activeCategoryFilter}` : 'Browse All Books' }}
+          </h2>
+        </div>
+
+        <button
+          v-if="hasActiveFilter"
+          type="button"
+          class="text-xs font-bold text-[#F05A36] hover:underline px-3 py-1.5 bg-theme-sand rounded-xl cursor-pointer transition-colors"
+          @click="
+            activeCategoryFilter = 'ALL';
+            searchQuery = '';
+          "
+        >
+          Reset Filters
+        </button>
+      </div>
+
+      <!-- Real Books Grid: 4 cards across desktop, 2 cards across mobile, symmetrical side breathing room -->
+      <div
+        v-if="filteredBooks.length > 0"
+        class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center"
+      >
+        <BookCard
+          v-for="book in filteredBooks"
+          :key="book.id"
+          :book="book"
+          @request-seed="handleRequestSeed"
+        />
+      </div>
+
+      <!-- Fallback Empty State -->
+      <div v-else class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm">
+        <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
+        <h3 class="font-display font-bold text-base text-slate-800">
+          No books found matching this filter
+        </h3>
+        <p class="text-xs text-slate-500 max-w-xs mx-auto">
+          We can source this title for you directly via WhatsApp concierge.
+        </p>
+        <button
+          type="button"
+          class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95"
+          @click="handleRequestSeed(searchQuery)"
+        >
+          Submit Book Request
+        </button>
+      </div>
+    </section>
+
+    <!-- 8. Trust & Delivery Benefits -->
+    <TrustStrip />
+
+    <!-- 9. 20% First-Order Offer -->
+    <NewsletterBanner />
+
+    <!-- 10. Footer -->
+    <StoreFooter />
+
+    <!-- Overlays -->
+    <BookRequestModal
+      :open="showRequestModal"
+      :initial-title="modalInitialTitle"
+      :initial-author="modalInitialAuthor"
+      @close="showRequestModal = false"
+    />
+
+    <CartDrawer />
+    <ToastContainer />
+  </div>
 </template>
