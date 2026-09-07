@@ -4,7 +4,7 @@ import { ref, computed, watch } from 'vue';
 import { ShoppingBag } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
-import type { Book, ProductFormat } from '~/types';
+import type { Book, ProductFormat, BookFormatType } from '~/types';
 
 interface Props {
   book: Book;
@@ -21,36 +21,66 @@ const { push: pushToast } = useToast();
 const imageFailed = ref(false);
 const selectedFormatId = ref<string>('');
 
-// Synchronize PDF and EPUB so both digital editions share identical pricing & comparison
-const availableFormats = computed<ProductFormat[]>(() => {
+// 1. Filter to strictly available digital formats with real files
+const availableDigitalFormats = computed<ProductFormat[]>(() => {
   if (!props.book?.formats || props.book.formats.length === 0) return [];
 
-  const pdf = props.book.formats.find((f) => f.format === 'pdf');
-  const epub = props.book.formats.find((f) => f.format === 'epub');
-  const digitalPrice = pdf?.price ?? epub?.price ?? 149;
-  const digitalCompareAt = pdf?.compare_at_price ?? epub?.compare_at_price ?? null;
+  return props.book.formats.filter((f) => {
+    const isDigital = f.format === 'pdf' || f.format === 'epub';
+    if (!isDigital) return false;
+    if (props.book.isSeed) return true;
 
-  return props.book.formats.map((f) => {
-    if (f.format === 'pdf' || f.format === 'epub') {
-      return {
-        ...f,
-        price: digitalPrice,
-        compare_at_price: digitalCompareAt,
-      };
-    }
-    return f;
+    return Boolean(
+      (f.file_url && f.file_url.trim().length > 0) ||
+      (f.file_public_id && f.file_public_id.trim().length > 0)
+    );
   });
 });
 
-// Default to Hardcopy (Print) if available, or first format
+const hasDigitalCopy = computed(() => availableDigitalFormats.value.length > 0);
+
+// 2. Guaranteed Hardcopy Format
+const hardcopyFormat = computed<ProductFormat | null>(() => {
+  const existing = props.book?.formats?.find((f) => f.format === 'hardcopy');
+  if (existing) return existing;
+
+  if (hasDigitalCopy.value || props.book.price) {
+    return {
+      id: `synthetic-hardcopy-${props.book.id}`,
+      product_id: props.book.id,
+      format: 'hardcopy' as BookFormatType,
+      price: props.book.price || 999,
+      compare_at_price: props.book.compare_at_price || null,
+      file_url: null,
+      file_public_id: null,
+      file_size_bytes: null,
+      stock: props.book.stock ?? 10,
+      created_at: props.book.created_at || '',
+      updated_at: props.book.updated_at || '',
+    };
+  }
+
+  return null;
+});
+
+// 3. Complete Available Formats List
+const availableFormats = computed<ProductFormat[]>(() => {
+  const list: ProductFormat[] = [...availableDigitalFormats.value];
+  if (hardcopyFormat.value) {
+    list.push(hardcopyFormat.value);
+  }
+  return list;
+});
+
+// Default to available digital format first; fallback to hardcopy
 watch(
   availableFormats,
   (fmts) => {
     imageFailed.value = false;
     if (fmts && fmts.length > 0) {
       if (!fmts.some((f) => f.id === selectedFormatId.value)) {
-        const hardcopy = fmts.find((f) => f.format === 'hardcopy');
-        selectedFormatId.value = (hardcopy || fmts[0]).id;
+        const digital = fmts.find((f) => f.format === 'pdf' || f.format === 'epub');
+        selectedFormatId.value = (digital || fmts[0]).id;
       }
     } else {
       selectedFormatId.value = '';
@@ -64,12 +94,10 @@ const activeFormat = computed<ProductFormat | undefined>(() => {
   return availableFormats.value.find((f) => f.id === selectedFormatId.value) || availableFormats.value[0];
 });
 
-// Proportional & Non-Inverted Pricing Engine for All Formats
+// Pricing calculations
 const pricing = computed(() => {
   const pBook = props.book.price ?? 0;
   const cpBook = props.book.compare_at_price ?? null;
-
-  // Check if parent book has an active sale discount
   const hasParentSale = Boolean(cpBook && cpBook > pBook && pBook > 0);
   const parentDiscountRatio = hasParentSale && cpBook ? (cpBook - pBook) / cpBook : 0;
 
@@ -79,21 +107,16 @@ const pricing = computed(() => {
 
   if (fmt) {
     if (fmt.compare_at_price && fmt.compare_at_price > fmt.price) {
-      // 1. Explicit format-level compare-at price
       cp = fmt.compare_at_price;
     } else if (fmt.format === 'hardcopy') {
-      // 2. Hardcopy inherits book compare_at_price
       cp = cpBook;
     } else if (hasParentSale && parentDiscountRatio > 0 && parentDiscountRatio < 1) {
-      // 3. Digital format (PDF/EPUB): compute proportional digital original price
-      // so strikethrough is neither missing nor comparing against 1,800 KSh hardcover
       cp = Math.round(fmt.price / (1 - parentDiscountRatio));
     }
   } else {
     cp = cpBook;
   }
 
-  // Calculate true % price is down by
   if (cp !== null && cp !== undefined && cp > 0 && p > 0 && cp !== p) {
     const minP = Math.min(p, cp);
     const maxP = Math.max(p, cp);
@@ -185,23 +208,27 @@ function handleAddToCart(event: Event): void {
   }
 
   const fmt = activeFormat.value;
-  const formatType = fmt ? fmt.format : 'hardcopy';
-  const formatId = fmt ? fmt.id : 'default';
+  const isPhysical = fmt?.format === 'hardcopy';
+  const formatType: BookFormatType = fmt ? fmt.format : 'hardcopy';
+
+  const isSynthetic = !fmt || fmt.id.startsWith('synthetic-');
+  const validFormatId = isSynthetic ? '' : fmt.id;
 
   addItem({
     productId: props.book.id,
-    formatId,
+    formatId: validFormatId,
     title: props.book.name,
     format: formatType,
     price: currentPrice.value,
     compare_at_price: originalPrice.value,
     quantity: 1,
+    deliveryMethod: isPhysical ? 'delivery' : 'digital',
     coverUrl: coverImage.value,
     author: props.book.author,
   });
 
   pushToast({
-    message: `Added "${props.book.name}" (${formatType.toUpperCase()}) to cart!`,
+    message: `Added "${props.book.name}" (${formatType === 'hardcopy' ? 'Hardcopy' : formatType.toUpperCase()}) to cart!`,
     variant: 'success',
   });
 
@@ -212,13 +239,12 @@ function handleAddToCart(event: Event): void {
 <template>
   <div class="w-full max-w-none sm:max-w-[148px] bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all flex flex-col justify-between group select-none text-left">
     <div>
-      <!-- Book Cover: 124px wide x ~170px height -->
+      <!-- Book Cover -->
       <NuxtLink
         :to="book.isSeed ? '#' : `/book/${book.slug}`"
         class="block relative aspect-[1/1.37] rounded-book overflow-hidden bg-stone-100 book-cover-3d mb-2 sm:mb-2.5 cursor-pointer"
         @click="handleCardClick"
       >
-        <!-- Fallback Jacket -->
         <div
           v-if="imageFailed || !coverImage"
           class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none"
@@ -248,7 +274,6 @@ function handleAddToCart(event: Event): void {
           @error="handleImageError"
         />
 
-        <!-- Top-Right Percentage Discount Badge -->
         <span
           v-if="discountPercentage > 0"
           class="absolute top-1.5 right-1.5 bg-red-600 text-white font-mono font-extrabold text-[8px] px-1.5 py-0.5 rounded shadow-xs z-10"
@@ -256,7 +281,6 @@ function handleAddToCart(event: Event): void {
           -{{ discountPercentage }}%
         </span>
 
-        <!-- Top-Left Promotional Badge Tag -->
         <span
           v-if="book.badge"
           class="absolute top-1.5 left-1.5 bg-[#052219] text-[#2EE59D] font-mono font-bold text-[7.5px] px-1.5 py-0.5 rounded uppercase z-10"
@@ -277,7 +301,7 @@ function handleAddToCart(event: Event): void {
         {{ displayAuthor }}
       </p>
 
-      <!-- Format Toggle Pills (PDF and EPUB always identical price) -->
+      <!-- Format Toggle Pills -->
       <div class="flex items-center justify-start gap-1 pt-1.5 flex-wrap">
         <template v-if="availableFormats.length > 1">
           <button
@@ -288,29 +312,27 @@ function handleAddToCart(event: Event): void {
             :class="activeFormat?.id === fmt.id ? 'bg-[#052219] text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
             @click="selectFormat(fmt.id, $event)"
           >
-            {{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}
+            {{ fmt.format === 'hardcopy' ? 'Hardcopy' : fmt.format.toUpperCase() }}
           </button>
         </template>
         <span
           v-else
           class="text-[7px] sm:text-[7.5px] font-mono font-medium uppercase tracking-wider text-[#6B7280] bg-slate-100 px-1.5 py-0.5 rounded-full leading-none"
         >
-          {{ activeFormat?.format === 'hardcopy' ? 'Print' : (activeFormat ? activeFormat.format.toUpperCase() : 'Print') }}
+          {{ activeFormat?.format === 'hardcopy' ? 'Hardcopy' : (activeFormat ? activeFormat.format.toUpperCase() : 'Hardcopy') }}
         </span>
       </div>
     </div>
 
-    <!-- Bottom Bar: Stable Price Box (Zero Layout Shift) + Add Button -->
+    <!-- Bottom Bar: Price + Add Button -->
     <div class="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
       <div class="min-w-0 flex flex-col justify-center min-h-[22px]">
-        <!-- Strikethrough Original Price: Active for both physical and digital sales -->
         <span
           v-if="originalPrice && originalPrice > currentPrice"
           class="text-[8px] sm:text-[8.5px] text-slate-400 line-through font-mono block leading-none"
         >
           {{ formatCurrency(originalPrice) }}
         </span>
-        <!-- Current Selling Price -->
         <span
           class="text-[10px] sm:text-[11px] font-extrabold font-mono leading-tight"
           :class="originalPrice && originalPrice > currentPrice ? 'text-red-600' : 'text-[#141E1A]'"
@@ -322,7 +344,7 @@ function handleAddToCart(event: Event): void {
       <button
         type="button"
         class="w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-lg bg-[#052219] hover:bg-[#F05A36] text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95 shadow-xs flex-shrink-0"
-        :title="book.isSeed ? 'Request Book' : 'Add to Cart'"
+        :title="book.isSeed ? 'Request Book' : (activeFormat?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart')"
         @click="handleAddToCart"
       >
         <ShoppingBag :size="12" />

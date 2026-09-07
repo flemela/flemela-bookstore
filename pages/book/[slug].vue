@@ -15,7 +15,7 @@ import QuantityStepper from '~/components/storefront/QuantityStepper.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
-import type { Book, ProductFormat } from '~/types';
+import type { Book, ProductFormat, BookFormatType } from '~/types';
 
 const route = useRoute();
 const slug = computed(() => route.params.slug as string);
@@ -27,17 +27,29 @@ const { push: pushToast } = useToast();
 const selectedFormatId = ref<string>('');
 const quantity = ref<number>(1);
 
-// Synchronize PDF and EPUB formats so both digital editions share identical pricing and proportional strikethrough
-const availableFormats = computed<ProductFormat[]>(() => {
+// 1. Filter to strictly available digital formats with real files
+const availableDigitalFormats = computed<ProductFormat[]>(() => {
   if (!book.value?.formats || book.value.formats.length === 0) return [];
+
+  const rawDigitals = book.value.formats.filter((f) => {
+    const isDigital = f.format === 'pdf' || f.format === 'epub';
+    if (!isDigital) return false;
+    if (book.value?.isSeed) return true;
+    return Boolean(
+      (f.file_url && f.file_url.trim().length > 0) ||
+      (f.file_public_id && f.file_public_id.trim().length > 0)
+    );
+  });
+
+  if (rawDigitals.length === 0) return [];
 
   const pBook = book.value.price ?? 0;
   const cpBook = book.value.compare_at_price ?? null;
   const hasParentSale = Boolean(cpBook && cpBook > pBook && pBook > 0);
   const parentDiscountRatio = hasParentSale && cpBook ? (cpBook - pBook) / cpBook : 0;
 
-  const pdf = book.value.formats.find((f) => f.format === 'pdf');
-  const epub = book.value.formats.find((f) => f.format === 'epub');
+  const pdf = rawDigitals.find((f) => f.format === 'pdf');
+  const epub = rawDigitals.find((f) => f.format === 'epub');
   const digitalPrice = pdf?.price ?? epub?.price ?? 149;
 
   let digitalCompareAt: number | null = null;
@@ -49,32 +61,61 @@ const availableFormats = computed<ProductFormat[]>(() => {
     digitalCompareAt = Math.round(digitalPrice / (1 - parentDiscountRatio));
   }
 
-  return book.value.formats.map((f) => {
-    if (f.format === 'pdf' || f.format === 'epub') {
-      return {
-        ...f,
-        price: digitalPrice,
-        compare_at_price: digitalCompareAt,
-      };
-    }
-    if (f.format === 'hardcopy') {
-      return {
-        ...f,
-        compare_at_price: f.compare_at_price || cpBook,
-      };
-    }
-    return f;
-  });
+  return rawDigitals.map((f) => ({
+    ...f,
+    price: digitalPrice,
+    compare_at_price: digitalCompareAt,
+  }));
 });
 
-// Default to Hardcopy (Print) if available, or first format
+const hasDigitalCopy = computed(() => availableDigitalFormats.value.length > 0);
+
+// 2. Guaranteed Hardcopy Format
+const hardcopyFormat = computed<ProductFormat | null>(() => {
+  const existing = book.value?.formats?.find((f) => f.format === 'hardcopy');
+  if (existing) {
+    return {
+      ...existing,
+      compare_at_price: existing.compare_at_price || book.value?.compare_at_price || null,
+    };
+  }
+
+  if (hasDigitalCopy.value || book.value?.price) {
+    return {
+      id: `synthetic-hardcopy-${book.value?.id || 'book'}`,
+      product_id: book.value?.id || 'book',
+      format: 'hardcopy' as BookFormatType,
+      price: book.value?.price || 999,
+      compare_at_price: book.value?.compare_at_price || null,
+      file_url: null,
+      file_public_id: null,
+      file_size_bytes: null,
+      stock: book.value?.stock ?? 10,
+      created_at: book.value?.created_at || '',
+      updated_at: book.value?.updated_at || '',
+    };
+  }
+
+  return null;
+});
+
+// 3. Combined Available Formats
+const displayFormats = computed<ProductFormat[]>(() => {
+  const list: ProductFormat[] = [...availableDigitalFormats.value];
+  if (hardcopyFormat.value) {
+    list.push(hardcopyFormat.value);
+  }
+  return list;
+});
+
+// Default to available digital format first; fallback to hardcopy
 watch(
-  availableFormats,
+  displayFormats,
   (fmts) => {
     if (fmts && fmts.length > 0) {
       if (!fmts.some((f) => f.id === selectedFormatId.value)) {
-        const hardcopy = fmts.find((f) => f.format === 'hardcopy');
-        selectedFormatId.value = (hardcopy || fmts[0]).id;
+        const digital = fmts.find((f) => f.format === 'pdf' || f.format === 'epub');
+        selectedFormatId.value = (digital || fmts[0]).id;
       }
     }
   },
@@ -82,10 +123,12 @@ watch(
 );
 
 const activeFormat = computed<ProductFormat | undefined>(() => {
-  return availableFormats.value.find((f) => f.id === selectedFormatId.value) || availableFormats.value[0];
+  return displayFormats.value.find((f) => f.id === selectedFormatId.value) || displayFormats.value[0];
 });
 
-// Resilient Non-Inverted Pricing & % Down Engine
+const isPhysicalHardcopy = computed(() => activeFormat.value?.format === 'hardcopy');
+
+// Pricing Calculations
 const activePricing = computed(() => {
   if (!activeFormat.value) {
     return {
@@ -118,7 +161,6 @@ const activePricing = computed(() => {
   };
 });
 
-// Safe cover resolution supporting string, object, or fallback SVG
 const primaryImage = computed(() => {
   if (!book.value) return '/images/book-placeholder.svg';
   const rawImg = book.value.images?.[0];
@@ -145,16 +187,21 @@ useSeoMeta({
 
 function handleAddToCart(): void {
   if (!book.value || !activeFormat.value) return;
-  const qty = activeFormat.value.format === 'hardcopy' ? quantity.value : 1;
+  const isPhysical = activeFormat.value.format === 'hardcopy';
+  const qty = isPhysical ? quantity.value : 1;
+
+  const isSynthetic = !activeFormat.value.id || activeFormat.value.id.startsWith('synthetic-');
+  const validFormatId = isSynthetic ? '' : activeFormat.value.id;
 
   addItem({
     productId: book.value.id,
-    formatId: activeFormat.value.id,
+    formatId: validFormatId,
     title: book.value.name,
     format: activeFormat.value.format,
     price: activePricing.value.currentPrice,
     compare_at_price: activePricing.value.originalPrice,
     quantity: qty,
+    deliveryMethod: isPhysical ? 'delivery' : 'digital',
     coverUrl: primaryImage.value,
     author: book.value.author,
   });
@@ -220,7 +267,7 @@ function handleAddToCart(): void {
             </p>
           </div>
 
-          <!-- Format Choice (PDF & EPUB strictly identical price) -->
+          <!-- Format Choice -->
           <div class="space-y-2.5 pt-3 border-t border-ink-border">
             <label class="text-xs font-bold uppercase text-forest-950 tracking-wider block font-sans">
               Choose Reading Format:
@@ -228,7 +275,7 @@ function handleAddToCart(): void {
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <label
-                v-for="fmt in availableFormats"
+                v-for="fmt in displayFormats"
                 :key="fmt.id"
                 class="border rounded p-3 flex flex-col justify-between cursor-pointer transition-all text-left"
                 :class="selectedFormatId === fmt.id ? 'border-forest-900 bg-paper-cream ring-1 ring-forest-900' : 'border-ink-border hover:border-forest-800/40 bg-paper-surface'"
@@ -237,11 +284,16 @@ function handleAddToCart(): void {
 
                 <div class="space-y-1">
                   <div class="flex justify-between items-center text-xs font-bold text-forest-950 uppercase">
-                    <span>{{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}</span>
+                    <span>{{ fmt.format === 'hardcopy' ? 'Hardcopy' : fmt.format.toUpperCase() }}</span>
                     <component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="12" class="text-forest-800" />
                   </div>
                   <span class="text-[9px] text-ink-muted block leading-tight font-mono">
-                    {{ fmt.format === 'hardcopy' ? `${fmt.stock || 0} in stock` : formatFileSize(fmt.file_size_bytes) }}
+                    <template v-if="fmt.format === 'hardcopy'">
+                      {{ `${fmt.stock || 0} in stock` }}
+                    </template>
+                    <template v-else>
+                      {{ formatFileSize(fmt.file_size_bytes) }}
+                    </template>
                   </span>
                 </div>
 
@@ -262,24 +314,29 @@ function handleAddToCart(): void {
 
           <!-- Quantity & Purchase Action -->
           <div class="pt-3 flex items-center gap-3">
-            <div v-if="activeFormat?.format === 'hardcopy'" class="space-y-1">
+            <div v-if="isPhysicalHardcopy" class="space-y-1">
               <span class="text-[9px] font-bold text-ink-subtle uppercase block font-mono">Qty</span>
               <QuantityStepper v-model="quantity" />
             </div>
 
             <button
               type="button"
-              class="flex-1 bg-forest-950 text-white hover:bg-forest-900 font-sans font-bold text-xs uppercase py-3.5 px-5 rounded shadow-subtle transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98]"
+              class="flex-1 bg-forest-950 hover:bg-forest-900 text-white font-sans font-bold text-xs uppercase py-3.5 px-5 rounded shadow-subtle transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98]"
               @click="handleAddToCart"
             >
               <ShoppingBag :size="15" />
-              <span>Add to Cart • {{ activeFormat ? formatCurrency(activePricing.currentPrice * (activeFormat.format === 'hardcopy' ? quantity : 1)) : '' }}</span>
+              <span>
+                {{ isPhysicalHardcopy ? 'Add Hardcopy to Cart' : 'Add eBook to Cart' }} • {{ activeFormat ? formatCurrency(activePricing.currentPrice * (isPhysicalHardcopy ? quantity : 1)) : '' }}
+              </span>
             </button>
           </div>
 
+          <!-- Dynamic Notice -->
           <div class="flex items-center gap-2 text-xs text-forest-900 pt-1">
             <CheckCircle2 :size="14" class="text-emerald-700 flex-shrink-0" />
-            <span>Instant Cloudflare R2 tokens issued for eBooks upon M-Pesa confirmation.</span>
+            <span>
+              {{ isPhysicalHardcopy ? 'Physical Hardcopy eligible for Doorstep Delivery or Free Sarit Centre Store Pickup.' : 'Instant Cloudflare R2 tokens issued for eBooks upon M-Pesa confirmation.' }}
+            </span>
           </div>
 
           <!-- Description -->

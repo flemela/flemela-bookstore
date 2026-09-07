@@ -1,6 +1,6 @@
 <!-- pages/checkout/confirm.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted} from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -20,7 +20,7 @@ import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
 import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
 import { useToast } from '~/composables/useToast';
-import { normalizeKenyanPhone, isValidKenyanPhone } from '~/utils/phone';
+import { normalizeKenyanPhone, isValidKenyanPhone, buildWhatsAppLink } from '~/utils/phone';
 
 const route = useRoute();
 const router = useRouter();
@@ -214,7 +214,7 @@ async function handleManualCheckStatus(): Promise<void> {
 // In-Place Payment Switcher: Allows customer to switch methods on the fly without restarting checkout
 async function handleRetryOrSwitchPayment(): Promise<void> {
   if (recoveryMethod.value === 'mpesa' && !isValidKenyanPhone(recoveryPhone.value)) {
-    pushToast({ message: 'Enter a valid Kenyan phone number (e.g. 07XXXXXXXX)', variant: 'error' });
+    pushToast({ message: 'Enter a valid Kenyan phone number (e.g. 07XXXXXXXX or 01XXXXXXXX)', variant: 'error' });
     return;
   }
 
@@ -273,11 +273,13 @@ function copyConfirmationCode(): void {
 }
 
 const whatsappHelpUrl = computed(() => {
-  if (!orderData.value) return 'https://wa.me/254700000000';
+  if (!orderData.value) {
+    return buildWhatsAppLink('Hello Flemela Bookstore Concierge, I need assistance with my book order.');
+  }
   const orderRef = orderData.value.orderId.slice(0, 8).toUpperCase();
   const paymentRef = orderData.value.paymentReference ? ` (M-Pesa Ref: ${orderData.value.paymentReference})` : '';
   const text = `Hello Flemela Bookstore Concierge, I need assistance with Order #${orderRef}${paymentRef}. Customer: ${orderData.value.customerName}.`;
-  return `https://wa.me/254700000000?text=${encodeURIComponent(text)}`;
+  return buildWhatsAppLink(text);
 });
 </script>
 
@@ -395,6 +397,7 @@ const whatsappHelpUrl = computed(() => {
                 <a
                   :href="whatsappHelpUrl"
                   target="_blank"
+                  rel="noopener noreferrer"
                   class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                 >
                   <MessageCircle :size="13" class="text-emerald-700" />
@@ -466,7 +469,7 @@ const whatsappHelpUrl = computed(() => {
               <input
                 v-model="recoveryPhone"
                 type="tel"
-                placeholder="07XXXXXXXX"
+                placeholder="07XXXXXXXX or 01XXXXXXXX"
                 class="px-3 py-1.5 bg-white border border-paper-border rounded-lg text-xs font-mono w-full max-w-xs outline-none"
               />
             </div>
@@ -515,7 +518,7 @@ const whatsappHelpUrl = computed(() => {
               Your Books Are Ready!
             </h1>
             <p class="text-xs sm:text-sm text-ink-muted max-w-md mx-auto">
-              Thank you, <strong>{{ orderData?.customerName }}</strong>. Your reading purchase has been approved and delivered.
+              Thank you, <strong>{{ orderData?.customerName }}</strong>. Your reading purchase has been approved and confirmed.
             </p>
           </div>
 
@@ -571,7 +574,8 @@ const whatsappHelpUrl = computed(() => {
               </div>
             </div>
           </div>
-		  <!-- 4. Physical Delivery Handover Code (Only for Physical Deliveries) -->
+		  
+          <!-- 4. Physical Delivery Handover Code (Only for Physical Deliveries) -->
           <div
             v-if="orderData?.deliveryConfirmationCode && orderData?.deliveryType === 'delivery'"
             class="p-5 sm:p-6 bg-paper-cream/50 border-2 border-dashed border-gold-500/60 rounded-2xl text-center space-y-2 shadow-soft"
@@ -632,7 +636,8 @@ const whatsappHelpUrl = computed(() => {
             <a
               :href="whatsappHelpUrl"
               target="_blank"
-              class="flex-1 min-w-[200px] border border-emerald-600/40 bg-emerald-50 hover:bg-emerald-100 text-forest-950 text-xs font-bold uppercase py-3.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-2xs"
+              rel="noopener noreferrer"
+              class="flex-1 min-w-[200px] border border-emerald-600/40 bg-emerald-50 hover:bg-emerald-100 text-forest-950 text-xs font-bold uppercase py-3.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
             >
               <MessageCircle :size="15" class="text-emerald-800" /> WhatsApp Concierge Desk
             </a>

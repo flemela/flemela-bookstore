@@ -3,6 +3,7 @@
 import { ref } from 'vue';
 import { ShoppingBag, Heart, User, Menu, X, Search } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
+import { buildWhatsAppLink } from '~/utils/phone';
 
 const emit = defineEmits<{
   search: [query: string];
@@ -13,13 +14,17 @@ const isMobileOpen = ref(false);
 const isSearchOpen = ref(false);
 const searchInput = ref('');
 
+const conciergeWhatsAppUrl = buildWhatsAppLink(
+  'Hello Flemela Bookstore Concierge, I have an inquiry.'
+);
+
 const navLinks = [
   { label: 'Home', href: '/' },
   { label: 'Flash Sale', href: '#flash-sale' },
   { label: 'Categories', href: '#categories-bento' },
   { label: 'Bestsellers', href: '#catalog-results' },
   { label: 'Deals', href: '#deals-week' },
-  { label: 'Concierge', href: 'https://wa.me/254700000000' },
+  { label: 'Concierge', href: conciergeWhatsAppUrl, isExternal: true },
 ];
 
 function submitSearch(): void {
@@ -35,9 +40,7 @@ function submitSearch(): void {
   <header
     class="bg-[#052219]/90 backdrop-blur-md border-b border-white/10 sticky top-0 z-40 transition-all shadow-[0_2px_12px_rgba(0,0,0,0.12)] select-none"
   >
-    <!-- Compact Container: Height ~54px on Mobile, ~60px on Desktop -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-15 flex items-center justify-between gap-3">
-      
       <!-- Left: Mobile Menu Trigger & Brand Mark -->
       <div class="flex items-center gap-3">
         <button
@@ -50,7 +53,6 @@ function submitSearch(): void {
         </button>
 
         <NuxtLink to="/" class="flex items-center gap-2 group">
-          <!-- Teal/Mint Brand Mark -->
           <svg width="26" height="26" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path
               d="M12 28C7 25 5 21 5 16C5 8.268 11.268 2 19 2C26.732 2 33 8.268 33 16C33 22 29 27 24 29"
@@ -77,7 +79,9 @@ function submitSearch(): void {
           v-for="link in navLinks"
           :key="link.label"
           :href="link.href"
-          class="hover:text-white transition-colors"
+          :target="link.isExternal ? '_blank' : undefined"
+          :rel="link.isExternal ? 'noopener noreferrer' : undefined"
+          class="hover:text-white transition-colors cursor-pointer"
         >
           {{ link.label }}
         </a>
@@ -85,7 +89,6 @@ function submitSearch(): void {
 
       <!-- Right: Search, Cart, Profile Actions -->
       <div class="flex items-center gap-2 sm:gap-3.5 text-white">
-        <!-- Quick Search Toggle -->
         <button
           type="button"
           class="p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
@@ -95,7 +98,6 @@ function submitSearch(): void {
           <Search :size="17" />
         </button>
 
-        <!-- Wishlist (Desktop) -->
         <button
           type="button"
           class="relative p-1.5 text-white/80 hover:text-[#F05A36] transition-colors hidden sm:block cursor-pointer"
@@ -104,7 +106,6 @@ function submitSearch(): void {
           <Heart :size="17" />
         </button>
 
-        <!-- Cart Icon with Badge -->
         <button
           type="button"
           class="relative p-1.5 text-white hover:text-[#2EE59D] transition-colors cursor-pointer"
@@ -120,7 +121,6 @@ function submitSearch(): void {
           </span>
         </button>
 
-        <!-- Profile / Admin Portal -->
         <NuxtLink
           to="/admin/login"
           class="p-1.5 text-white/80 hover:text-[#2EE59D] transition-colors"
@@ -131,7 +131,7 @@ function submitSearch(): void {
       </div>
     </div>
 
-    <!-- Collapsible Quick Search Dropdown Bar -->
+    <!-- Quick Search Dropdown Bar -->
     <div v-if="isSearchOpen" class="border-t border-white/10 px-4 py-2 bg-[#052219]/95 backdrop-blur-md">
       <form class="max-w-2xl mx-auto flex items-center gap-2" @submit.prevent="submitSearch">
         <input
@@ -157,6 +157,8 @@ function submitSearch(): void {
           v-for="link in navLinks"
           :key="link.label"
           :href="link.href"
+          :target="link.isExternal ? '_blank' : undefined"
+          :rel="link.isExternal ? 'noopener noreferrer' : undefined"
           class="py-1.5 text-white/90 hover:text-white border-b border-white/5"
           @click="isMobileOpen = false"
         >

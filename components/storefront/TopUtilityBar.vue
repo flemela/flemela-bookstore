@@ -1,6 +1,7 @@
 <!-- components/storefront/TopUtilityBar.vue -->
 <script setup lang="ts">
 import { Truck, MessageCircle, Search } from 'lucide-vue-next';
+import { buildWhatsAppLink } from '~/utils/phone';
 
 const router = useRouter();
 
@@ -14,9 +15,9 @@ function handleTrackOrderClick(): void {
   }
 }
 
-const whatsappHelpUrl =
-  'https://wa.me/254700000000?text=' +
-  encodeURIComponent('Hello Flemela Bookstore Concierge, I need assistance with my book order.');
+const whatsappHelpUrl = buildWhatsAppLink(
+  'Hello Flemela Bookstore Concierge, I need assistance with my book order.'
+);
 </script>
 
 <template>
@@ -46,11 +47,11 @@ const whatsappHelpUrl =
         <a
           :href="whatsappHelpUrl"
           target="_blank"
-          rel="noopener"
-          class="hover:text-gold-300 transition-colors flex items-center gap-1"
+          rel="noopener noreferrer"
+          class="hover:text-gold-300 transition-colors flex items-center gap-1 cursor-pointer"
         >
           <MessageCircle :size="11" class="text-emerald-400" />
-          <span>Concierge</span>
+          <span>Concierge (0143304460)</span>
         </a>
 
         <span class="hidden md:inline opacity-30">•</span>

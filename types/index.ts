@@ -48,6 +48,7 @@ export interface Book {
   price: number;
   compare_at_price?: number | null;
   cost_price?: number | null;
+  stock?: number | null;
   status: BookStatus;
   badge?:
     | 'BESTSELLER'

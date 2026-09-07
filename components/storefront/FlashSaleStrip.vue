@@ -4,7 +4,7 @@ import { ref } from 'vue';
 import { Zap, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
-import type { Book, ProductFormat } from '~/types';
+import type { Book, ProductFormat, BookFormatType } from '~/types';
 
 interface Props {
   books: Book[];
@@ -35,40 +35,55 @@ function formatCurrency(val: number): string {
   return `KSh ${val.toLocaleString('en-KE')}`;
 }
 
-// Synchronize PDF and EPUB so both digital formats share identical pricing
-function getNormalizedFormats(book: Book): ProductFormat[] {
+// Filter to ONLY available digital formats with real files
+function getAvailableDigitalFormats(book: Book): ProductFormat[] {
   if (!book.formats || book.formats.length === 0) return [];
-
-  const pdf = book.formats.find((f) => f.format === 'pdf');
-  const epub = book.formats.find((f) => f.format === 'epub');
-  const digitalPrice = pdf?.price ?? epub?.price ?? 149;
-  const digitalCompareAt = pdf?.compare_at_price ?? epub?.compare_at_price ?? null;
-
-  return book.formats.map((f) => {
-    if (f.format === 'pdf' || f.format === 'epub') {
-      return {
-        ...f,
-        price: digitalPrice,
-        compare_at_price: digitalCompareAt,
-      };
-    }
-    return f;
+  return book.formats.filter((f) => {
+    const isDigital = f.format === 'pdf' || f.format === 'epub';
+    if (!isDigital) return false;
+    if (book.isSeed) return true;
+    return Boolean(
+      (f.file_url && f.file_url.trim().length > 0) ||
+      (f.file_public_id && f.file_public_id.trim().length > 0)
+    );
   });
 }
 
-function getSelectedFormat(book: Book): ProductFormat | undefined {
-  const fmts = getNormalizedFormats(book);
-  if (!fmts.length) return undefined;
+// Guaranteed Hardcopy Format
+function getHardcopyFormat(book: Book): ProductFormat {
+  const existing = book.formats?.find((f) => f.format === 'hardcopy');
+  if (existing) return existing;
+  return {
+    id: `synthetic-hardcopy-${book.id}`,
+    product_id: book.id,
+    format: 'hardcopy' as BookFormatType,
+    price: book.price || 999,
+    compare_at_price: book.compare_at_price || null,
+    file_url: null,
+    file_public_id: null,
+    file_size_bytes: null,
+    stock: book.stock ?? 10,
+    created_at: book.created_at || '',
+    updated_at: book.updated_at || '',
+  };
+}
 
+// Available Formats: Valid Digitals + Guaranteed Hardcopy
+function getBookDisplayFormats(book: Book): ProductFormat[] {
+  const digitals = getAvailableDigitalFormats(book);
+  const hardcopy = getHardcopyFormat(book);
+  return [...digitals, hardcopy];
+}
+
+function getSelectedFormat(book: Book): ProductFormat {
+  const fmts = getBookDisplayFormats(book);
   const selectedId = selectedFormats.value[book.id];
   if (selectedId) {
     const found = fmts.find((f) => f.id === selectedId);
     if (found) return found;
   }
-
-  // Default to Hardcopy (Print) if available, or first format
-  const hardcopy = fmts.find((f) => f.format === 'hardcopy');
-  return hardcopy || fmts[0];
+  const digital = fmts.find((f) => f.format === 'pdf' || f.format === 'epub');
+  return digital || fmts[0];
 }
 
 function getBookPricing(book: Book) {
@@ -87,7 +102,6 @@ function getBookPricing(book: Book) {
     } else if (fmt.format === 'hardcopy') {
       cp = cpBook;
     } else if (hasParentSale && parentDiscountRatio > 0 && parentDiscountRatio < 1) {
-      // Proportional digital strikethrough for eBooks
       cp = Math.round(fmt.price / (1 - parentDiscountRatio));
     }
   } else {
@@ -138,17 +152,21 @@ function handleQuickAdd(book: Book, event: Event): void {
 
   const fmt = getSelectedFormat(book);
   const pricing = getBookPricing(book);
+  const isPhysical = fmt?.format === 'hardcopy';
   const formatType = fmt ? fmt.format : 'hardcopy';
-  const formatId = fmt ? fmt.id : 'default';
+
+  const isSynthetic = !fmt || fmt.id.startsWith('synthetic-');
+  const validFormatId = isSynthetic ? '' : fmt.id;
 
   addItem({
     productId: book.id,
-    formatId,
+    formatId: validFormatId,
     title: book.name,
     format: formatType,
     price: pricing.currentPrice,
     compare_at_price: pricing.originalPrice,
     quantity: 1,
+    deliveryMethod: isPhysical ? 'delivery' : 'digital',
     coverUrl: book.images?.[0]?.image_url || (book as any).cover_image_url || null,
     author: book.author,
   });
@@ -165,7 +183,7 @@ function handleQuickAdd(book: Book, event: Event): void {
 <template>
   <section
     v-if="books.length > 0"
-    class="bg-[#cb0000] text-white pt-4 sm:pt-6 pb-6 sm:pb-8 px-4 relative overflow-hidden select-none rounded-xl mx-2 sm:mx-4"
+    class="bg-[#FF8A00] text-white pt-4 sm:pt-6 pb-6 sm:pb-8 px-4 relative overflow-hidden select-none rounded-xl mx-2 sm:mx-4"
   >
     <div class="max-w-6xl mx-auto space-y-3">
       <!-- Section Header -->
@@ -189,7 +207,6 @@ function handleQuickAdd(book: Book, event: Event): void {
           </div>
         </div>
 
-        <!-- Desktop Navigation Arrow Buttons -->
         <div class="hidden sm:flex items-center gap-1.5">
           <button
             type="button"
@@ -210,7 +227,7 @@ function handleQuickAdd(book: Book, event: Event): void {
         </div>
       </div>
 
-      <!-- Single-Row Horizontal Scrollable Shelf -->
+      <!-- Horizontal Shelf -->
       <div
         ref="scrollContainer"
         class="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-1.5 px-0.5 snap-x snap-mandatory"
@@ -221,7 +238,6 @@ function handleQuickAdd(book: Book, event: Event): void {
           class="w-[140px] sm:w-[148px] flex-shrink-0 bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all snap-start flex flex-col justify-between group select-none text-left"
         >
           <div>
-            <!-- Book Cover: 124px wide x ~170px height -->
             <NuxtLink
               :to="`/book/${book.slug}`"
               class="block relative aspect-[1/1.37] rounded-book overflow-hidden bg-stone-100 book-cover-3d mb-2 sm:mb-2.5"
@@ -234,7 +250,6 @@ function handleQuickAdd(book: Book, event: Event): void {
                 referrerpolicy="no-referrer"
               />
 
-              <!-- Percentage Off Badge: Consistent on both physical and digital editions -->
               <span
                 v-if="getBookPricing(book).discountPercentage > 0"
                 class="absolute top-1.5 right-1.5 bg-red-600 text-white font-mono font-extrabold text-[8px] px-1.5 py-0.5 rounded shadow-xs z-10"
@@ -242,7 +257,6 @@ function handleQuickAdd(book: Book, event: Event): void {
                 -{{ getBookPricing(book).discountPercentage }}%
               </span>
 
-              <!-- Badge Tag on Top Left -->
               <span
                 class="absolute top-1.5 left-1.5 bg-[#052219] text-[#2EE59D] font-mono font-bold text-[7.5px] px-1.5 py-0.5 rounded uppercase z-10"
               >
@@ -250,7 +264,6 @@ function handleQuickAdd(book: Book, event: Event): void {
               </span>
             </NuxtLink>
 
-            <!-- Book Title & Author -->
             <NuxtLink :to="`/book/${book.slug}`" class="block">
               <h3 class="font-display text-[10px] sm:text-[11px] font-bold text-slate-900 group-hover:text-[#F05A36] transition-colors line-clamp-1 leading-snug">
                 {{ book.name }}
@@ -260,30 +273,29 @@ function handleQuickAdd(book: Book, event: Event): void {
               {{ book.author ? (book.author.startsWith('By ') ? book.author : `By ${book.author}`) : 'Original Edition' }}
             </p>
 
-            <!-- Format Toggle Pills (PDF and EPUB always identical price) -->
+            <!-- Format Toggle Pills -->
             <div class="flex items-center justify-start gap-1 pt-1.5 flex-wrap">
-              <template v-if="getNormalizedFormats(book).length > 1">
+              <template v-if="getBookDisplayFormats(book).length > 1">
                 <button
-                  v-for="fmt in getNormalizedFormats(book)"
+                  v-for="fmt in getBookDisplayFormats(book)"
                   :key="fmt.id"
                   type="button"
                   class="text-[7px] sm:text-[7.5px] font-mono font-bold uppercase px-1.5 py-0.5 rounded-full transition-all cursor-pointer select-none leading-none"
                   :class="getSelectedFormat(book)?.id === fmt.id ? 'bg-[#052219] text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                   @click="selectBookFormat(book.id, fmt.id, $event)"
                 >
-                  {{ fmt.format === 'hardcopy' ? 'Print' : fmt.format.toUpperCase() }}
+                  {{ fmt.format === 'hardcopy' ? 'Hardcopy' : fmt.format.toUpperCase() }}
                 </button>
               </template>
               <span
                 v-else
                 class="text-[7px] sm:text-[7.5px] font-mono font-medium uppercase tracking-wider text-[#6B7280] bg-slate-100 px-1.5 py-0.5 rounded-full leading-none"
               >
-                {{ getSelectedFormat(book)?.format === 'hardcopy' ? 'Print' : (getSelectedFormat(book) ? getSelectedFormat(book)!.format.toUpperCase() : 'Print') }}
+                {{ getSelectedFormat(book)?.format === 'hardcopy' ? 'Hardcopy' : (getSelectedFormat(book) ? getSelectedFormat(book)!.format.toUpperCase() : 'Hardcopy') }}
               </span>
             </div>
           </div>
 
-          <!-- Bottom Bar: Stable Price Box + Add Button -->
           <div class="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
             <div class="min-w-0 flex flex-col justify-center min-h-[22px]">
               <span
@@ -303,7 +315,7 @@ function handleQuickAdd(book: Book, event: Event): void {
             <button
               type="button"
               class="w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-lg bg-[#052219] hover:bg-[#F05A36] text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95 shadow-xs flex-shrink-0"
-              title="Add to Cart"
+              :title="getSelectedFormat(book)?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart'"
               @click="handleQuickAdd(book, $event)"
             >
               <ShoppingBag :size="12" />

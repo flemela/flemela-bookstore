@@ -1,9 +1,12 @@
 // =============================================================================
 // utils/phone.ts
-// Centralized Kenyan phone normalization, carrier detection, and validation.
+// Centralized Kenyan phone normalization, carrier detection, and WhatsApp engine.
 // =============================================================================
 
 export type KenyanCarrier = 'safaricom' | 'airtel' | 'telkom' | null;
+
+export const FLEMELA_WHATSAPP_LOCAL = '0143304460';
+export const FLEMELA_WHATSAPP_INTERNATIONAL = '254143304460';
 
 /**
  * Normalizes input to 10-digit local format: 07XXXXXXXX or 01XXXXXXXX.
@@ -36,6 +39,17 @@ export function formatDarajaPhone(input: string): string {
     return `254${normalized.slice(1)}`;
   }
   return normalized;
+}
+
+/**
+ * Constructs an official wa.me chat link with URL-encoded greeting.
+ */
+export function buildWhatsAppLink(message?: string): string {
+  const base = `https://wa.me/${FLEMELA_WHATSAPP_INTERNATIONAL}`;
+  if (!message || !message.trim()) {
+    return base;
+  }
+  return `${base}?text=${encodeURIComponent(message.trim())}`;
 }
 
 /**

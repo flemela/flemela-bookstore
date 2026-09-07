@@ -3,6 +3,7 @@
 import { ref, watch } from 'vue';
 import { X, MessageSquare, Send } from 'lucide-vue-next';
 import { useToast } from '~/composables/useToast';
+import { buildWhatsAppLink } from '~/utils/phone';
 
 interface Props {
   open: boolean;
@@ -24,7 +25,7 @@ const { push: pushToast } = useToast();
 const title = ref(props.initialTitle);
 const author = ref(props.initialAuthor);
 const customerPhone = ref('');
-const preferredFormat = ref<'hardcopy' | 'ebook' | 'either'>('either');
+const preferredFormat = ref<'hardcopy' | 'ebook' | 'either'>('hardcopy');
 const isSubmitting = ref(false);
 
 watch(() => props.open, (isOpen) => {
@@ -43,20 +44,20 @@ function handleSubmit(): void {
     `*📚 Flemela Bookstore — Custom Book Request*`,
     `Book Title: ${title.value.trim()}`,
     author.value.trim() ? `Author: ${author.value.trim()}` : null,
-    `Preferred Format: ${preferredFormat.value.toUpperCase()}`,
+    `Preferred Format: ${preferredFormat.value === 'hardcopy' ? 'PHYSICAL HARDCOPY' : (preferredFormat.value === 'ebook' ? 'EBOOK (PDF/EPUB)' : 'EITHER / ANY')}`,
     `Customer Contact: ${customerPhone.value.trim()}`,
   ].filter(Boolean);
 
-  const whatsappUrl = `https://wa.me/254700000000?text=${encodeURIComponent(lines.join('\n'))}`;
+  const whatsappUrl = buildWhatsAppLink(lines.join('\n'));
 
   setTimeout(() => {
     isSubmitting.value = false;
     emit('close');
     pushToast({ message: 'Request submitted! Opening WhatsApp...', variant: 'success' });
     if (typeof window !== 'undefined') {
-      window.open(whatsappUrl, '_blank');
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     }
-  }, 400);
+  }, 350);
 }
 </script>
 
@@ -86,6 +87,7 @@ function handleSubmit(): void {
           <button
             type="button"
             class="p-1.5 text-theme-muted hover:text-theme-ink rounded-lg transition-colors cursor-pointer"
+            aria-label="Close dialog"
             @click="emit('close')"
           >
             <X :size="18" />
@@ -121,7 +123,7 @@ function handleSubmit(): void {
               <input
                 v-model="customerPhone"
                 type="tel"
-                placeholder="07XXXXXXXX"
+                placeholder="07XXXXXXXX or 01XXXXXXXX"
                 class="w-full px-3.5 py-2.5 bg-theme-canvas border border-theme-border rounded-xl text-xs sm:text-sm font-mono outline-none focus:border-theme-forest transition-all"
                 required
               />
@@ -136,7 +138,7 @@ function handleSubmit(): void {
                 :class="preferredFormat === 'hardcopy' ? 'border-theme-coral bg-orange-50/60 font-bold text-theme-coral' : 'border-theme-border hover:bg-slate-50'"
               >
                 <input type="radio" value="hardcopy" v-model="preferredFormat" class="sr-only" />
-                Physical Print
+                Physical Hardcopy
               </label>
               <label
                 class="border rounded-xl p-2.5 text-center cursor-pointer transition-all"
@@ -158,7 +160,7 @@ function handleSubmit(): void {
           <div class="pt-2 flex justify-end gap-2.5">
             <button
               type="button"
-              class="px-4 py-2 text-xs font-semibold text-theme-muted hover:text-theme-ink rounded-lg"
+              class="px-4 py-2 text-xs font-semibold text-theme-muted hover:text-theme-ink rounded-lg cursor-pointer"
               @click="emit('close')"
             >
               Cancel
