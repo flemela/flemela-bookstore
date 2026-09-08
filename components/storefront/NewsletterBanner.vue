@@ -18,24 +18,20 @@ function handleSubscribe(): void {
 <template>
   <section class="py-12 px-4 max-w-6xl mx-auto">
     <div class="bg-theme-sand border border-stone-300 rounded-2xl p-6 sm:p-10 relative overflow-hidden shadow-card">
-      
-      <!-- Left Hand Illustrated Graphic -->
       <div class="absolute -left-4 top-1/2 -translate-y-1/2 hidden md:block text-5xl pointer-events-none opacity-80 rotate-[-12deg]">
         📖
       </div>
-
-      <!-- Right Hand Illustrated Graphic -->
       <div class="absolute -right-4 top-1/2 -translate-y-1/2 hidden md:block text-5xl pointer-events-none opacity-80 rotate-[12deg]">
         📕
       </div>
 
       <!-- Center Content -->
       <div class="max-w-md mx-auto text-center space-y-4 relative z-10">
-        <h3 class="font-display text-xl sm:text-2xl font-extrabold uppercase tracking-tight text-theme-ink">
-          GET A <span class="text-theme-coral">20% DISCOUNT</span> ON YOUR FIRST ORDER!
+        <h3 class="font-poster text-3xl sm:text-4xl font-extrabold uppercase tracking-wide text-theme-ink leading-none">
+          GET A <span class="text-[#F05A36]">20% DISCOUNT</span> ON YOUR FIRST ORDER!
         </h3>
 
-        <!-- Integrated Email Subscription Pill -->
+        <!-- Subscription Form -->
         <form class="flex items-center bg-white rounded-full p-1.5 border border-stone-300 shadow-sm" @submit.prevent="handleSubscribe">
           <input
             v-model="email"
@@ -46,13 +42,12 @@ function handleSubscribe(): void {
           />
           <button
             type="submit"
-            class="bg-theme-coral hover:bg-theme-coral-hover text-white text-xs font-bold uppercase tracking-wider px-6 py-2 rounded-full transition-all shadow-xs cursor-pointer flex-shrink-0"
+            class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase tracking-wider px-6 py-2 rounded-full transition-all shadow-xs cursor-pointer flex-shrink-0"
           >
             {{ isSubscribed ? 'Sent!' : 'Send' }}
           </button>
         </form>
       </div>
-
     </div>
   </section>
 </template>

@@ -66,7 +66,6 @@ function scrollRight(): void {
 
 <template>
   <section id="deals-week" class="bg-theme-sand py-14 px-4 relative overflow-hidden">
-    <!-- Subtle Concentric Ripple Texture Lines in Background -->
     <svg class="absolute -left-20 -bottom-20 w-96 h-96 text-stone-300/40 pointer-events-none" viewBox="0 0 200 200" fill="none">
       <circle cx="100" cy="100" r="40" stroke="currentColor" stroke-width="0.75" />
       <circle cx="100" cy="100" r="70" stroke="currentColor" stroke-width="0.75" />
@@ -74,18 +73,22 @@ function scrollRight(): void {
     </svg>
 
     <div class="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 items-center relative z-10">
-      
       <!-- Left Column: Title, Copy, Countdown & Carousel Arrows (4 Cols) -->
       <div class="lg:col-span-4 space-y-4">
-        <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-theme-coral block">BOOK OF THE WEEK</span>
-        <h2 class="font-display text-3xl sm:text-4xl font-extrabold text-theme-ink uppercase tracking-tight">
-          DEALS OF THE WEEK
-        </h2>
+        <div class="space-y-1">
+          <span class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
+            LIMITED OPPORTUNITY
+          </span>
+          <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold text-theme-ink uppercase tracking-wide leading-none">
+            DEALS OF THE WEEK
+          </h2>
+        </div>
+
         <p class="text-xs text-theme-muted leading-relaxed">
-          An unforgettable read that is dominating bestsellers and changing how we view love, loss, and everything in between.
+          Unmissable discounts on timeless philosophy, business classics, and gripping fiction.
         </p>
 
-        <!-- 4 Square Countdown Boxes (White with border) -->
+        <!-- 4 Square Countdown Boxes -->
         <ClientOnly>
           <div class="flex items-center gap-2 pt-1">
             <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
@@ -101,12 +104,12 @@ function scrollRight(): void {
             </div>
             <span class="font-bold text-theme-ink">:</span>
             <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
-              <span class="font-mono text-sm font-bold text-theme-coral block">{{ seconds }}S</span>
+              <span class="font-mono text-sm font-bold text-[#F05A36] block">{{ seconds }}S</span>
             </div>
           </div>
         </ClientOnly>
 
-        <!-- Circular Slider Arrows (Left White, Right Coral) -->
+        <!-- Circular Slider Arrows -->
         <div class="flex items-center gap-2.5 pt-3">
           <button
             type="button"
@@ -118,7 +121,7 @@ function scrollRight(): void {
           </button>
           <button
             type="button"
-            class="w-9 h-9 rounded-full bg-theme-coral text-white flex items-center justify-center hover:bg-theme-coral-hover cursor-pointer shadow-xs active:scale-95 transition-all"
+            class="w-9 h-9 rounded-full bg-[#F05A36] text-white flex items-center justify-center hover:bg-[#D94827] cursor-pointer shadow-xs active:scale-95 transition-all"
             aria-label="Next deal"
             @click="scrollRight"
           >
@@ -133,7 +136,6 @@ function scrollRight(): void {
           <BookCard :book="book" @request-seed="(t, a) => emit('requestSeed', t, a)" />
         </div>
       </div>
-
     </div>
   </section>
 </template>

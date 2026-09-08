@@ -23,17 +23,20 @@ const bestsellerBooks = computed(() => {
 
 <template>
   <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-stone-200 pb-3">
-      <div>
-        <h2 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase text-[#141E1A] tracking-wide">
+    <!-- Header with font-poster design foundation -->
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-theme-border pb-3.5">
+      <div class="space-y-1">
+        <span class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
+          READER FAVORITES
+        </span>
+        <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
           BEST SELLERS OF THE MONTH
         </h2>
       </div>
 
       <div class="flex items-center gap-3">
-        <p class="text-xs text-[#5F6964] hidden md:inline">
-          Explore the best books our readers are loving and reading right now.
+        <p class="text-xs text-theme-muted hidden md:inline">
+          Explore the titles dominating bookshelves and changing perspectives right now.
         </p>
         <button
           type="button"

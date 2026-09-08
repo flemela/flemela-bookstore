@@ -9,7 +9,6 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Variable-driven Theme Tokens
         theme: {
           dark: 'var(--theme-dark)',
           forest: 'var(--theme-forest)',
@@ -27,7 +26,6 @@ export default {
           subtle: 'var(--theme-ink-subtle)',
         },
 
-        // Bento Category Card Colors
         bento: {
           fiction: '#387A5B',
           thriller: '#DE9F3F',
@@ -36,7 +34,6 @@ export default {
           romance: '#7C67B6',
         },
 
-        // Backward compatibility mappings
         forest: {
           950: 'var(--theme-dark)',
           900: 'var(--theme-forest)',
@@ -65,7 +62,8 @@ export default {
       },
 
       fontFamily: {
-        sans: ['"IBM Plex Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        poster: ['"Bebas Neue"', 'Oswald', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         display: ['Fraunces', 'Georgia', 'serif'],
         mono: ['"IBM Plex Mono"', 'monospace'],
       },

@@ -58,36 +58,31 @@ const hasActiveFilter = computed(() => {
   return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
 });
 
-// -----------------------------------------------------------------------------
-// STRICT MUTUALLY EXCLUSIVE BADGE SECTIONS
-// -----------------------------------------------------------------------------
-
-// 1. FLASH SALE: Specifically badged FLASH_SALE / LIMITED_TIME, or unbadged books with discounts
+// 1. FLASH SALE
 const flashSaleBooks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   return books.filter((b) => {
     if (b.badge === 'FLASH_SALE' || b.badge === 'LIMITED_TIME') return true;
-    // Only capture unbadged discounted books; never steal a book with another badge
     if (!b.badge && b.compare_at_price && b.compare_at_price > b.price) return true;
     return false;
   });
 });
 
-// 2. #1 PICKS / FEATURED MONTH: Strictly books tagged with NO1_PICK
+// 2. #1 PICKS / FEATURED MONTH
 const no1Picks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'NO1_PICK');
   return mergeWithSeeds(tagged, MONTHLY_TOP_SEEDS, 4);
 });
 
-// 3. DEALS OF THE WEEK: Strictly books tagged with DEAL_OF_WEEK
+// 3. DEALS OF THE WEEK
 const dealBooks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const deals = books.filter((b) => b.badge === 'DEAL_OF_WEEK');
   return mergeWithSeeds(deals, DEALS_SEEDS, 4);
 });
 
-// 4. BESTSELLERS: Strictly books tagged with BESTSELLER
+// 4. BESTSELLERS
 const bestsellers = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'BESTSELLER');
@@ -124,17 +119,16 @@ function handleRequestSeed(title: string, author?: string): void {
 
 <template>
   <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased">
-    <!-- Floating Restrained Glassmorphic Header -->
     <StoreNavbar @search="handleSearch" />
 
-    <!-- 1. Hero Banner (~4:1 Desktop, ~1.65:1 Mobile) -->
+    <!-- 1. Hero Banner Carousel -->
     <HeroCarousel
       @search="handleSearch"
       @select-category="handleCategorySelect"
       @navigate-flash-sale="scrollToSection('flash-sale')"
     />
 
-    <!-- 2. Flash Sale Shelf: Specifically FLASH_SALE & LIMITED_TIME (Tight transition) -->
+    <!-- 2. Flash Sale Shelf -->
     <div id="flash-sale" class="mt-3 sm:mt-5">
       <FlashSaleStrip
         :books="flashSaleBooks"
@@ -143,41 +137,41 @@ function handleRequestSeed(title: string, author?: string): void {
       />
     </div>
 
-    <!-- 3. #1 Picks Section: Specifically NO1_PICK -->
+    <!-- 3. #1 Picks Section -->
     <FeaturedMonth :books="no1Picks" @request-seed="handleRequestSeed" />
 
     <!-- 4. Book Categories (Bento Grid) -->
     <BentoCategories @select="handleCategorySelect" />
 
-    <!-- 5. Bestsellers Section: Specifically BESTSELLER -->
+    <!-- 5. Bestsellers Section -->
     <BestsellersSection
       :books="bestsellers"
       @request-seed="handleRequestSeed"
       @see-more="scrollToSection('catalog-results')"
     />
 
-    <!-- 6. Deals of the Week: Specifically DEAL_OF_WEEK -->
+    <!-- 6. Deals of the Week -->
     <DealsWeek :books="dealBooks" @request-seed="handleRequestSeed" />
 
-    <!-- 7. Browse All Books: Broader Catalogue with Search & Filter Bar -->
+    <!-- 7. Browse All Books: font-poster design foundation -->
     <section
       id="catalog-results"
       class="pt-12 sm:pt-16 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"
     >
-      <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-theme-border">
-        <div>
-          <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
-            {{ hasActiveFilter ? 'Filtered Search Results' : 'Bookstore Inventory' }}
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-theme-border">
+        <div class="space-y-1">
+          <span class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
+            {{ hasActiveFilter ? 'FILTERED SEARCH RESULTS' : 'COMPLETE CATALOGUE' }}
           </span>
-          <h2 class="font-display text-xl sm:text-2xl font-extrabold uppercase text-theme-ink tracking-tight">
-            {{ hasActiveFilter ? `Showing: ${activeCategoryFilter}` : 'Browse All Books' }}
+          <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-theme-ink tracking-wide leading-none">
+            {{ hasActiveFilter ? `SHOWING: ${activeCategoryFilter}` : 'BROWSE ALL BOOKS' }}
           </h2>
         </div>
 
         <button
           v-if="hasActiveFilter"
           type="button"
-          class="text-xs font-bold text-[#F05A36] hover:underline px-3 py-1.5 bg-theme-sand rounded-xl cursor-pointer transition-colors"
+          class="text-xs font-bold text-[#F05A36] hover:underline px-3.5 py-1.5 bg-theme-sand rounded-xl cursor-pointer transition-colors"
           @click="
             activeCategoryFilter = 'ALL';
             searchQuery = '';
@@ -187,7 +181,7 @@ function handleRequestSeed(title: string, author?: string): void {
         </button>
       </div>
 
-      <!-- Real Books Grid: 4 cards across desktop, 2 cards across mobile, symmetrical side breathing room -->
+      <!-- Real Books Grid -->
       <div
         v-if="filteredBooks.length > 0"
         class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center"
@@ -222,7 +216,7 @@ function handleRequestSeed(title: string, author?: string): void {
     <!-- 8. Trust & Delivery Benefits -->
     <TrustStrip />
 
-    <!-- 9. 20% First-Order Offer -->
+    <!-- 9. Newsletter Offer -->
     <NewsletterBanner />
 
     <!-- 10. Footer -->

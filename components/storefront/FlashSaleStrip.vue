@@ -183,10 +183,10 @@ function handleQuickAdd(book: Book, event: Event): void {
 <template>
   <section
     v-if="books.length > 0"
-    class="bg-[#fe0000] text-white pt-4 sm:pt-6 pb-6 sm:pb-8 px-4 relative overflow-hidden select-none rounded-xl mx-2 sm:mx-4"
+    class="bg-[#e10000] text-white pt-4 sm:pt-6 pb-6 sm:pb-8 px-4 relative overflow-hidden select-none rounded-xl mx-2 sm:mx-4"
   >
     <div class="max-w-6xl mx-auto space-y-3">
-      <!-- Section Header -->
+      <!-- Section Header with font-poster design foundation -->
       <div class="flex items-center justify-between gap-4">
         <div class="flex items-center gap-2.5">
           <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#052219] text-[#2EE59D] flex items-center justify-center shadow-xs">
@@ -194,7 +194,7 @@ function handleQuickAdd(book: Book, event: Event): void {
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="font-poster text-xl sm:text-2xl tracking-wide uppercase leading-none drop-shadow-xs">
+              <h2 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide leading-none text-white drop-shadow-xs">
                 {{ title }}
               </h2>
               <span class="bg-[#052219] text-[#2EE59D] font-mono text-[8px] sm:text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full">

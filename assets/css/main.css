@@ -1,49 +1,42 @@
 /* =============================================================================
    flemela/assets/css/main.css
-   Full-Stack Editorial Design System & Theme Styles
+   Full-Stack Editorial Design System & Unified Typography
    ============================================================================= */
 
-/* 1. Typography Imports */
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,600&display=swap');
+/* 1. Unified Typography Imports */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,600;1,9..144,700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 
 /* 2. Tailwind Directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 3. Global CSS Custom Properties (Theme Design Tokens) */
+/* 3. Global CSS Custom Properties */
 :root {
-  /* Brand Chromatic Palette (Matching Reference Design) */
-  --theme-dark: #052219;          /* Deep Pine Hero & Navbar (#052219 / #04261B) */
-  --theme-forest: #0C3A2B;        /* Dark Pine Accent */
-  --theme-mint: #2EE59D;          /* Vibrant Mint/Cyan headline word "CHAPTER" */
-  --theme-turquoise: #2CD4BF;     /* Secondary Teal/Cyan Highlight */
-  --theme-orange: #FF8A00;        /* Vibrant Marigold headline word "YOUR" */
-  --theme-coral: #F05A36;         /* Primary Action Coral (Search button, -40% badge) */
-  --theme-coral-hover: #D84315;   /* Coral Hover State */
-  --theme-sage: #8FA89B;          /* Soft Muted Sage for Hero Subtitles */
+  /* Brand Chromatic Palette */
+  --theme-dark: #052219;
+  --theme-forest: #0C3A2B;
+  --theme-mint: #2EE59D;
+  --theme-turquoise: #2CD4BF;
+  --theme-orange: #FF8A00;
+  --theme-coral: #F05A36;
+  --theme-coral-hover: #D84315;
+  --theme-sage: #8FA89B;
 
   /* Neutral & Canvas Layers */
-  --theme-sand: #F7F2E7;          /* Warm Sand for Deals Section & Newsletter Card */
-  --theme-canvas: #FFFFFF;        /* Pure Clean Page Canvas */
-  --theme-surface: #FFFFFF;       /* Card Surface Elevation */
-  --theme-cream: #F4EFE6;         /* Linen Tag / Pill Background */
+  --theme-sand: #F7F2E7;
+  --theme-canvas: #FFFFFF;
+  --theme-surface: #FFFFFF;
+  --theme-cream: #F4EFE6;
 
   /* Typography Ink Tones */
-  --theme-ink: #141E1A;           /* Primary Dark Charcoal/Black */
-  --theme-ink-muted: #5F6964;     /* Secondary Subtitles & Authors */
-  --theme-ink-subtle: #929B96;    /* Placeholders & Meta */
+  --theme-ink: #141E1A;
+  --theme-ink-muted: #5F6964;
+  --theme-ink-subtle: #929B96;
 
   /* Border Tints */
   --theme-border: rgba(8, 37, 27, 0.08);
   --theme-border-strong: rgba(8, 37, 27, 0.16);
-
-  /* Bento Box Genre Colors */
-  --bento-fiction: #387A5B;
-  --bento-thriller: #DE9F3F;
-  --bento-fantasy: #207F8B;
-  --bento-nonfiction: #E75837;
-  --bento-romance: #7C67B6;
 }
 
 /* 4. Base Element Rules */
@@ -51,7 +44,7 @@
   html {
     background-color: var(--theme-canvas);
     color: var(--theme-ink);
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
@@ -65,7 +58,7 @@
     overflow-x: hidden;
   }
 
-  /* Font Utilities */
+  /* Canonical Typography Classes */
   .font-poster {
     font-family: 'Bebas Neue', 'Oswald', sans-serif;
     letter-spacing: 0.015em;
@@ -141,7 +134,7 @@
   scrollbar-width: none;
 }
 
-/* 9. Prevent Ugly Form Autofill Color Shifts */
+/* 9. Prevent Form Autofill Color Shifts */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,

@@ -46,7 +46,7 @@ const bentoItems = [
 
 <template>
   <section id="categories-bento" class="py-12 sm:py-16 px-4 max-w-6xl mx-auto space-y-7 select-none overflow-hidden">
-    <!-- Header -->
+    <!-- Section Header (Design Foundation) -->
     <div class="text-center space-y-1">
       <span class="text-[10px] sm:text-[11px] font-mono uppercase font-bold tracking-widest text-[#EE5335] block">
         BOOK CATEGORIES
@@ -58,14 +58,12 @@ const bentoItems = [
 
     <!-- Bento Grid -->
     <div class="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4 auto-rows-[160px] sm:auto-rows-[190px]">
-      
       <!-- Card 1: Fiction -->
       <div
         class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-transform duration-300 hover:-translate-y-1"
         :style="{ backgroundColor: bentoItems[0].bg }"
         @click="emit('select', bentoItems[0].name)"
       >
-        <!-- Atmospheric Depth Overlay -->
         <div class="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/40 pointer-events-none z-0" />
 
         <div class="flex justify-between items-start z-10">
@@ -76,7 +74,6 @@ const bentoItems = [
         </div>
         <h3 class="font-poster text-2xl sm:text-3xl font-bold uppercase tracking-wide z-10">{{ bentoItems[0].title }}</h3>
         
-        <!-- Book with Soft Shadow & Vignette Mask -->
         <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[10deg] group-hover:rotate-6 transition-transform duration-300 z-1 pointer-events-none border border-white/20">
           <img :src="bentoItems[0].cover" alt="" class="w-full h-full object-cover" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
@@ -89,7 +86,6 @@ const bentoItems = [
         :style="{ backgroundColor: bentoItems[1].bg }"
         @click="emit('select', bentoItems[1].name)"
       >
-        <!-- Atmospheric Center Overlay -->
         <div class="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/35 pointer-events-none z-0" />
 
         <div class="flex justify-between items-start z-10">
@@ -99,7 +95,6 @@ const bentoItems = [
           </div>
         </div>
 
-        <!-- Fanned Cluster with Shading & Vignettes -->
         <div class="relative w-full h-36 sm:h-48 md:h-56 flex items-center justify-center my-auto pointer-events-none z-1">
           <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[1/1.45] rounded-md overflow-hidden shadow-xl -translate-x-[42%] rotate-[-14deg] border border-white/20">
             <img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
@@ -182,7 +177,6 @@ const bentoItems = [
           <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         </div>
       </div>
-
     </div>
   </section>
 </template>
