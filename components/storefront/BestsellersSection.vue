@@ -15,27 +15,30 @@ const emit = defineEmits<{
   seeMore: [];
 }>();
 
+// Ensure count aligns to 4 items (1 row of 4 on desktop, 2 rows of 2 on mobile)
 const bestsellerBooks = computed(() => {
   const combined = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
-  return mergeWithSeeds(props.books, combined, 6);
+  const list = mergeWithSeeds(props.books, combined, 4);
+  return list.slice(0, 4);
 });
 </script>
 
 <template>
   <section class="py-14 px-4 max-w-6xl mx-auto w-full space-y-6">
-    <!-- Header with font-poster design foundation -->
+    <!-- Header: Binary Responsive (Mobile vs All Larger Screens) -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-theme-border pb-3.5">
       <div class="space-y-1">
         <span class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
           READER FAVORITES
         </span>
-        <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
+        <h2 class="font-poster text-3xl sm:text-4xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
           BEST SELLERS OF THE MONTH
         </h2>
       </div>
 
       <div class="flex items-center gap-3">
-        <p class="text-xs text-theme-muted hidden md:inline">
+        <!-- Subtitle only hidden on mobile; identical on all screens >= 640px -->
+        <p class="text-xs text-theme-muted hidden sm:inline">
           Explore the titles dominating bookshelves and changing perspectives right now.
         </p>
         <button
@@ -48,8 +51,8 @@ const bestsellerBooks = computed(() => {
       </div>
     </div>
 
-    <!-- Full-Width Responsive Bestsellers Shelf -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 justify-items-center w-full mx-auto px-1 sm:px-2">
+    <!-- Strictly Binary Grid: 2 on mobile, 4 on all larger screens -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center">
       <BookCard
         v-for="book in bestsellerBooks"
         :key="book.id"

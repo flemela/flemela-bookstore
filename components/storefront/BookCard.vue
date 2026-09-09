@@ -237,7 +237,7 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <div class="w-full max-w-none sm:max-w-[148px] bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all flex flex-col justify-between group select-none text-left">
+  <div class="w-full max-w-none sm:max-w-[152px] bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all flex flex-col justify-between group select-none text-left">
     <div>
       <!-- Book Cover -->
       <NuxtLink
@@ -268,7 +268,7 @@ function handleAddToCart(event: Event): void {
           :alt="book.name"
           class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
-          width="124"
+          width="132"
           height="170"
           referrerpolicy="no-referrer"
           @error="handleImageError"

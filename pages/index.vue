@@ -82,12 +82,12 @@ const dealBooks = computed<Book[]>(() => {
   return mergeWithSeeds(deals, DEALS_SEEDS, 4);
 });
 
-// 4. BESTSELLERS
+// 4. BESTSELLERS: Synchronized to target 4 books (4 desktop, 2 mobile)
 const bestsellers = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'BESTSELLER');
   const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
-  return mergeWithSeeds(tagged, combinedSeeds, 6);
+  return mergeWithSeeds(tagged, combinedSeeds, 4);
 });
 
 function handleSearch(query: string, category?: string): void {
@@ -143,7 +143,7 @@ function handleRequestSeed(title: string, author?: string): void {
     <!-- 4. Book Categories (Bento Grid) -->
     <BentoCategories @select="handleCategorySelect" />
 
-    <!-- 5. Bestsellers Section -->
+    <!-- 5. Bestsellers Section (Strict 4-Grid Desktop, 2-Grid Mobile) -->
     <BestsellersSection
       :books="bestsellers"
       @request-seed="handleRequestSeed"
@@ -153,7 +153,7 @@ function handleRequestSeed(title: string, author?: string): void {
     <!-- 6. Deals of the Week -->
     <DealsWeek :books="dealBooks" @request-seed="handleRequestSeed" />
 
-    <!-- 7. Browse All Books: font-poster design foundation -->
+    <!-- 7. Browse All Books -->
     <section
       id="catalog-results"
       class="pt-12 sm:pt-16 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"

@@ -15,7 +15,7 @@ const isSearchOpen = ref(false);
 const searchInput = ref('');
 
 const conciergeWhatsAppUrl = buildWhatsAppLink(
-  'Hello Flemela Bookstore Concierge, I have an inquiry.'
+  'Hello The Sunrise Bookstore Concierge, I have an inquiry.'
 );
 
 const navLinks = [
@@ -53,6 +53,7 @@ function submitSearch(): void {
         </button>
 
         <NuxtLink to="/" class="flex items-center gap-2 group">
+          <!-- Sunrise Stylized Brand Mark -->
           <svg width="26" height="26" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path
               d="M12 28C7 25 5 21 5 16C5 8.268 11.268 2 19 2C26.732 2 33 8.268 33 16C33 22 29 27 24 29"
@@ -67,21 +68,21 @@ function submitSearch(): void {
               stroke-linecap="round"
             />
           </svg>
-          <span class="font-sans font-extrabold text-lg sm:text-xl tracking-tight text-white group-hover:text-[#2EE59D] transition-colors">
-            Flemela
+          <span class="font-sans font-extrabold text-base sm:text-lg tracking-tight text-white group-hover:text-[#2EE59D] transition-colors">
+            The Sunrise Bookstore
           </span>
         </NuxtLink>
       </div>
 
-      <!-- Center: Desktop Menu Links -->
-      <nav aria-label="Main Navigation" class="hidden md:flex items-center gap-7 text-xs font-semibold text-white/80">
+      <!-- Center: Bolder Desktop Navigation Links -->
+      <nav aria-label="Main Navigation" class="hidden md:flex items-center gap-7 text-xs font-bold tracking-wide text-white">
         <a
           v-for="link in navLinks"
           :key="link.label"
           :href="link.href"
           :target="link.isExternal ? '_blank' : undefined"
           :rel="link.isExternal ? 'noopener noreferrer' : undefined"
-          class="hover:text-white transition-colors cursor-pointer"
+          class="hover:text-[#2EE59D] transition-colors cursor-pointer"
         >
           {{ link.label }}
         </a>
@@ -91,7 +92,7 @@ function submitSearch(): void {
       <div class="flex items-center gap-2 sm:gap-3.5 text-white">
         <button
           type="button"
-          class="p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+          class="p-1.5 text-white hover:text-[#2EE59D] rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
           aria-label="Search catalog"
           @click="isSearchOpen = !isSearchOpen"
         >
@@ -123,7 +124,7 @@ function submitSearch(): void {
 
         <NuxtLink
           to="/admin/login"
-          class="p-1.5 text-white/80 hover:text-[#2EE59D] transition-colors"
+          class="p-1.5 text-white hover:text-[#2EE59D] transition-colors"
           title="Admin Portal"
         >
           <User :size="17" />
@@ -131,14 +132,14 @@ function submitSearch(): void {
       </div>
     </div>
 
-    <!-- Quick Search Dropdown Bar -->
+    <!-- Collapsible Quick Search Dropdown Bar -->
     <div v-if="isSearchOpen" class="border-t border-white/10 px-4 py-2 bg-[#052219]/95 backdrop-blur-md">
       <form class="max-w-2xl mx-auto flex items-center gap-2" @submit.prevent="submitSearch">
         <input
           v-model="searchInput"
           type="text"
           placeholder="Search books by title, author, or ISBN..."
-          class="flex-1 px-3.5 py-1.5 bg-white/10 border border-white/15 rounded-full text-xs text-white placeholder:text-white/50 outline-none focus:border-[#2EE59D] transition-all font-sans"
+          class="flex-1 px-3.5 py-1.5 bg-white/10 border border-white/15 rounded-full text-xs text-white placeholder:text-white/50 outline-none focus:border-[#2EE59D] transition-all font-sans font-medium"
           autofocus
         />
         <button
@@ -152,21 +153,19 @@ function submitSearch(): void {
 
     <!-- Mobile Drawer Menu -->
     <div v-if="isMobileOpen" class="md:hidden bg-[#072d21]/95 backdrop-blur-lg border-t border-white/10 px-6 py-4 space-y-3">
-      <div class="flex flex-col gap-2.5 text-xs font-semibold">
+      <div class="flex flex-col gap-2.5 text-xs font-bold tracking-wide">
         <a
           v-for="link in navLinks"
           :key="link.label"
           :href="link.href"
-          :target="link.isExternal ? '_blank' : undefined"
-          :rel="link.isExternal ? 'noopener noreferrer' : undefined"
-          class="py-1.5 text-white/90 hover:text-white border-b border-white/5"
+          class="py-1.5 text-white hover:text-[#2EE59D] border-b border-white/5"
           @click="isMobileOpen = false"
         >
           {{ link.label }}
         </a>
         <NuxtLink
           to="/admin/login"
-          class="py-1.5 text-[#2EE59D] font-bold"
+          class="py-1.5 text-[#2EE59D] font-extrabold"
           @click="isMobileOpen = false"
         >
           Admin Portal

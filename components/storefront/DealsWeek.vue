@@ -65,30 +65,37 @@ function scrollRight(): void {
 </script>
 
 <template>
-  <section id="deals-week" class="bg-theme-sand py-14 px-4 relative overflow-hidden">
+  <section id="deals-week" class="bg-theme-sand py-14 px-4 relative overflow-hidden select-none">
+    <!-- Subtle Concentric Ripple Texture in Background -->
     <svg class="absolute -left-20 -bottom-20 w-96 h-96 text-stone-300/40 pointer-events-none" viewBox="0 0 200 200" fill="none">
       <circle cx="100" cy="100" r="40" stroke="currentColor" stroke-width="0.75" />
       <circle cx="100" cy="100" r="70" stroke="currentColor" stroke-width="0.75" />
       <circle cx="100" cy="100" r="100" stroke="currentColor" stroke-width="0.75" />
     </svg>
 
-    <div class="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 items-center relative z-10">
-      <!-- Left Column: Title, Copy, Countdown & Carousel Arrows (4 Cols) -->
-      <div class="lg:col-span-4 space-y-4">
+    <!-- Binary Responsive Container: Mobile vs All Larger Screens (sm:) -->
+    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8 relative z-10">
+      
+      <!-- =============================================================== -->
+      <!-- TIMER & DEAL INFO: LEFT SIDE ON SCREENS LARGER THAN MOBILE      -->
+      <!-- =============================================================== -->
+      <div
+        class="w-full sm:w-80 sm:flex-shrink-0 space-y-4 text-left"
+      >
         <div class="space-y-1">
           <span class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
             LIMITED OPPORTUNITY
           </span>
-          <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold text-theme-ink uppercase tracking-wide leading-none">
+          <h2 class="font-poster text-3xl sm:text-4xl font-extrabold text-theme-ink uppercase tracking-wide leading-none">
             DEALS OF THE WEEK
           </h2>
         </div>
 
         <p class="text-xs text-theme-muted leading-relaxed">
-          Unmissable discounts on timeless philosophy, business classics, and gripping fiction.
+          Unmissable discounts on timeless philosophy, business classics, and gripping fiction. Available until timer expires.
         </p>
 
-        <!-- 4 Square Countdown Boxes -->
+        <!-- 4 Square Countdown Timer Boxes -->
         <ClientOnly>
           <div class="flex items-center gap-2 pt-1">
             <div class="bg-white rounded-lg px-2.5 py-1.5 border border-stone-300 text-center shadow-xs min-w-[42px]">
@@ -109,8 +116,8 @@ function scrollRight(): void {
           </div>
         </ClientOnly>
 
-        <!-- Circular Slider Arrows -->
-        <div class="flex items-center gap-2.5 pt-3">
+        <!-- Shelf Navigation Buttons (Visible on all screens larger than mobile) -->
+        <div class="hidden sm:flex items-center gap-2.5 pt-2">
           <button
             type="button"
             class="w-9 h-9 rounded-full bg-white border border-stone-300 flex items-center justify-center text-theme-ink hover:bg-stone-50 cursor-pointer shadow-xs active:scale-95 transition-all"
@@ -130,12 +137,27 @@ function scrollRight(): void {
         </div>
       </div>
 
-      <!-- Right Column: Horizontal Deals Carousel -->
-      <div ref="carouselRef" class="lg:col-span-8 flex gap-3.5 sm:gap-5 lg:gap-6 overflow-x-auto no-scrollbar py-2 px-2 sm:px-4">
-        <div v-for="book in dealBooks" :key="book.id" class="w-[140px] sm:w-[148px] flex-shrink-0">
-          <BookCard :book="book" @request-seed="(t, a) => emit('requestSeed', t, a)" />
+      <!-- =============================================================== -->
+      <!-- BOOKS CONTAINER: RIGHT SIDE ON SCREENS LARGER THAN MOBILE       -->
+      <!-- =============================================================== -->
+      <div
+        class="flex-1 min-w-0 w-full"
+      >
+        <!-- On Mobile: Clean 2-Column Grid (2x2) | On sm+: Horizontal Shelf -->
+        <div
+          ref="carouselRef"
+          class="grid grid-cols-2 gap-3 sm:flex sm:flex-nowrap sm:gap-4 sm:overflow-x-auto sm:no-scrollbar sm:py-2 sm:px-1 justify-items-center"
+        >
+          <div
+            v-for="book in dealBooks"
+            :key="book.id"
+            class="w-full sm:w-[148px] sm:flex-shrink-0"
+          >
+            <BookCard :book="book" @request-seed="(t, a) => emit('requestSeed', t, a)" />
+          </div>
         </div>
       </div>
+
     </div>
   </section>
 </template>
