@@ -212,7 +212,7 @@ function handleQuickAdd(book: Book, event: Event): void {
 <template>
   <section
     v-if="books.length > 0"
-    class="bg-[#df0000] text-white py-8 sm:py-12 px-4 sm:px-6 relative overflow-hidden select-none rounded-2xl max-w-6xl mx-auto shadow-md"
+    class="bg-[#FF8A00] text-white py-2 px-4 sm:px-6 relative overflow-hidden select-none rounded-2xl max-w-6xl mx-auto shadow-md"
   >
     <!-- Background Texture -->
     <svg class="absolute -left-16 -bottom-16 w-80 h-80 text-white/10 pointer-events-none" viewBox="0 0 200 200" fill="none">
@@ -222,12 +222,12 @@ function handleQuickAdd(book: Book, event: Event): void {
     </svg>
 
     <!-- Binary Responsive Container: Controls on the Left, Books Shelf on the Right -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8 relative z-10">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 sm:gap-8 relative z-10">
       
       <!-- =============================================================== -->
       <!-- CONTROLS CONTAINER: LEFT SIDE ON SCREENS LARGER THAN MOBILE     -->
       <!-- =============================================================== -->
-      <div class="w-full sm:w-80 sm:flex-shrink-0 space-y-4 text-left">
+      <div class="w-full sm:w-80 sm:flex-shrink-0 space-y-2.5 text-left py-1">
         <!-- Eyebrow Badge -->
         <div class="space-y-1">
           <span class="inline-block text-[9px] sm:text-[10px] font-mono font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-[#052219] text-[#2EE59D] shadow-2xs">
@@ -239,44 +239,44 @@ function handleQuickAdd(book: Book, event: Event): void {
         </div>
 
         <!-- Description -->
-        <p class="text-xs text-white/90 leading-relaxed font-sans">
+        <p class="text-xs text-white/90 leading-relaxed font-sans line-clamp-2">
           Limited-quantity price cuts on reader favorites. Grab them before the daily countdown expires!
         </p>
 
         <!-- Live Countdown Timer (Hours, Minutes, Seconds) -->
         <ClientOnly>
-          <div class="flex items-center gap-2 pt-1">
-            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1.5 border border-white/20 text-center shadow-xs min-w-[42px]">
+          <div class="flex items-center gap-2 pt-0.5">
+            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
               <span class="font-mono text-sm font-bold block">{{ hours }}H</span>
             </div>
             <span class="font-bold text-white">:</span>
-            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1.5 border border-white/20 text-center shadow-xs min-w-[42px]">
+            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
               <span class="font-mono text-sm font-bold block">{{ minutes }}M</span>
             </div>
             <span class="font-bold text-white">:</span>
-            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1.5 border border-white/20 text-center shadow-xs min-w-[42px]">
+            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
               <span class="font-mono text-sm font-bold text-[#F05A36] block">{{ seconds }}S</span>
             </div>
           </div>
         </ClientOnly>
 
         <!-- Scroll Buttons on the Left (Hidden on Mobile) -->
-        <div class="hidden sm:flex items-center gap-2.5 pt-2">
+        <div class="hidden sm:flex items-center gap-2.5 pt-1">
           <button
             type="button"
-            class="w-9 h-9 rounded-full bg-[#052219]/30 hover:bg-[#052219] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 border border-white/20"
+            class="w-8 h-8 rounded-full bg-[#052219]/30 hover:bg-[#052219] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 border border-white/20"
             aria-label="Previous deal"
             @click="scrollLeft"
           >
-            <ChevronLeft :size="16" />
+            <ChevronLeft :size="15" />
           </button>
           <button
             type="button"
-            class="w-9 h-9 rounded-full bg-[#052219] text-[#2EE59D] hover:bg-[#073023] flex items-center justify-center cursor-pointer shadow-xs active:scale-95 transition-all border border-[#2EE59D]/30"
+            class="w-8 h-8 rounded-full bg-[#052219] text-[#2EE59D] hover:bg-[#073023] flex items-center justify-center cursor-pointer shadow-xs active:scale-95 transition-all border border-[#2EE59D]/30"
             aria-label="Next deal"
             @click="scrollRight"
           >
-            <ChevronRight :size="16" />
+            <ChevronRight :size="15" />
           </button>
         </div>
       </div>
@@ -287,7 +287,7 @@ function handleQuickAdd(book: Book, event: Event): void {
       <div class="flex-1 min-w-0 w-full">
         <div
           ref="scrollContainer"
-          class="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-2 px-1 snap-x snap-mandatory touch-pan-x"
+          class="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-1 px-1 snap-x snap-mandatory touch-pan-x"
         >
           <div
             v-for="book in books"

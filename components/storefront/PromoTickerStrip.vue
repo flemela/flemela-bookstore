@@ -135,9 +135,10 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="relative w-full overflow-hidden select-none border-y border-[#916515] shadow-sm transition-all duration-300 z-20"
+    class="relative w-full overflow-hidden select-none border-b border-[#9E3E00]/40 shadow-xs z-30 transition-all duration-300"
     :style="{
-      background: 'linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA771C 100%)',
+      background: 'linear-gradient(90deg, #B84A00 0%, #D96108 35%, #E8750D 65%, #D45B05 100%)',
+      color: '#FFFFFF',
     }"
     aria-label="Promotional announcements"
     @mouseenter="handleMouseEnter"
@@ -145,43 +146,41 @@ onUnmounted(() => {
     @touchstart.passive="handleTouchStart"
     @touchend="handleTouchEnd"
   >
-    <!-- Soft Metallic Gleam Highlight Layer -->
-    <div
-      class="absolute inset-0 bg-gradient-to-b from-white/35 via-transparent to-black/10 pointer-events-none"
-    />
+    <!-- Subtle Ambient Top Sheen -->
+    <div class="absolute inset-0 bg-gradient-to-b from-white/15 via-transparent to-black/10 pointer-events-none" />
 
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-10 sm:h-11 flex items-center justify-between gap-3 relative z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-9 sm:h-10 flex items-center justify-between gap-3 relative z-10">
       <!-- Left Manual Chevron Button -->
       <button
         v-if="activeMessages.length > 1"
         type="button"
-        class="w-6 h-6 rounded-full bg-[#052219]/10 hover:bg-[#052219] hover:text-[#FCF6BA] text-[#052219] flex items-center justify-center transition-all cursor-pointer flex-shrink-0 active:scale-95"
+        class="w-6 h-6 rounded-full bg-black/15 hover:bg-black/30 text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0 active:scale-95"
         aria-label="Previous announcement"
         @click="prevMessage"
       >
         <ChevronLeft :size="14" />
       </button>
 
-      <!-- Center Rotating Announcement Message -->
-      <div class="flex-1 min-w-0 text-center overflow-hidden py-1">
+      <!-- Center Rotating Message -->
+      <div class="flex-1 min-w-0 text-center overflow-hidden py-0.5">
         <Transition name="ticker-slide" mode="out-in">
           <div
             :key="activeMessages[activeIndex]?.id"
             class="inline-flex items-center justify-center gap-2 cursor-pointer group px-2 max-w-full"
             @click="handleMessageClick(activeMessages[activeIndex])"
           >
-            <!-- Left Gleam Icon -->
-            <Sparkles :size="13" class="text-[#052219] flex-shrink-0 animate-pulse" />
+            <!-- Left Sparkle -->
+            <Sparkles :size="13" class="text-white flex-shrink-0 animate-pulse" />
 
-            <!-- Text Content: Deep Pine High-Contrast on True Gold -->
-            <span class="font-sans font-extrabold text-[11px] sm:text-xs tracking-wide text-[#052219] truncate drop-shadow-[0_1px_0_rgba(255,255,255,0.4)]">
+            <!-- Text Content: White font-bold on gradient -->
+            <span class="font-sans font-bold text-[11px] sm:text-xs tracking-wide text-white truncate drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]">
               {{ activeMessages[activeIndex]?.text }}
             </span>
 
-            <!-- Action Affordance (If message is linked) -->
+            <!-- Action Tag if Linked -->
             <span
               v-if="activeMessages[activeIndex]?.link"
-              class="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono font-extrabold uppercase text-[#052219] underline underline-offset-2 ml-1 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
+              class="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono font-bold uppercase text-white/90 underline underline-offset-2 ml-1 group-hover:text-white group-hover:translate-x-0.5 transition-all"
             >
               <span>Explore</span>
               <ArrowRight :size="11" />
@@ -190,11 +189,11 @@ onUnmounted(() => {
         </Transition>
       </div>
 
-      <!-- Right Manual Chevron Button & Pagination Pill -->
+      <!-- Right Chevron Button & Optional Counter -->
       <div class="flex items-center gap-2 flex-shrink-0">
         <span
           v-if="activeMessages.length > 1"
-          class="hidden md:inline-block font-mono font-bold text-[9px] text-[#052219]/80 bg-[#052219]/10 px-1.5 py-0.5 rounded"
+          class="hidden md:inline-block font-mono font-bold text-[9px] text-white/90 bg-black/20 px-1.5 py-0.5 rounded"
         >
           {{ activeIndex + 1 }}/{{ activeMessages.length }}
         </span>
@@ -202,7 +201,7 @@ onUnmounted(() => {
         <button
           v-if="activeMessages.length > 1"
           type="button"
-          class="w-6 h-6 rounded-full bg-[#052219]/10 hover:bg-[#052219] hover:text-[#FCF6BA] text-[#052219] flex items-center justify-center transition-all cursor-pointer flex-shrink-0 active:scale-95"
+          class="w-6 h-6 rounded-full bg-black/15 hover:bg-black/30 text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0 active:scale-95"
           aria-label="Next announcement"
           @click="nextMessage"
         >
@@ -220,10 +219,10 @@ onUnmounted(() => {
 }
 .ticker-slide-enter-from {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(6px);
 }
 .ticker-slide-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-6px);
 }
 </style>

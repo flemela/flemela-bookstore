@@ -1,16 +1,13 @@
 <!-- pages/index.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import PromoTickerStrip from '~/components/storefront/PromoTickerStrip.vue';
 import StoreNavbar from '~/components/storefront/StoreNavbar.vue';
 import HeroCarousel from '~/components/storefront/HeroCarousel.vue';
-import PromoTickerStrip from '~/components/storefront/PromoTickerStrip.vue';
 import FlashSaleStrip from '~/components/storefront/FlashSaleStrip.vue';
-import FeaturedMonth from '~/components/storefront/FeaturedMonth.vue';
 import BentoCategories from '~/components/storefront/BentoCategories.vue';
-import BestsellersSection from '~/components/storefront/BestsellersSection.vue';
 import DealsWeek from '~/components/storefront/DealsWeek.vue';
 import TrustStrip from '~/components/storefront/TrustStrip.vue';
-import NewsletterBanner from '~/components/storefront/NewsletterBanner.vue';
 import StoreFooter from '~/components/storefront/StoreFooter.vue';
 import BookCard from '~/components/storefront/BookCard.vue';
 import CartDrawer from '~/components/storefront/CartDrawer.vue';
@@ -64,7 +61,7 @@ const hasActiveFilter = computed(() => {
   return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
 });
 
-// 1. FLASH SALE
+// 1. FLASH SALE DEALS (Specifically FLASH_SALE & LIMITED_TIME or discounted unbadged items)
 const flashSaleBooks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   return books.filter((b) => {
@@ -74,22 +71,8 @@ const flashSaleBooks = computed<Book[]>(() => {
   });
 });
 
-// 2. #1 PICKS / FEATURED MONTH
-const no1Picks = computed<Book[]>(() => {
-  const books = realBooks.value || [];
-  const tagged = books.filter((b) => b.badge === 'NO1_PICK');
-  return mergeWithSeeds(tagged, MONTHLY_TOP_SEEDS, 4);
-});
-
-// 3. DEALS OF THE WEEK
-const dealBooks = computed<Book[]>(() => {
-  const books = realBooks.value || [];
-  const deals = books.filter((b) => b.badge === 'DEAL_OF_WEEK');
-  return mergeWithSeeds(deals, DEALS_SEEDS, 4);
-});
-
-// 4. BESTSELLERS
-const bestsellers = computed<Book[]>(() => {
+// 2. BESTSELLERS OF THE WEEK (All books with the BESTSELLER badge)
+const bestsellersOfWeek = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'BESTSELLER');
   const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
@@ -125,20 +108,21 @@ function handleRequestSeed(title: string, author?: string): void {
 
 <template>
   <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased">
+    <!-- 1. Topmost Rotating Announcement Ribbon -->
+    <PromoTickerStrip :messages="tickerItems" />
+
+    <!-- 2. Sticky White Navbar with Glassmorphic Search Bar -->
     <StoreNavbar @search="handleSearch" />
 
-    <!-- 1. Hero Banner Carousel -->
+    <!-- 3. Hero Carousel (Custom banners only) -->
     <HeroCarousel
       @search="handleSearch"
       @select-category="handleCategorySelect"
       @navigate-flash-sale="scrollToSection('flash-sale')"
     />
 
-    <!-- 2. Rotating Gold Promotional Ribbon (Hero to Flash Sale) -->
-    <PromoTickerStrip :messages="tickerItems" />
-
-    <!-- 3. Flash Sale Shelf -->
-    <div id="flash-sale" class="mt-4 sm:mt-6">
+    <!-- 4. Flash Sale Shelf (Zero margin from hero, 8px padding) -->
+    <div id="flash-sale" class="mt-0">
       <FlashSaleStrip
         :books="flashSaleBooks"
         title="FLASH SALE DEALS"
@@ -146,23 +130,13 @@ function handleRequestSeed(title: string, author?: string): void {
       />
     </div>
 
-    <!-- 4. #1 Picks Section -->
-    <FeaturedMonth :books="no1Picks" @request-seed="handleRequestSeed" />
-
-    <!-- 5. Book Categories (Bento Grid) -->
+    <!-- 5. Genre Grid (Bento Categories) -->
     <BentoCategories @select="handleCategorySelect" />
 
-    <!-- 6. Bestsellers Section -->
-    <BestsellersSection
-      :books="bestsellers"
-      @request-seed="handleRequestSeed"
-      @see-more="scrollToSection('catalog-results')"
-    />
+    <!-- 6. Bestsellers of the Week (All BESTSELLER-badged books, Timer on left, Books on right) -->
+    <DealsWeek :books="bestsellersOfWeek" @request-seed="handleRequestSeed" />
 
-    <!-- 7. Deals of the Week -->
-    <DealsWeek :books="dealBooks" @request-seed="handleRequestSeed" />
-
-    <!-- 8. Browse All Books -->
+    <!-- 7. Complete Bookstore Catalogue (Filtered results & all titles) -->
     <section
       id="catalog-results"
       class="pt-12 sm:pt-16 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"
@@ -190,7 +164,7 @@ function handleRequestSeed(title: string, author?: string): void {
         </button>
       </div>
 
-      <!-- Real Books Grid -->
+      <!-- Catalogue Books Grid -->
       <div
         v-if="filteredBooks.length > 0"
         class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center"
@@ -203,7 +177,7 @@ function handleRequestSeed(title: string, author?: string): void {
         />
       </div>
 
-      <!-- Fallback Empty State -->
+      <!-- Empty State -->
       <div v-else class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm">
         <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
         <h3 class="font-display font-bold text-base text-slate-800">
@@ -222,13 +196,10 @@ function handleRequestSeed(title: string, author?: string): void {
       </div>
     </section>
 
-    <!-- 9. Trust & Delivery Benefits -->
+    <!-- 8. Trust & Delivery Benefits -->
     <TrustStrip />
 
-    <!-- 10. Newsletter Offer -->
-    <NewsletterBanner />
-
-    <!-- 11. Footer -->
+    <!-- 9. Footer -->
     <StoreFooter />
 
     <!-- Overlays -->

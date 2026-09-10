@@ -3,7 +3,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import BookCard from '~/components/storefront/BookCard.vue';
-import { DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
 import type { Book } from '~/types';
 
 interface Props {
@@ -17,11 +17,13 @@ const emit = defineEmits<{
 
 const carouselRef = ref<HTMLElement | null>(null);
 
-const dealBooks = computed(() => {
-  return mergeWithSeeds(props.books, DEALS_SEEDS, 4);
+// Pulls in all bestseller books, backfilled gracefully with top seeds if catalog is growing
+const bestsellerBooks = computed(() => {
+  const combined = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
+  return mergeWithSeeds(props.books, combined, 4);
 });
 
-// Live Countdown Timer
+// Live Bestseller Cycle Countdown Timer
 const days = ref('04');
 const hours = ref('18');
 const minutes = ref('40');
@@ -65,7 +67,7 @@ function scrollRight(): void {
 </script>
 
 <template>
-  <section id="deals-week" class="bg-theme-sand py-14 px-4 relative overflow-hidden select-none">
+  <section id="bestsellers-week" class="bg-theme-sand py-14 px-4 relative overflow-hidden select-none">
     <!-- Subtle Concentric Ripple Texture in Background -->
     <svg class="absolute -left-20 -bottom-20 w-96 h-96 text-stone-300/40 pointer-events-none" viewBox="0 0 200 200" fill="none">
       <circle cx="100" cy="100" r="40" stroke="currentColor" stroke-width="0.75" />
@@ -73,26 +75,24 @@ function scrollRight(): void {
       <circle cx="100" cy="100" r="100" stroke="currentColor" stroke-width="0.75" />
     </svg>
 
-    <!-- Binary Responsive Container: Mobile vs All Larger Screens (sm:) -->
+    <!-- Binary Responsive Container: Controls on the Left, Books on the Right -->
     <div class="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8 relative z-10">
       
       <!-- =============================================================== -->
-      <!-- TIMER & DEAL INFO: LEFT SIDE ON SCREENS LARGER THAN MOBILE      -->
+      <!-- TIMER & INFO: LEFT SIDE ON SCREENS LARGER THAN MOBILE           -->
       <!-- =============================================================== -->
-      <div
-        class="w-full sm:w-80 sm:flex-shrink-0 space-y-4 text-left"
-      >
+      <div class="w-full sm:w-80 sm:flex-shrink-0 space-y-4 text-left">
         <div class="space-y-1">
           <span class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
-            LIMITED OPPORTUNITY
+            TOP READER PICKS
           </span>
           <h2 class="font-poster text-3xl sm:text-4xl font-extrabold text-theme-ink uppercase tracking-wide leading-none">
-            DEALS OF THE WEEK
+            BESTSELLERS OF THE WEEK
           </h2>
         </div>
 
         <p class="text-xs text-theme-muted leading-relaxed">
-          Unmissable discounts on timeless philosophy, business classics, and gripping fiction. Available until timer expires.
+          The most requested titles, life-changing philosophy, and business essentials dominating reader lists this week.
         </p>
 
         <!-- 4 Square Countdown Timer Boxes -->
@@ -116,12 +116,12 @@ function scrollRight(): void {
           </div>
         </ClientOnly>
 
-        <!-- Shelf Navigation Buttons (Visible on all screens larger than mobile) -->
+        <!-- Shelf Navigation Buttons (Visible on screens larger than mobile) -->
         <div class="hidden sm:flex items-center gap-2.5 pt-2">
           <button
             type="button"
             class="w-9 h-9 rounded-full bg-white border border-stone-300 flex items-center justify-center text-theme-ink hover:bg-stone-50 cursor-pointer shadow-xs active:scale-95 transition-all"
-            aria-label="Previous deal"
+            aria-label="Previous bestsellers"
             @click="scrollLeft"
           >
             <ChevronLeft :size="16" />
@@ -129,7 +129,7 @@ function scrollRight(): void {
           <button
             type="button"
             class="w-9 h-9 rounded-full bg-[#F05A36] text-white flex items-center justify-center hover:bg-[#D94827] cursor-pointer shadow-xs active:scale-95 transition-all"
-            aria-label="Next deal"
+            aria-label="Next bestsellers"
             @click="scrollRight"
           >
             <ChevronRight :size="16" />
@@ -138,18 +138,15 @@ function scrollRight(): void {
       </div>
 
       <!-- =============================================================== -->
-      <!-- BOOKS CONTAINER: RIGHT SIDE ON SCREENS LARGER THAN MOBILE       -->
+      <!-- BOOKS CONTAINER: RIGHT SIDE (SCROLLABLE BY HAND & BUTTONS)      -->
       <!-- =============================================================== -->
-      <div
-        class="flex-1 min-w-0 w-full"
-      >
-        <!-- On Mobile: Clean 2-Column Grid (2x2) | On sm+: Horizontal Shelf -->
+      <div class="flex-1 min-w-0 w-full">
         <div
           ref="carouselRef"
           class="grid grid-cols-2 gap-3 sm:flex sm:flex-nowrap sm:gap-4 sm:overflow-x-auto sm:no-scrollbar sm:py-2 sm:px-1 justify-items-center"
         >
           <div
-            v-for="book in dealBooks"
+            v-for="book in bestsellerBooks"
             :key="book.id"
             class="w-full sm:w-[148px] sm:flex-shrink-0"
           >
