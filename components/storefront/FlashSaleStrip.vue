@@ -212,7 +212,7 @@ function handleQuickAdd(book: Book, event: Event): void {
 <template>
   <section
     v-if="books.length > 0"
-    class="bg-[#FF8A00] text-white py-2 px-4 sm:px-6 relative overflow-hidden select-none rounded-2xl max-w-6xl mx-auto shadow-md"
+    class="bg-[#f50000] text-white py-2 px-4 sm:px-6 relative overflow-hidden select-none rounded-2xl max-w-6xl mx-auto shadow-md"
   >
     <!-- Background Texture -->
     <svg class="absolute -left-16 -bottom-16 w-80 h-80 text-white/10 pointer-events-none" viewBox="0 0 200 200" fill="none">
