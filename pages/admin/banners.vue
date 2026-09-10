@@ -1,6 +1,6 @@
 <!-- pages/admin/banners.vue -->
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import {
   Images,
   Plus,
@@ -11,6 +11,8 @@ import {
   RefreshCw,
   MousePointerClick,
   X,
+  Sparkles,
+  Save,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import { useToast } from '~/composables/useToast';
@@ -36,10 +38,86 @@ interface StoreBanner {
   click_count: number;
 }
 
+interface PromoTickerItem {
+  id: string;
+  text: string;
+  link?: string | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
 const { push: pushToast } = useToast();
 const { data: banners, refresh, status } = await useFetch<StoreBanner[]>('/api/admin/banners');
 
-// Modal State
+// Tab State: Banners vs. Gold Ticker
+const activeTab = ref<'banners' | 'ticker'>('ticker');
+
+// Ticker State
+const tickerItems = ref<PromoTickerItem[]>([]);
+const isSavingTicker = ref(false);
+
+async function loadTicker(): Promise<void> {
+  try {
+    const data = await $fetch<PromoTickerItem[]>('/api/admin/ticker');
+    tickerItems.value = (data || []).sort((a, b) => a.sort_order - b.sort_order);
+  } catch {
+    tickerItems.value = [];
+  }
+}
+
+onMounted(() => {
+  loadTicker();
+});
+
+function addTickerItem(): void {
+  if (tickerItems.value.length >= 10) {
+    pushToast({ message: 'Maximum of 10 promotional messages allowed', variant: 'error' });
+    return;
+  }
+  tickerItems.value.push({
+    id: `ticker-${Date.now()}`,
+    text: '',
+    link: '#catalog-results',
+    is_active: true,
+    sort_order: tickerItems.value.length,
+  });
+}
+
+function removeTickerItem(index: number): void {
+  tickerItems.value.splice(index, 1);
+}
+
+async function handleSaveTicker(): Promise<void> {
+  const invalid = tickerItems.value.some((item) => !item.text.trim());
+  if (invalid) {
+    pushToast({ message: 'All ticker messages must have text content', variant: 'error' });
+    return;
+  }
+
+  isSavingTicker.value = true;
+  try {
+    await $fetch('/api/admin/ticker', {
+      method: 'PUT',
+      body: tickerItems.value.map((item, idx) => ({
+        ...item,
+        text: item.text.trim(),
+        link: item.link?.trim() || null,
+        sort_order: idx,
+      })),
+    });
+    pushToast({ message: 'Promotional gold ticker ribbon updated!', variant: 'success' });
+    await loadTicker();
+  } catch (err: any) {
+    pushToast({
+      message: err.data?.statusMessage || err.statusMessage || 'Failed to save ticker',
+      variant: 'error',
+    });
+  } finally {
+    isSavingTicker.value = false;
+  }
+}
+
+// Modal & Banners State
 const showModal = ref(false);
 const editingBannerId = ref<string | null>(null);
 
@@ -123,7 +201,7 @@ async function handleImageUpload(event: Event, targetField: 'image_url' | 'mobil
       });
     }
   } catch (err: any) {
-    const message = err.data?.statusMessage || err.message || 'Image upload failed. You can paste a direct URL.';
+    const message = err.data?.statusMessage || err.message || 'Image upload failed.';
     pushToast({ message, variant: 'error' });
   } finally {
     if (targetField === 'image_url') isUploadingDesktop.value = false;
@@ -238,24 +316,173 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
       <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-paper-border">
         <div>
           <span class="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-gold-600 font-bold block">
-            Storefront Merchandising
+            Merchandising & Announcements
           </span>
           <h1 class="font-display text-2xl sm:text-3xl font-bold text-forest-950">
-            Hero Carousel Banners
+            Promotions & Announcements
           </h1>
           <p class="text-xs text-ink-muted mt-0.5">
-            Add full-width commerce banners. Desktop image is the only requirement—all text, buttons, and dates are optional.
+            Configure the rotating True Gold announcement ribbon and full-width hero carousel banners.
           </p>
         </div>
 
-        <div class="flex items-center gap-2.5">
+        <!-- Tab Toggle Bar -->
+        <div class="flex items-center gap-2 bg-paper-cream p-1 rounded-xl border border-paper-border">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+            :class="activeTab === 'ticker' ? 'bg-[#052219] text-[#FCF6BA] shadow-xs' : 'text-forest-950 hover:bg-white/50'"
+            @click="activeTab = 'ticker'"
+          >
+            <Sparkles :size="13" />
+            <span>Gold Ticker Ribbon</span>
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+            :class="activeTab === 'banners' ? 'bg-[#052219] text-[#FCF6BA] shadow-xs' : 'text-forest-950 hover:bg-white/50'"
+            @click="activeTab = 'banners'"
+          >
+            <Images :size="13" />
+            <span>Hero Banners</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 1: GOLD TICKER STRIP CONFIGURATION                            -->
+      <!-- ================================================================= -->
+      <div v-if="activeTab === 'ticker'" class="space-y-6 animate-in fade-in duration-200">
+        <!-- Live Gold Gradient Ribbon Preview -->
+        <div class="bg-paper-surface p-5 rounded-2xl border border-paper-border shadow-soft space-y-3">
+          <div class="flex justify-between items-center text-xs">
+            <span class="font-bold text-forest-950 uppercase font-mono tracking-wider">Storefront Live Preview</span>
+            <span class="text-[11px] text-ink-muted">Gradient: True Gold (#BF953F to #AA771C)</span>
+          </div>
+
+          <div
+            class="rounded-xl overflow-hidden py-3 px-4 border border-[#916515] text-[#052219] font-sans font-extrabold text-xs sm:text-sm text-center shadow-xs"
+            :style="{
+              background: 'linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA771C 100%)',
+            }"
+          >
+            <span v-if="tickerItems.find(i => i.is_active)">
+              {{ tickerItems.find(i => i.is_active)?.text }}
+            </span>
+            <span v-else class="italic opacity-80">
+              No active ticker message configured. Default fallback will display on storefront.
+            </span>
+          </div>
+        </div>
+
+        <!-- Ticker Messages Editor List -->
+        <div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft p-6 space-y-5">
+          <div class="flex justify-between items-center pb-3 border-b border-paper-border">
+            <div>
+              <h3 class="font-display font-bold text-base text-forest-950">Active Announcement Messages</h3>
+              <p class="text-[11px] text-ink-muted">These rotate automatically every 4.5 seconds on the storefront between the Hero and Flash Sale.</p>
+            </div>
+
+            <button
+              type="button"
+              class="px-3.5 py-2 bg-paper-cream hover:bg-forest-950 hover:text-white border border-paper-border rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              @click="addTickerItem"
+            >
+              <Plus :size="14" />
+              <span>Add Message</span>
+            </button>
+          </div>
+
+          <div v-if="!tickerItems.length" class="text-center py-8 text-xs text-ink-muted space-y-2">
+            <p>No custom ticker announcements added yet.</p>
+            <button type="button" class="text-forest-900 font-bold underline cursor-pointer" @click="addTickerItem">
+              Add first announcement
+            </button>
+          </div>
+
+          <div v-else class="space-y-3">
+            <div
+              v-for="(item, idx) in tickerItems"
+              :key="item.id"
+              class="p-4 bg-paper-canvas/60 border border-paper-border rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-3"
+            >
+              <!-- Drag/Sort Index -->
+              <span class="w-6 h-6 rounded-full bg-paper-cream text-forest-950 font-mono font-bold text-xs flex items-center justify-center flex-shrink-0 border border-paper-border">
+                {{ idx + 1 }}
+              </span>
+
+              <!-- Text Input -->
+              <div class="flex-1 w-full space-y-1">
+                <input
+                  v-model="item.text"
+                  type="text"
+                  placeholder="e.g. ⚡ FREE DELIVERY across Nairobi on orders above KSh 2,500"
+                  class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs font-semibold outline-none focus:border-forest-900 text-forest-950"
+                  maxlength="200"
+                />
+              </div>
+
+              <!-- Action Link Input -->
+              <div class="w-full sm:w-56 space-y-1">
+                <input
+                  v-model="item.link"
+                  type="text"
+                  placeholder="Link (e.g. #flash-sale)"
+                  class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs font-mono outline-none focus:border-forest-900 text-forest-950"
+                />
+              </div>
+
+              <!-- Active Toggle & Delete -->
+              <div class="flex items-center gap-2 self-end sm:self-center">
+                <label class="flex items-center gap-1.5 text-xs font-semibold cursor-pointer select-none">
+                  <input
+                    v-model="item.is_active"
+                    type="checkbox"
+                    class="rounded border-paper-border text-forest-950 focus:ring-forest-900"
+                  />
+                  <span>Active</span>
+                </label>
+
+                <button
+                  type="button"
+                  class="p-1.5 text-ink-muted hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                  title="Remove message"
+                  @click="removeTickerItem(idx)"
+                >
+                  <Trash2 :size="15" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Save Button -->
+          <div class="pt-3 border-t border-paper-border flex justify-end">
+            <button
+              type="button"
+              class="bg-forest-950 hover:bg-forest-900 text-paper font-bold text-xs uppercase tracking-wider px-6 py-3 rounded-xl shadow-medium flex items-center gap-2 cursor-pointer disabled:opacity-50 transition-all active:scale-[0.98]"
+              :disabled="isSavingTicker"
+              @click="handleSaveTicker"
+            >
+              <RefreshCw v-if="isSavingTicker" :size="14" class="animate-spin" />
+              <Save v-else :size="14" class="text-gold-300" />
+              <span>{{ isSavingTicker ? 'Saving...' : 'Save Gold Ticker Ribbon' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 2: HERO CAROUSEL BANNERS CONFIGURATION                        -->
+      <!-- ================================================================= -->
+      <div v-else class="space-y-6 animate-in fade-in duration-200">
+        <div class="flex justify-end gap-2.5">
           <button
             type="button"
             class="px-3 py-2 bg-paper-surface border border-paper-border rounded-xl text-forest-950 text-xs font-semibold flex items-center gap-1.5 hover:bg-paper-cream transition-colors cursor-pointer shadow-2xs"
             @click="() => refresh()"
           >
             <RefreshCw :size="13" :class="{ 'animate-spin': status === 'pending' }" />
-            <span>Refresh</span>
+            <span>Refresh Banners</span>
           </button>
 
           <button
@@ -267,120 +494,116 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
             <span>Add Banner Slide</span>
           </button>
         </div>
-      </div>
 
-      <!-- Banner List Cards -->
-      <div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft overflow-hidden">
-        <div v-if="status === 'pending'" class="p-12 text-center text-xs text-ink-muted">
-          Loading active banners...
-        </div>
-
-        <div v-else-if="!banners?.length" class="p-12 text-center space-y-3">
-          <div class="w-12 h-12 bg-paper-cream rounded-full flex items-center justify-center text-forest-900 mx-auto">
-            <Images :size="24" />
+        <!-- Banner List Cards -->
+        <div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft overflow-hidden">
+          <div v-if="status === 'pending'" class="p-12 text-center text-xs text-ink-muted">
+            Loading active banners...
           </div>
-          <h3 class="font-display font-bold text-sm text-forest-950">No Promotional Banners Yet</h3>
-          <p class="text-xs text-ink-muted max-w-sm mx-auto">
-            Upload custom 4:1 graphics or photos. If none exist, your signature brand poster displays cleanly.
-          </p>
-          <button
-            type="button"
-            class="bg-forest-950 text-paper text-xs font-bold px-4 py-2 rounded-xl cursor-pointer"
-            @click="openCreateModal"
-          >
-            Create First Banner
-          </button>
-        </div>
 
-        <div v-else class="divide-y divide-paper-border/60">
-          <div
-            v-for="(banner, index) in banners"
-            :key="banner.id"
-            class="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-paper-cream/30 transition-colors"
-          >
-            <!-- Left Details -->
-            <div class="flex items-center gap-3 w-full sm:w-auto">
-              <div class="flex flex-col gap-1 text-ink-muted">
-                <button
-                  type="button"
-                  class="p-1 hover:text-forest-950 disabled:opacity-20 cursor-pointer"
-                  :disabled="index === 0 || isReordering"
-                  title="Move banner up"
-                  @click="moveBanner(index, 'up')"
-                >
-                  <ArrowUp :size="13" />
-                </button>
-                <button
-                  type="button"
-                  class="p-1 hover:text-forest-950 disabled:opacity-20 cursor-pointer"
-                  :disabled="index === banners.length - 1 || isReordering"
-                  title="Move banner down"
-                  @click="moveBanner(index, 'down')"
-                >
-                  <ArrowDown :size="13" />
-                </button>
-              </div>
-
-              <!-- Banner Thumbnail: 4:1 Aspect Ratio Preview -->
-              <div class="w-32 sm:w-40 aspect-[4/1] rounded-lg border border-paper-border overflow-hidden bg-forest-950 flex-shrink-0 shadow-xs relative">
-                <img :src="banner.image_url" :alt="banner.title || 'Banner'" class="w-full h-full object-cover" />
-                <span
-                  v-if="banner.badge"
-                  class="absolute top-1 left-1 bg-black/70 text-white font-mono text-[7.5px] font-bold px-1 rounded uppercase"
-                >
-                  {{ banner.badge }}
-                </span>
-              </div>
-
-              <!-- Metadata -->
-              <div class="space-y-1 min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <h4 class="text-xs sm:text-sm font-bold text-forest-950 truncate">
-                    {{ banner.title || '(Image-Only Banner)' }}
-                  </h4>
-                  <span
-                    class="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded"
-                    :class="banner.is_active ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-100 text-slate-700'"
-                  >
-                    {{ banner.is_active ? 'Active' : 'Paused' }}
-                  </span>
-                </div>
-                <p v-if="banner.subtitle" class="text-[11px] text-ink-muted line-clamp-1">{{ banner.subtitle }}</p>
-                <div class="flex items-center gap-3 text-[10px] text-ink-subtle font-mono">
-                  <span v-if="banner.cta_link">Target: <strong>{{ banner.cta_link }}</strong></span>
-                  <span v-else class="italic">No target link</span>
-                  <span>•</span>
-                  <span class="flex items-center gap-1">
-                    <MousePointerClick :size="11" /> {{ banner.click_count }} clicks
-                  </span>
-                </div>
-              </div>
+          <div v-else-if="!banners?.length" class="p-12 text-center space-y-3">
+            <div class="w-12 h-12 bg-paper-cream rounded-full flex items-center justify-center text-forest-900 mx-auto">
+              <Images :size="24" />
             </div>
+            <h3 class="font-display font-bold text-sm text-forest-950">No Promotional Banners Yet</h3>
+            <p class="text-xs text-ink-muted max-w-sm mx-auto">
+              Upload custom 4:1 graphics or photos. If none exist, your signature brand poster displays cleanly.
+            </p>
+            <button
+              type="button"
+              class="bg-forest-950 text-paper text-xs font-bold px-4 py-2 rounded-xl cursor-pointer"
+              @click="openCreateModal"
+            >
+              Create First Banner
+            </button>
+          </div>
 
-            <!-- Right Actions -->
-            <div class="flex items-center gap-2 self-end sm:self-center">
-              <button
-                type="button"
-                class="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-paper-border hover:bg-paper-cream cursor-pointer"
-                @click="toggleActive(banner)"
-              >
-                {{ banner.is_active ? 'Pause' : 'Activate' }}
-              </button>
-              <button
-                type="button"
-                class="px-2.5 py-1 text-[11px] font-semibold text-forest-950 bg-paper-cream rounded-lg hover:bg-gold-500/20 cursor-pointer"
-                @click="openEditModal(banner)"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
-                title="Delete banner"
-                @click="handleDelete(banner.id)"
-              >
-                <Trash2 :size="14" />
-              </button>
+          <div v-else class="divide-y divide-paper-border/60">
+            <div
+              v-for="(banner, index) in banners"
+              :key="banner.id"
+              class="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-paper-cream/30 transition-colors"
+            >
+              <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="flex flex-col gap-1 text-ink-muted">
+                  <button
+                    type="button"
+                    class="p-1 hover:text-forest-950 disabled:opacity-20 cursor-pointer"
+                    :disabled="index === 0 || isReordering"
+                    title="Move banner up"
+                    @click="moveBanner(index, 'up')"
+                  >
+                    <ArrowUp :size="13" />
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1 hover:text-forest-950 disabled:opacity-20 cursor-pointer"
+                    :disabled="index === banners.length - 1 || isReordering"
+                    title="Move banner down"
+                    @click="moveBanner(index, 'down')"
+                  >
+                    <ArrowDown :size="13" />
+                  </button>
+                </div>
+
+                <div class="w-32 sm:w-40 aspect-[4/1] rounded-lg border border-paper-border overflow-hidden bg-forest-950 flex-shrink-0 shadow-xs relative">
+                  <img :src="banner.image_url" :alt="banner.title || 'Banner'" class="w-full h-full object-cover" />
+                  <span
+                    v-if="banner.badge"
+                    class="absolute top-1 left-1 bg-black/70 text-white font-mono text-[7.5px] font-bold px-1 rounded uppercase"
+                  >
+                    {{ banner.badge }}
+                  </span>
+                </div>
+
+                <div class="space-y-1 min-w-0 flex-1">
+                  <div class="flex items-center gap-2">
+                    <h4 class="text-xs sm:text-sm font-bold text-forest-950 truncate">
+                      {{ banner.title || '(Image-Only Banner)' }}
+                    </h4>
+                    <span
+                      class="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded"
+                      :class="banner.is_active ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-100 text-slate-700'"
+                    >
+                      {{ banner.is_active ? 'Active' : 'Paused' }}
+                    </span>
+                  </div>
+                  <p v-if="banner.subtitle" class="text-[11px] text-ink-muted line-clamp-1">{{ banner.subtitle }}</p>
+                  <div class="flex items-center gap-3 text-[10px] text-ink-subtle font-mono">
+                    <span v-if="banner.cta_link">Target: <strong>{{ banner.cta_link }}</strong></span>
+                    <span v-else class="italic">No target link</span>
+                    <span>â€¢</span>
+                    <span class="flex items-center gap-1">
+                      <MousePointerClick :size="11" /> {{ banner.click_count }} clicks
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 self-end sm:self-center">
+                <button
+                  type="button"
+                  class="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-paper-border hover:bg-paper-cream cursor-pointer"
+                  @click="toggleActive(banner)"
+                >
+                  {{ banner.is_active ? 'Pause' : 'Activate' }}
+                </button>
+                <button
+                  type="button"
+                  class="px-2.5 py-1 text-[11px] font-semibold text-forest-950 bg-paper-cream rounded-lg hover:bg-gold-500/20 cursor-pointer"
+                  @click="openEditModal(banner)"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                  title="Delete banner"
+                  @click="handleDelete(banner.id)"
+                >
+                  <Trash2 :size="14" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -410,14 +633,11 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
           </div>
 
           <form class="space-y-4" @submit.prevent="handleSave">
-            <!-- 1. Desktop Image (THE ONLY REQUIRED FIELD) -->
             <div class="space-y-1.5">
               <div class="flex justify-between items-baseline">
-                <label class="text-xs font-bold text-forest-950">
-                  Desktop Image *
-                </label>
+                <label class="text-xs font-bold text-forest-950">Desktop Image *</label>
                 <span class="text-[10px] text-gold-600 font-mono font-bold uppercase tracking-wide">
-                  Target: 4:1 (1440×360px)
+                  Target: 4:1 (1440Ã—360px)
                 </span>
               </div>
 
@@ -425,7 +645,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
                 <input
                   v-model="form.image_url"
                   type="text"
-                  placeholder="https://... (Recommended: ~4:1 ratio — e.g. 1440×360px or 1920×480px)"
+                  placeholder="https://... (Recommended: ~4:1 ratio â€” e.g. 1440Ã—360px or 1920Ã—480px)"
                   class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
                   required
                 />
@@ -442,7 +662,6 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
                 </label>
               </div>
 
-              <!-- Desktop Preview Thumbnail -->
               <div v-if="form.image_url" class="relative rounded-lg border border-paper-border overflow-hidden aspect-[4/1] bg-forest-950 mt-1.5">
                 <img :src="form.image_url" alt="Desktop Preview" class="w-full h-full object-cover" />
                 <button
@@ -455,15 +674,11 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
                 </button>
               </div>
             </div>
-
-            <!-- 2. Mobile Image (Optional) -->
-            <div class="space-y-1.5 pt-1">
+			<div class="space-y-1.5 pt-1">
               <div class="flex justify-between items-baseline">
-                <label class="text-xs font-semibold text-forest-950">
-                  Mobile Image (Optional)
-                </label>
+                <label class="text-xs font-semibold text-forest-950">Mobile Image (Optional)</label>
                 <span class="text-[10px] text-ink-muted font-mono font-semibold uppercase tracking-wide">
-                  Target: 1.65:1 (390×240px)
+                  Target: 1.65:1 (390Ã—240px)
                 </span>
               </div>
 
@@ -471,7 +686,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
                 <input
                   v-model="form.mobile_image_url"
                   type="text"
-                  placeholder="https://... (Recommended: ~1.65:1 ratio — e.g. 390×240px or 640×390px)"
+                  placeholder="https://... (Recommended: ~1.65:1 ratio â€” e.g. 390Ã—240px or 640Ã—390px)"
                   class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
                 />
                 <label class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0">
@@ -487,7 +702,6 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
                 </label>
               </div>
 
-              <!-- Mobile Preview Thumbnail -->
               <div v-if="form.mobile_image_url" class="relative rounded-lg border border-paper-border overflow-hidden aspect-[1.65/1] max-w-[200px] bg-forest-950 mt-1.5">
                 <img :src="form.mobile_image_url" alt="Mobile Preview" class="w-full h-full object-cover" />
                 <button
@@ -501,7 +715,6 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               </div>
             </div>
 
-            <!-- 3. Optional Overlay Text -->
             <div class="space-y-3 pt-2 border-t border-paper-border">
               <div class="space-y-1">
                 <label class="text-xs font-semibold text-forest-950">Headline (Optional)</label>
@@ -552,7 +765,6 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               </div>
             </div>
 
-            <!-- 4. Optional Button Action -->
             <div class="grid grid-cols-2 gap-3 pt-2 border-t border-paper-border">
               <div class="space-y-1">
                 <label class="text-xs font-semibold text-forest-950">Button Label (Optional)</label>
@@ -575,7 +787,6 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
               </div>
             </div>
 
-            <!-- 5. Optional Scheduling -->
             <div class="grid grid-cols-2 gap-3 pt-2 border-t border-paper-border">
               <div class="space-y-1">
                 <label class="text-xs font-semibold text-forest-950">Start Date (Optional)</label>

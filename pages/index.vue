@@ -3,6 +3,7 @@
 import { ref, computed } from 'vue';
 import StoreNavbar from '~/components/storefront/StoreNavbar.vue';
 import HeroCarousel from '~/components/storefront/HeroCarousel.vue';
+import PromoTickerStrip from '~/components/storefront/PromoTickerStrip.vue';
 import FlashSaleStrip from '~/components/storefront/FlashSaleStrip.vue';
 import FeaturedMonth from '~/components/storefront/FeaturedMonth.vue';
 import BentoCategories from '~/components/storefront/BentoCategories.vue';
@@ -20,6 +21,11 @@ import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
 import type { Book } from '~/types';
 
 const { data: realBooks } = await useFetch<Book[]>('/api/products');
+const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
+
+const tickerItems = computed(() => {
+  return storeMetadata.value?.promo_ticker || [];
+});
 
 const activeCategoryFilter = ref<string>('ALL');
 const searchQuery = ref<string>('');
@@ -82,7 +88,7 @@ const dealBooks = computed<Book[]>(() => {
   return mergeWithSeeds(deals, DEALS_SEEDS, 4);
 });
 
-// 4. BESTSELLERS: Synchronized to target 4 books (4 desktop, 2 mobile)
+// 4. BESTSELLERS
 const bestsellers = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'BESTSELLER');
@@ -128,8 +134,11 @@ function handleRequestSeed(title: string, author?: string): void {
       @navigate-flash-sale="scrollToSection('flash-sale')"
     />
 
-    <!-- 2. Flash Sale Shelf -->
-    <div id="flash-sale" class="mt-3 sm:mt-5">
+    <!-- 2. Rotating Gold Promotional Ribbon (Hero to Flash Sale) -->
+    <PromoTickerStrip :messages="tickerItems" />
+
+    <!-- 3. Flash Sale Shelf -->
+    <div id="flash-sale" class="mt-4 sm:mt-6">
       <FlashSaleStrip
         :books="flashSaleBooks"
         title="FLASH SALE DEALS"
@@ -137,23 +146,23 @@ function handleRequestSeed(title: string, author?: string): void {
       />
     </div>
 
-    <!-- 3. #1 Picks Section -->
+    <!-- 4. #1 Picks Section -->
     <FeaturedMonth :books="no1Picks" @request-seed="handleRequestSeed" />
 
-    <!-- 4. Book Categories (Bento Grid) -->
+    <!-- 5. Book Categories (Bento Grid) -->
     <BentoCategories @select="handleCategorySelect" />
 
-    <!-- 5. Bestsellers Section (Strict 4-Grid Desktop, 2-Grid Mobile) -->
+    <!-- 6. Bestsellers Section -->
     <BestsellersSection
       :books="bestsellers"
       @request-seed="handleRequestSeed"
       @see-more="scrollToSection('catalog-results')"
     />
 
-    <!-- 6. Deals of the Week -->
+    <!-- 7. Deals of the Week -->
     <DealsWeek :books="dealBooks" @request-seed="handleRequestSeed" />
 
-    <!-- 7. Browse All Books -->
+    <!-- 8. Browse All Books -->
     <section
       id="catalog-results"
       class="pt-12 sm:pt-16 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"
@@ -213,13 +222,13 @@ function handleRequestSeed(title: string, author?: string): void {
       </div>
     </section>
 
-    <!-- 8. Trust & Delivery Benefits -->
+    <!-- 9. Trust & Delivery Benefits -->
     <TrustStrip />
 
-    <!-- 9. Newsletter Offer -->
+    <!-- 10. Newsletter Offer -->
     <NewsletterBanner />
 
-    <!-- 10. Footer -->
+    <!-- 11. Footer -->
     <StoreFooter />
 
     <!-- Overlays -->
