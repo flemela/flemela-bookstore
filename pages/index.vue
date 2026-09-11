@@ -20,6 +20,86 @@ import type { Book } from '~/types';
 const { data: realBooks } = await useFetch<Book[]>('/api/products');
 const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
 
+// ---------------------------------------------------------------------------
+// Comprehensive SEO Meta & Schema.org Structured Data
+// ---------------------------------------------------------------------------
+useHead({
+  title: 'The Sunrise Bookstore — Online Bookstore & eBooks in Nairobi, Kenya',
+  link: [
+    { rel: 'canonical', href: 'https://www.thesunrisebookstore.com' },
+  ],
+  meta: [
+    {
+      name: 'description',
+      content: 'Shop bestsellers, finance, business, psychology, and African literature at The Sunrise Bookstore, Diamond Mall, Parklands, Nairobi. Fast delivery across Kenya and instant eBook downloads.',
+    },
+    { property: 'og:title', content: 'The Sunrise Bookstore — Online Bookstore & eBooks in Nairobi, Kenya' },
+    { property: 'og:description', content: 'Shop bestsellers, finance, business, psychology, and African literature at The Sunrise Bookstore, Diamond Mall, Parklands, Nairobi. Order online today.' },
+    { property: 'og:url', content: 'https://www.thesunrisebookstore.com' },
+    { property: 'og:image', content: 'https://www.thesunrisebookstore.com/images/hero-cover.jpg' },
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'BookStore',
+            '@id': 'https://www.thesunrisebookstore.com/#bookstore',
+            name: 'The Sunrise Bookstore',
+            legalName: 'The Sunrise Bookstore',
+            url: 'https://www.thesunrisebookstore.com',
+            logo: 'https://www.thesunrisebookstore.com/images/logo.png',
+            image: 'https://www.thesunrisebookstore.com/images/hero-cover.jpg',
+            email: 'admin@thesunrisebookstore.com',
+            telephone: '+254143304460',
+            priceRange: 'KSh 149 - KSh 4500',
+            currenciesAccepted: 'KES',
+            paymentAccepted: 'Cash, M-Pesa',
+            address: {
+              '@type': 'PostalAddress',
+              streetAddress: 'Diamond Mall / Diamond Plaza, 4th Parklands Ave',
+              addressLocality: 'Nairobi',
+              addressRegion: 'Nairobi County',
+              postalCode: '00100',
+              addressCountry: 'KE',
+            },
+            geo: {
+              '@type': 'GeoCoordinates',
+              latitude: -1.2612,
+              longitude: 36.8167,
+            },
+            openingHoursSpecification: [
+              {
+                '@type': 'OpeningHoursSpecification',
+                dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+                opens: '08:30',
+                closes: '19:30',
+              },
+            ],
+          },
+          {
+            '@type': 'WebSite',
+            '@id': 'https://www.thesunrisebookstore.com/#website',
+            url: 'https://www.thesunrisebookstore.com',
+            name: 'The Sunrise Bookstore',
+            description: 'Online bookstore offering original paperbacks and instant eBooks across Kenya.',
+            publisher: {
+              '@id': 'https://www.thesunrisebookstore.com/#bookstore',
+            },
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: 'https://www.thesunrisebookstore.com/?q={search_term_string}#catalog-results',
+              'query-input': 'required name=search_term_string',
+            },
+          },
+        ],
+      }),
+    },
+  ],
+});
+
 const tickerItems = computed(() => {
   return storeMetadata.value?.promo_ticker || [];
 });
@@ -31,10 +111,8 @@ const showRequestModal = ref(false);
 const modalInitialTitle = ref('');
 const modalInitialAuthor = ref('');
 
-// Catalogue In-Page Dropdown Filter State
 const isCatalogueDropdownOpen = ref(false);
 
-// Extract dynamic list of distinct categories for the dropdown
 const catalogueCategories = computed<string[]>(() => {
   const set = new Set<string>();
   if (realBooks.value) {
@@ -214,7 +292,7 @@ onUnmounted(() => {
               <span class="text-xs text-white/80 font-mono hidden sm:inline">• Free Nairobi Delivery above KSh 2,500</span>
             </div>
             <h3 class="font-display font-bold text-sm sm:text-base text-white mt-0.5">
-              Original Hardcopy Editions &amp; Instant eBooks
+              Original Print Editions &amp; Instant Cloudflare R2 eBooks
             </h3>
           </div>
         </div>

@@ -1,2 +1,23 @@
-User-Agent: *
-Disallow:
+# =============================================================================
+# The Sunrise Bookstore (www.thesunrisebookstore.com)
+# Robots Exclusion Protocol (RFC 9309)
+# =============================================================================
+
+User-agent: *
+Allow: /
+Allow: /images/
+Allow: /book/
+
+# Disallow private customer transactions and tokenized delivery paths
+Disallow: /checkout
+Disallow: /checkout/
+Disallow: /checkout/confirm
+
+# Disallow administrative portals and API endpoints
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /server/
+
+# Dedicated XML Sitemap location for Googlebot & Bingbot
+Sitemap: https://www.thesunrisebookstore.com/sitemap.xml

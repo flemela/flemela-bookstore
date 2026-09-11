@@ -27,7 +27,7 @@ const { push: pushToast } = useToast();
 const selectedFormatId = ref<string>('');
 const quantity = ref<number>(1);
 
-// 1. Filter to strictly available digital formats with real files
+// Filter available digital formats
 const availableDigitalFormats = computed<ProductFormat[]>(() => {
   if (!book.value?.formats || book.value.formats.length === 0) return [];
 
@@ -70,7 +70,7 @@ const availableDigitalFormats = computed<ProductFormat[]>(() => {
 
 const hasDigitalCopy = computed(() => availableDigitalFormats.value.length > 0);
 
-// 2. Guaranteed Hardcopy Format
+// Guaranteed Hardcopy Format
 const hardcopyFormat = computed<ProductFormat | null>(() => {
   const existing = book.value?.formats?.find((f) => f.format === 'hardcopy');
   if (existing) {
@@ -99,7 +99,7 @@ const hardcopyFormat = computed<ProductFormat | null>(() => {
   return null;
 });
 
-// 3. Combined Available Formats
+// Combined Available Formats
 const displayFormats = computed<ProductFormat[]>(() => {
   const list: ProductFormat[] = [...availableDigitalFormats.value];
   if (hardcopyFormat.value) {
@@ -162,11 +162,11 @@ const activePricing = computed(() => {
 });
 
 const primaryImage = computed(() => {
-  if (!book.value) return '/images/book-placeholder.svg';
+  if (!book.value) return 'https://www.thesunrisebookstore.com/images/book-placeholder.svg';
   const rawImg = book.value.images?.[0];
-  if (!rawImg) return (book.value as any).cover_image_url || '/images/book-placeholder.svg';
+  if (!rawImg) return (book.value as any).cover_image_url || 'https://www.thesunrisebookstore.com/images/book-placeholder.svg';
   if (typeof rawImg === 'string') return rawImg;
-  return rawImg.image_url || (book.value as any).cover_image_url || '/images/book-placeholder.svg';
+  return rawImg.image_url || (book.value as any).cover_image_url || 'https://www.thesunrisebookstore.com/images/book-placeholder.svg';
 });
 
 function formatCurrency(val: number): string {
@@ -179,11 +179,69 @@ function formatFileSize(bytes: number | null | undefined): string {
   return `${mb.toFixed(1)} MB`;
 }
 
-useSeoMeta({
-  title: () => `${book.value?.name || 'Book'} — Flemela Bookstore`,
-  description: () => book.value?.description || 'Authentic literature and instant digital editions.',
-  ogImage: () => primaryImage.value,
+// ---------------------------------------------------------------------------
+// Book Detail SEO & Product Rich Snippets (Schema.org JSON-LD via Unhead innerHTML)
+// ---------------------------------------------------------------------------
+const pageTitle = computed(() => `${book.value?.name || 'Book'} — The Sunrise Bookstore`);
+const pageDescription = computed(() => {
+  const authorText = book.value?.author ? `by ${book.value.author}. ` : '';
+  const priceText = activePricing.value.currentPrice ? `Only KSh ${activePricing.value.currentPrice.toLocaleString('en-KE')} in Kenya. ` : '';
+  return `${book.value?.name || 'Book'} ${authorText}${priceText}Order physical copies delivered to your door or get instant eBook downloads at The Sunrise Bookstore.`;
 });
+
+const canonicalUrl = computed(() => `https://www.thesunrisebookstore.com/book/${slug.value}`);
+
+useHead(() => ({
+  title: pageTitle.value,
+  link: [
+    { rel: 'canonical', href: canonicalUrl.value },
+  ],
+  meta: [
+    { name: 'description', content: pageDescription.value },
+    { property: 'og:title', content: pageTitle.value },
+    { property: 'og:description', content: pageDescription.value },
+    { property: 'og:url', content: canonicalUrl.value },
+    { property: 'og:type', content: 'book' },
+    { property: 'og:image', content: primaryImage.value },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: pageTitle.value },
+    { name: 'twitter:description', content: pageDescription.value },
+    { name: 'twitter:image', content: primaryImage.value },
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': ['Book', 'Product'],
+        name: book.value?.name,
+        image: primaryImage.value,
+        description: pageDescription.value,
+        sku: book.value?.sku || slug.value,
+        author: book.value?.author
+          ? {
+              '@type': 'Person',
+              name: book.value.author,
+            }
+          : undefined,
+        offers: {
+          '@type': 'Offer',
+          url: canonicalUrl.value,
+          priceCurrency: 'KES',
+          price: activePricing.value.currentPrice || 999,
+          priceValidUntil: '2027-12-31',
+          itemCondition: 'https://schema.org/NewCondition',
+          availability: 'https://schema.org/InStock',
+          seller: {
+            '@type': 'BookStore',
+            name: 'The Sunrise Bookstore',
+            url: 'https://www.thesunrisebookstore.com',
+          },
+        },
+      }),
+    },
+  ],
+}));
 
 function handleAddToCart(): void {
   if (!book.value || !activeFormat.value) return;
@@ -335,7 +393,7 @@ function handleAddToCart(): void {
           <div class="flex items-center gap-2 text-xs text-forest-900 pt-1">
             <CheckCircle2 :size="14" class="text-emerald-700 flex-shrink-0" />
             <span>
-              {{ isPhysicalHardcopy ? 'Physical Hardcopy eligible for Doorstep Delivery or Free Sarit Centre Store Pickup.' : 'Instant Cloudflare R2 tokens issued for eBooks upon M-Pesa confirmation.' }}
+              {{ isPhysicalHardcopy ? 'Physical Hardcopy eligible for Doorstep Delivery or Free Diamond Mall Store Pickup.' : 'Instant Cloudflare R2 tokens issued for eBooks upon M-Pesa confirmation.' }}
             </span>
           </div>
 
