@@ -19,6 +19,8 @@ import {
   CheckCircle2,
   Copy,
   Check,
+  Navigation,
+  RefreshCw,
 } from 'lucide-vue-next';
 import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
 import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
@@ -63,12 +65,22 @@ function copyTillNumber(): void {
   setTimeout(() => (isTillCopied.value = false), 2200);
 }
 
-// GPS Pin & Haversine Delivery State
+// Canonical Hub: Diamond Mall, Parklands, Nairobi
+const HUB_COORDS = {
+  lat: -1.2612,
+  lng: 36.8167,
+  baseKm: 2.0,
+  baseFee: 100,
+  feePerKm: 25,
+  maxRadiusKm: 15,
+};
+
+// Customer GPS Pin State
 const customerLat = ref<number | null>(null);
 const customerLng = ref<number | null>(null);
-const HUB_COORDS = { lat: -1.2683, lng: 36.8111, baseKm: 2.0, baseFee: 100, feePerKm: 25, maxRadiusKm: 15 };
 const deliveryFee = ref<number>(100);
 const deliveryFeeStatus = ref<'known' | 'needs_merchant_confirmation'>('known');
+const isLocatingCustomer = ref(false);
 
 const isSubmitting = ref(false);
 const formError = ref<string | null>(null);
@@ -93,7 +105,7 @@ function computeHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lo
 
 const fullDeliveryAddress = computed(() => {
   if (!hasPhysicalItems.value) return 'Digital Delivery (eBooks via Cloudflare R2)';
-  if (deliveryType.value === 'pickup') return 'Store Pickup — Sarit Centre Hub, Westlands';
+  if (deliveryType.value === 'pickup') return 'Store Pickup — Diamond Mall Hub, Parklands, Nairobi';
 
   const parts = [
     estate.value.trim(),
@@ -145,6 +157,40 @@ function handleMapPinUpdate(coords: { lat: number; lng: number }): void {
   }
 }
 
+// Customer Geolocation Trigger
+function handleUseCustomerLocation(): void {
+  if (!process.client || !navigator.geolocation) {
+    pushToast({ message: 'Geolocation is not supported by your browser.', variant: 'error' });
+    return;
+  }
+
+  isLocatingCustomer.value = true;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      isLocatingCustomer.value = false;
+      const { latitude, longitude, accuracy } = pos.coords;
+      customerLat.value = latitude;
+      customerLng.value = longitude;
+      if (!estate.value.trim()) {
+        estate.value = `Current Location (±${Math.round(accuracy)}m GPS)`;
+      }
+      handleMapPinUpdate({ lat: latitude, lng: longitude });
+      pushToast({ message: 'Pin set to your current device location!', variant: 'success' });
+    },
+    (err) => {
+      isLocatingCustomer.value = false;
+      let msg = 'Could not acquire your GPS location. Please tap the map directly.';
+      if (err.code === err.PERMISSION_DENIED) {
+        msg = 'Location permission denied. Please enable GPS in your browser settings.';
+      } else if (err.code === err.TIMEOUT) {
+        msg = 'GPS request timed out. Please tap the map to drop your delivery pin.';
+      }
+      pushToast({ message: msg, variant: 'error' });
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+}
+
 async function handlePlaceOrder(): Promise<void> {
   if (!isFormValid.value || isSubmitting.value) return;
 
@@ -154,7 +200,7 @@ async function handlePlaceOrder(): Promise<void> {
   try {
     const cleanPhone = normalizeKenyanPhone(customerPhone.value);
 
-    // Save phone in session to auto-verify downloads without re-prompting
+    // Persist phone and email in session storage for verification
     if (process.client) {
       sessionStorage.setItem('flemela_last_checkout_phone', cleanPhone);
       if (customerEmail.value.trim()) {
@@ -173,6 +219,7 @@ async function handlePlaceOrder(): Promise<void> {
       notes: notes.value.trim() || null,
       customerLat: hasPhysicalItems.value && deliveryType.value === 'delivery' ? customerLat.value : null,
       customerLng: hasPhysicalItems.value && deliveryType.value === 'delivery' ? customerLng.value : null,
+      locationSource: customerLat.value ? 'gps' : 'manual_text',
       items: items.value.map((i) => ({
         product_id: i.productId,
         format_id: i.formatId,
@@ -193,7 +240,6 @@ async function handlePlaceOrder(): Promise<void> {
 
     clearCart();
 
-    // Clean sibling route push (never trapped in nested parent)
     await router.push({
       path: '/checkout/confirm',
       query: {
@@ -217,8 +263,7 @@ async function handlePlaceOrder(): Promise<void> {
     <BookstoreHeader />
 
     <main class="max-w-6xl mx-auto w-full py-8 px-4 sm:px-6 flex-1 space-y-6">
-      
-      <!-- Back Header -->
+      <!-- Top Navigation -->
       <div class="flex items-center justify-between">
         <NuxtLink to="/" class="inline-flex items-center gap-1.5 text-xs font-semibold text-forest-900 hover:text-gold-600 transition-colors">
           <ArrowLeft :size="14" /> Return to Catalog
@@ -227,11 +272,10 @@ async function handlePlaceOrder(): Promise<void> {
       </div>
 
       <div class="grid lg:grid-cols-12 gap-8 items-start">
-        
         <!-- Left: Form Steps (7 Cols) -->
         <div class="lg:col-span-7 space-y-6">
           
-          <!-- Pure Digital eBook Notice Banner -->
+          <!-- Pure Digital eBook Notice -->
           <div
             v-if="hasDigitalItems && !hasPhysicalItems"
             class="bg-emerald-50/80 border border-emerald-300/80 rounded-2xl p-4 flex items-center gap-3.5 text-xs text-emerald-950 shadow-soft"
@@ -242,7 +286,7 @@ async function handlePlaceOrder(): Promise<void> {
             <div>
               <strong class="font-semibold text-emerald-900 block">Instant Digital Delivery</strong>
               <span class="text-emerald-950/80">
-                Your eBook download links and permanent email copies are unlocked immediately upon payment approval.
+                Your eBook download links are unlocked immediately upon payment approval.
               </span>
             </div>
           </div>
@@ -272,7 +316,6 @@ async function handlePlaceOrder(): Promise<void> {
 
               <!-- Phone & Email -->
               <div class="grid sm:grid-cols-2 gap-4">
-                <!-- Phone -->
                 <div class="space-y-1.5">
                   <label class="text-xs font-semibold text-forest-950">M-Pesa Phone Number *</label>
                   <div class="relative flex items-center">
@@ -298,9 +341,8 @@ async function handlePlaceOrder(): Promise<void> {
                   </div>
                 </div>
 
-                <!-- Email -->
                 <div class="space-y-1.5">
-                  <label class="text-xs font-semibold text-forest-950">Email Address (For Digital Downloads)</label>
+                  <label class="text-xs font-semibold text-forest-950">Email Address (For eBook Delivery)</label>
                   <div class="relative flex items-center">
                     <Mail :size="15" class="absolute left-3.5 text-ink-subtle pointer-events-none" />
                     <input
@@ -315,11 +357,11 @@ async function handlePlaceOrder(): Promise<void> {
             </div>
           </section>
 
-          <!-- Step 2: Physical Delivery (Only rendered if physical books in cart) -->
+          <!-- Step 2: Physical Delivery with "Use My Current Location" GPS -->
           <section v-if="hasPhysicalItems" aria-labelledby="step-fulfillment-heading" class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-5">
             <div class="flex items-center gap-3 pb-3.5 border-b border-paper-border">
               <span class="w-6 h-6 rounded-full bg-forest-950 text-gold-300 text-xs font-mono font-bold flex items-center justify-center shadow-xs">2</span>
-              <h2 id="step-fulfillment-heading" class="font-display text-base sm:text-lg font-bold text-forest-950">Fulfillment &amp; Delivery Option</h2>
+              <h2 id="step-fulfillment-heading" class="font-display text-base sm:text-lg font-bold text-forest-950">Fulfillment &amp; Delivery Destination</h2>
             </div>
 
             <DeliveryTypeStep v-model="deliveryType" />
@@ -332,19 +374,34 @@ async function handlePlaceOrder(): Promise<void> {
                   <input
                     v-model="estate"
                     type="text"
-                    placeholder="e.g. Kilimani, South C, Westlands, Kileleshwa"
+                    placeholder="e.g. Parklands, Kilimani, Westlands, South C, Roysambu"
                     class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 transition-all text-forest-950 placeholder:text-ink-subtle"
                     required
                   />
                 </div>
               </div>
 
-              <!-- Pin Drop on Map -->
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-semibold text-ink-muted flex items-center gap-1.5">
-                  <MapPin :size="12" class="text-gold-600" />
-                  <span>Set Drop-off Pin for Accurate Rider Navigation:</span>
-                </label>
+              <!-- Map Pin + "Use My Current Location" Action Row -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between gap-2 pb-1">
+                  <label class="text-[11px] font-semibold text-ink-muted flex items-center gap-1.5">
+                    <MapPin :size="12" class="text-gold-600" />
+                    <span>Drop-off Pin (Calculated from Diamond Mall):</span>
+                  </label>
+
+                  <!-- Customer GPS Current Location Button -->
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded-xl bg-[#FFF7ED] hover:bg-[#FFEDD5] border border-[#E8750D]/40 text-[#C25E00] text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 flex-shrink-0"
+                    :disabled="isLocatingCustomer"
+                    @click="handleUseCustomerLocation"
+                  >
+                    <RefreshCw v-if="isLocatingCustomer" :size="12" class="animate-spin" />
+                    <Navigation v-else :size="12" class="text-[#E8750D]" />
+                    <span>{{ isLocatingCustomer ? 'Locating...' : 'Use My Current Location' }}</span>
+                  </button>
+                </div>
+
                 <LeafletPinPicker
                   :lat="customerLat"
                   :lng="customerLng"
@@ -361,7 +418,7 @@ async function handlePlaceOrder(): Promise<void> {
                     <input
                       v-model="landmark"
                       type="text"
-                      placeholder="e.g. Chaka Place, Near Yaya"
+                      placeholder="e.g. Near Aga Khan, Chaka Place"
                       class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle"
                     />
                   </div>
@@ -374,7 +431,7 @@ async function handlePlaceOrder(): Promise<void> {
                     <input
                       v-model="houseNumber"
                       type="text"
-                      placeholder="e.g. Apt 4B, 2nd Floor"
+                      placeholder="e.g. Flat 3B, 2nd Floor"
                       class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle"
                     />
                   </div>
@@ -384,9 +441,9 @@ async function handlePlaceOrder(): Promise<void> {
 
             <!-- Store Pickup Info -->
             <div v-else class="p-4 bg-paper-cream/70 rounded-xl border border-paper-border text-xs text-ink-muted space-y-1">
-              <span class="font-bold text-forest-950 block font-sans">Pickup Location:</span>
-              <p>Flemela Bookstore Main Counter, Sarit Centre Lower Level, Westlands, Nairobi.</p>
-              <span class="text-[11px] text-emerald-800 font-semibold block pt-1">✓ Books ready for collection within 2 hours of payment approval.</span>
+              <span class="font-bold text-forest-950 block font-sans">Pickup Hub:</span>
+              <p>The Sunrise Bookstore Main Counter, Diamond Mall / Diamond Plaza, 4th Parklands Ave, Nairobi.</p>
+              <span class="text-[11px] text-emerald-800 font-semibold block pt-1">✓ Ready for collection within 2 hours of payment confirmation.</span>
             </div>
           </section>
 
@@ -400,7 +457,7 @@ async function handlePlaceOrder(): Promise<void> {
             </div>
 
             <div class="space-y-3.5">
-              <!-- OPTION A: DIRECT MANUAL M-PESA PASS (RECOMMENDED) -->
+              <!-- OPTION A: DIRECT MANUAL M-PESA TILL -->
               <label
                 class="border-2 rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5 cursor-pointer transition-all relative overflow-hidden"
                 :class="paymentMethod === 'mpesa_manual' ? 'border-forest-900 bg-paper-cream/40 shadow-soft ring-1 ring-forest-900' : 'border-paper-border bg-white hover:border-forest-800/30'"
@@ -430,7 +487,7 @@ async function handlePlaceOrder(): Promise<void> {
                       <span class="text-[10px] uppercase font-mono font-bold text-ink-subtle tracking-widest block">Lipa Na M-Pesa â€¢ Buy Goods Till</span>
                       <div class="flex items-baseline gap-2">
                         <span class="font-mono text-lg font-bold text-forest-950 tracking-wider">{{ STORE_TILL_NUMBER }}</span>
-                        <span class="text-xs font-semibold text-ink-muted">(Flemela Bookstore)</span>
+                        <span class="text-xs font-semibold text-ink-muted">(The Sunrise Bookstore)</span>
                       </div>
                     </div>
 
@@ -473,7 +530,7 @@ async function handlePlaceOrder(): Promise<void> {
                 <div>
                   <strong class="text-xs sm:text-sm font-bold text-forest-950 block">Automated M-Pesa STK Push</strong>
                   <p class="text-xs text-ink-muted mt-0.5 leading-relaxed">
-                    Sends an automated PIN prompt to your Safaricom mobile phone screen.
+                    Dispatches an automated PIN prompt to your Safaricom mobile handset.
                   </p>
                 </div>
               </label>
@@ -490,7 +547,7 @@ async function handlePlaceOrder(): Promise<void> {
                 </div>
                 <div>
                   <strong class="text-xs sm:text-sm font-bold text-forest-950 block">
-                    {{ deliveryType === 'delivery' ? 'Pay on Delivery / Rider Handover' : 'Pay at Store Pickup' }}
+                    {{ deliveryType === 'delivery' ? 'Pay on Delivery / Courier Handover' : 'Pay at Store Pickup' }}
                   </strong>
                   <p class="text-xs text-ink-muted mt-0.5 leading-relaxed">
                     Settle via M-Pesa or cash upon physical collection of your print copies.
@@ -498,16 +555,15 @@ async function handlePlaceOrder(): Promise<void> {
                 </div>
               </label>
             </div>
-
-            <!-- Notes -->
+			<!-- Notes -->
             <div class="space-y-1.5 pt-2">
-              <label class="text-xs font-semibold text-forest-950">Order Notes (Optional)</label>
+              <label class="text-xs font-semibold text-forest-950">Delivery Instructions (Optional)</label>
               <div class="relative flex items-start">
                 <FileText :size="15" class="absolute left-3.5 top-3 text-ink-subtle pointer-events-none" />
                 <textarea
                   v-model="notes"
                   rows="2"
-                  placeholder="e.g. Leave with building security, call on arrival..."
+                  placeholder="e.g. Leave with building security, call upon gate arrival..."
                   class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle resize-none"
                 />
               </div>
@@ -556,7 +612,7 @@ async function handlePlaceOrder(): Promise<void> {
             </div>
 
             <div class="flex justify-between text-ink-muted font-medium">
-              <span>Delivery Fee</span>
+              <span>Delivery Fee (from Diamond Mall)</span>
               <span v-if="!hasPhysicalItems || deliveryType === 'pickup'" class="text-emerald-800 font-bold font-mono">
                 FREE
               </span>
