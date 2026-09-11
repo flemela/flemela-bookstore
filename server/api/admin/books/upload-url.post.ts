@@ -1,5 +1,6 @@
 // =============================================================================
-// flemela/server/api/admin/books/upload-url.post.ts
+// server/api/admin/books/upload-url.post.ts
+// Proxies presigned R2 upload URL generation with authenticated admin bearer token
 // =============================================================================
 
 import { z } from 'zod';
@@ -12,6 +13,12 @@ const Schema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
+  const token = getCookie(event, 'flemela_admin_session') || event.context.authToken;
+
+  if (!token) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized admin session' });
+  }
+
   const body = await readBody(event);
   const parsed = Schema.safeParse(body);
 
@@ -25,6 +32,8 @@ export default defineEventHandler(async (event) => {
       {
         method: 'POST',
         body: parsed.data,
+        token,
+        event,
       }
     );
   } catch (err: any) {

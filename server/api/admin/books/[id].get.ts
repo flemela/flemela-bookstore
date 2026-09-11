@@ -7,6 +7,12 @@ import { sokoClient } from '../../../utils/sokoClient';
 import type { Book, ProductFormat } from '~/types';
 
 export default defineEventHandler(async (event) => {
+  const token = getCookie(event, 'flemela_admin_session') || event.context.authToken;
+
+  if (!token) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized admin session' });
+  }
+
   const id = getRouterParam(event, 'id');
 
   if (!id) {
@@ -14,8 +20,8 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const product = await sokoClient<Book>(`/products/${id}`);
-    const formats = await sokoClient<ProductFormat[]>(`/products/${id}/formats`);
+    const product = await sokoClient<Book>(`/products/${id}`, { token, event });
+    const formats = await sokoClient<ProductFormat[]>(`/products/${id}/formats`, { token, event });
 
     return {
       ...product,

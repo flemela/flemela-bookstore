@@ -3,6 +3,7 @@
 // Server-only typed HTTP proxy client communicating with the Soko backend.
 // =============================================================================
 
+import type { H3Event } from 'h3';
 import type { ApiResponse } from '~/types';
 
 export interface SokoClientOptions {
@@ -11,6 +12,7 @@ export interface SokoClientOptions {
   query?: Record<string, unknown>;
   headers?: Record<string, string>;
   token?: string;
+  event?: H3Event;
 }
 
 export async function sokoClient<T>(path: string, options: SokoClientOptions = {}): Promise<T> {
@@ -25,20 +27,14 @@ export async function sokoClient<T>(path: string, options: SokoClientOptions = {
     ...options.headers,
   };
 
+  // 1. Resolve auth token: explicit option > event context > event cookie > master API key
   let authToken = options.token;
 
-  if (!authToken && process.server) {
-    try {
-      const event = useRequestEvent();
-      if (event) {
-        authToken =
-          event.context.authToken ||
-          getCookie(event, 'flemela_admin_session') ||
-          undefined;
-      }
-    } catch {
-      // Fallback
-    }
+  if (!authToken && options.event) {
+    authToken =
+      options.event.context?.authToken ||
+      getCookie(options.event, 'flemela_admin_session') ||
+      undefined;
   }
 
   if (!authToken && config.sokoOrgApiKey) {
@@ -46,7 +42,7 @@ export async function sokoClient<T>(path: string, options: SokoClientOptions = {
   }
 
   if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+    headers['Authorization'] = `Bearer ${authToken.trim()}`;
   }
 
   try {

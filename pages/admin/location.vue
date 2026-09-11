@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Calculator,
   ArrowLeft,
+  RotateCcw,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import LeafletPinPicker from '~/components/storefront/LeafletPinPicker.vue';
@@ -31,11 +32,19 @@ interface LocationConfig {
   max_delivery_radius_km: number;
 }
 
+// Canonical Diamond Mall / Diamond Plaza Coordinates (Parklands, Nairobi)
+const DIAMOND_MALL_COORDS = {
+  name: 'The Sunrise Bookstore Main Hub (Diamond Mall)',
+  lat: -1.2612,
+  lng: 36.8167,
+  address_text: 'Diamond Mall / Diamond Plaza, 4th Parklands Ave, Nairobi',
+};
+
 const form = reactive<LocationConfig>({
-  name: 'Flemela Bookstore Main Hub',
-  lat: -1.2683,
-  lng: 36.8111,
-  address_text: 'Sarit Centre Lower Level, Westlands, Nairobi',
+  name: DIAMOND_MALL_COORDS.name,
+  lat: DIAMOND_MALL_COORDS.lat,
+  lng: DIAMOND_MALL_COORDS.lng,
+  address_text: DIAMOND_MALL_COORDS.address_text,
   base_distance_km: 2,
   base_delivery_fee: 100,
   fee_per_km: 25,
@@ -62,7 +71,7 @@ const simulatedFee = computed(() => {
 onMounted(async () => {
   try {
     const data = await $fetch<LocationConfig>('/api/admin/location');
-    if (data) {
+    if (data && data.lat && data.lng) {
       form.name = data.name || form.name;
       form.lat = Number(data.lat) || form.lat;
       form.lng = Number(data.lng) || form.lng;
@@ -72,20 +81,32 @@ onMounted(async () => {
       form.fee_per_km = Number(data.fee_per_km) || 25;
       form.max_delivery_radius_km = Number(data.max_delivery_radius_km) || 15;
       mapRef.value?.setCenter(form.lat, form.lng, 15);
+    } else {
+      resetToDiamondMall();
     }
   } catch {
-    // Non-blocking fallback to defaults
+    resetToDiamondMall();
   }
 });
+
+function resetToDiamondMall(): void {
+  form.name = DIAMOND_MALL_COORDS.name;
+  form.lat = DIAMOND_MALL_COORDS.lat;
+  form.lng = DIAMOND_MALL_COORDS.lng;
+  form.address_text = DIAMOND_MALL_COORDS.address_text;
+  mapRef.value?.setCenter(form.lat, form.lng, 16);
+  pushToast({ message: 'Hub reset to Diamond Mall, Parklands default.', variant: 'info' });
+}
 
 function handleMapPinUpdate(coords: { lat: number; lng: number }): void {
   form.lat = coords.lat;
   form.lng = coords.lng;
 }
 
-function handleGetDeviceGps(): void {
+// Device Geolocation for Admin Hub
+function handleSetCurrentLocation(): void {
   if (!process.client || !navigator.geolocation) {
-    pushToast({ message: 'Geolocation is not supported by your browser', variant: 'error' });
+    pushToast({ message: 'Geolocation is not supported by your browser.', variant: 'error' });
     return;
   }
 
@@ -96,11 +117,17 @@ function handleGetDeviceGps(): void {
       form.lat = pos.coords.latitude;
       form.lng = pos.coords.longitude;
       mapRef.value?.setCenter(pos.coords.latitude, pos.coords.longitude, 16);
-      pushToast({ message: 'Map pin centered to current device GPS', variant: 'success' });
+      pushToast({ message: 'Hub centered to your current physical GPS location!', variant: 'success' });
     },
-    () => {
+    (err) => {
       isLocating.value = false;
-      pushToast({ message: 'Could not obtain device GPS. You can tap the map directly.', variant: 'error' });
+      let msg = 'Could not acquire GPS position. You can tap the map directly.';
+      if (err.code === err.PERMISSION_DENIED) {
+        msg = 'Location permission denied. Please allow browser location access.';
+      } else if (err.code === err.TIMEOUT) {
+        msg = 'GPS request timed out. Retrying with default coordinates.';
+      }
+      pushToast({ message: msg, variant: 'error' });
     },
     { enableHighAccuracy: true, timeout: 10000 }
   );
@@ -108,7 +135,7 @@ function handleGetDeviceGps(): void {
 
 async function handleSave(): Promise<void> {
   if (!form.name.trim() || !form.lat || !form.lng) {
-    pushToast({ message: 'Hub name and GPS coordinates are required', variant: 'error' });
+    pushToast({ message: 'Hub name and GPS coordinates are required.', variant: 'error' });
     return;
   }
 
@@ -130,7 +157,7 @@ async function handleSave(): Promise<void> {
 
     pushToast({ message: 'Store Hub location & delivery rules updated!', variant: 'success' });
   } catch (err: any) {
-    pushToast({ message: err.data?.statusMessage || err.statusMessage || 'Failed to save location', variant: 'error' });
+    pushToast({ message: err.data?.statusMessage || err.statusMessage || 'Failed to save location.', variant: 'error' });
   } finally {
     isSaving.value = false;
   }
@@ -148,7 +175,7 @@ async function handleSave(): Promise<void> {
         <div>
           <h1 class="font-display text-2xl font-bold text-forest-950">Store Hub &amp; Delivery Fee Setup</h1>
           <p class="text-xs text-ink-muted">
-            Configure your physical hub GPS pin and automated distance fee calculation rules.
+            Configure your physical fulfillment center (Diamond Mall default) and tiered delivery fee calculations.
           </p>
         </div>
 
@@ -167,25 +194,39 @@ async function handleSave(): Promise<void> {
         <div class="lg:col-span-7 space-y-5">
           <!-- Step 1: Physical Hub GPS Pin -->
           <div class="bg-white rounded-xl shadow-subtle border border-ink-border p-6 space-y-4">
-            <div class="flex items-center justify-between pb-2 border-b border-ink-border">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-ink-border">
               <h2 class="font-display text-sm font-bold text-forest-950 uppercase tracking-wider flex items-center gap-2">
                 <MapPin :size="16" class="text-gold-600" />
-                1. Set Bookstore Hub GPS Pin
+                1. Set Bookstore Hub Location
               </h2>
 
-              <button
-                type="button"
-                class="px-3 py-1.5 rounded bg-paper-cream hover:bg-slate-200 text-xs font-bold text-forest-950 flex items-center gap-1.5 transition-colors cursor-pointer border border-ink-border"
-                :disabled="isLocating"
-                @click="handleGetDeviceGps"
-              >
-                <Navigation :size="13" class="text-forest-900" />
-                <span>{{ isLocating ? 'Locating...' : 'Use Device GPS' }}</span>
-              </button>
+              <div class="flex items-center gap-2">
+                <!-- Reset to Diamond Mall Default -->
+                <button
+                  type="button"
+                  class="px-2.5 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1 transition-colors cursor-pointer border border-slate-200"
+                  title="Reset to Diamond Mall default coordinates"
+                  @click="resetToDiamondMall"
+                >
+                  <RotateCcw :size="12" />
+                  <span>Diamond Mall</span>
+                </button>
+
+                <!-- Set to Current Location -->
+                <button
+                  type="button"
+                  class="px-3 py-1.5 rounded bg-[#FFF7ED] hover:bg-[#FFEDD5] text-xs font-bold text-[#C25E00] flex items-center gap-1.5 transition-colors cursor-pointer border border-[#E8750D]/30"
+                  :disabled="isLocating"
+                  @click="handleSetCurrentLocation"
+                >
+                  <Navigation :size="13" class="text-[#E8750D]" />
+                  <span>{{ isLocating ? 'Locating...' : 'Set Current Location' }}</span>
+                </button>
+              </div>
             </div>
 
             <p class="text-xs text-ink-muted leading-relaxed">
-              Drop the pin on your store, warehouse, or Sarit Centre counter. Customer delivery distances are calculated from this pin.
+              Default location is <strong>Diamond Mall / Diamond Plaza, Parklands</strong>. Customer delivery distances are calculated from this exact GPS marker.
             </p>
 
             <LeafletPinPicker
@@ -201,7 +242,7 @@ async function handleSave(): Promise<void> {
                 <input
                   v-model="form.name"
                   type="text"
-                  placeholder="e.g. Sarit Centre Hub"
+                  placeholder="e.g. The Sunrise Bookstore (Diamond Mall)"
                   class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
                 />
               </div>
@@ -211,7 +252,7 @@ async function handleSave(): Promise<void> {
                 <input
                   v-model="form.address_text"
                   type="text"
-                  placeholder="e.g. Ground Floor, Sarit Centre"
+                  placeholder="e.g. Diamond Mall, 4th Parklands Ave"
                   class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
                 />
               </div>
@@ -286,7 +327,7 @@ async function handleSave(): Promise<void> {
             </div>
 
             <p class="text-xs text-ink-muted leading-relaxed">
-              Test how customer delivery fees will be computed based on the rules configured on the left:
+              Test how customer delivery fees are computed from Diamond Mall based on the active rules:
             </p>
 
             <div class="p-4 bg-paper-cream border border-ink-border rounded-lg space-y-3">
@@ -325,7 +366,7 @@ async function handleSave(): Promise<void> {
                 <span>Zero Custody Delivery Integration</span>
               </div>
               <p class="text-slate-700 leading-normal">
-                Deliveries are tracked using our 4-digit verification code upon rider arrival.
+                All physical orders generate a 4-character handover code verified by the dispatch rider upon arrival.
               </p>
             </div>
           </div>

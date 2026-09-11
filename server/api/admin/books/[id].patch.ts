@@ -6,6 +6,12 @@
 import { sokoClient } from '../../../utils/sokoClient';
 
 export default defineEventHandler(async (event) => {
+  const token = getCookie(event, 'flemela_admin_session') || event.context.authToken;
+
+  if (!token) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized admin session' });
+  }
+
   const id = getRouterParam(event, 'id');
   const body = await readBody(event);
 
@@ -20,6 +26,8 @@ export default defineEventHandler(async (event) => {
     const updated = await sokoClient(`/products/${id}`, {
       method: 'PATCH',
       body,
+      token,
+      event,
     });
     return updated;
   } catch (err: any) {

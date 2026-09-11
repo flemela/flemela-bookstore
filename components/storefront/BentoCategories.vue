@@ -1,165 +1,200 @@
 <!-- components/storefront/BentoCategories.vue -->
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ArrowUpRight, Layers } from 'lucide-vue-next';
+import { ArrowUpRight, TrendingUp, Sparkles, Flame, Heart, BookOpen } from 'lucide-vue-next';
 import type { Book } from '~/types';
 
 const emit = defineEmits<{
   select: [category: string];
 }>();
 
-// 1. Fetch Real Catalog Books to calculate live, dynamic book counts per category
+// Fetch real catalog books to calculate live inventory counts
 const { data: catalogBooks } = await useFetch<Book[]>('/api/products');
 
-// 2. High-End Heritage Literary Color Palette
-const LUXURY_PALETTE = [
-  { bg: '#0C3A2B', border: 'border-emerald-500/20', accent: '#2EE59D', cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80' }, // British Racing Pine
-  { bg: '#8E621E', border: 'border-amber-500/20', accent: '#FDE047', cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&auto=format&fit=crop&q=80' },   // Antique Ochre
-  { bg: '#122438', border: 'border-sky-500/20', accent: '#7DD3FC', cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&auto=format&fit=crop&q=80' },     // Oxford Navy
-  { bg: '#4D1B28', border: 'border-rose-500/20', accent: '#FDA4AF', cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400&auto=format&fit=crop&q=80' },   // Port Wine
-  { bg: '#7D3222', border: 'border-orange-500/20', accent: '#FDBA74', cover: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&auto=format&fit=crop&q=80' }, // Tuscan Terracotta
-  { bg: '#2B1D19', border: 'border-stone-500/20', accent: '#E7E5E4', cover: 'https://images.unsplash.com/photo-1532012164546-f432f2e3777a?w=400&auto=format&fit=crop&q=80' }, // Espresso Leather
+// High-Energy Flashy Neon & Duotone Palettes matching the Hero Banner Tone
+// 5 Eye-Catching Flagship Categories
+const FLAGSHIP_BENTO = [
+  {
+    key: 'finance',
+    name: 'Finance & Wealth',
+    subtitle: 'Money, Power, Investing & Freedom',
+    tag: 'Trending 📈',
+    icon: TrendingUp,
+    gradient: 'linear-gradient(135deg, #052A1D 0%, #0A4A33 50%, #10704D 100%)',
+    borderColor: 'border-emerald-400/30',
+    accentColor: '#2EE59D',
+    textColor: 'text-[#2EE59D]',
+    cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80',
+    categoryQuery: 'Finance',
+  },
+  {
+    key: 'self-help',
+    name: 'Self-Help & Mindset',
+    subtitle: 'Habits, Psychology, Mastery & Focus',
+    tag: 'Essential ⚡',
+    icon: Sparkles,
+    gradient: 'linear-gradient(135deg, #7C2405 0%, #B83C0C 50%, #E8590C 100%)',
+    borderColor: 'border-orange-400/40',
+    accentColor: '#FFB300',
+    textColor: 'text-[#FFB300]',
+    cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&auto=format&fit=crop&q=80',
+    categoryQuery: 'Self-Help',
+  },
+  {
+    key: 'fiction',
+    name: 'Fiction & Literature',
+    subtitle: 'Sci-Fi, Dystopian, Classics & Thrillers',
+    tag: 'Bestselling 📖',
+    icon: BookOpen,
+    gradient: 'linear-gradient(135deg, #08203D 0%, #0E3E73 50%, #1664A6 100%)',
+    borderColor: 'border-cyan-400/30',
+    accentColor: '#2CD4BF',
+    textColor: 'text-[#2CD4BF]',
+    cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&auto=format&fit=crop&q=80',
+    categoryQuery: 'Fiction',
+  },
+  {
+    key: 'adult',
+    name: 'Adult & Erotics',
+    subtitle: 'Passionate, Spicy, Taboo & Uncensored',
+    tag: '18+ Uncensored 🔥',
+    icon: Flame,
+    gradient: 'linear-gradient(135deg, #420A14 0%, #701020 50%, #A3182E 100%)',
+    borderColor: 'border-rose-400/40',
+    accentColor: '#FF2E54',
+    textColor: 'text-[#FF2E54]',
+    cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400&auto=format&fit=crop&q=80',
+    categoryQuery: 'Adult & Erotics',
+  },
+  {
+    key: 'romance',
+    name: 'Romance & Drama',
+    subtitle: 'Enemies to Lovers, Heartbreak & Soulmates',
+    tag: 'Hot Tropes 💕',
+    icon: Heart,
+    gradient: 'linear-gradient(135deg, #350B47 0%, #581673 50%, #8522AD 100%)',
+    borderColor: 'border-purple-400/30',
+    accentColor: '#F472B6',
+    textColor: 'text-[#F472B6]',
+    cover: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&auto=format&fit=crop&q=80',
+    categoryQuery: 'Romance & Drama',
+  },
 ];
 
-// 3. Fallback Curated Category Set if catalog is bootstrapping
-const DEFAULT_CATEGORIES = [
-  'Fiction & Literature',
-  'Psychology & Self-Help',
-  'Business & Finance',
-  'Christian Books',
-  'Education & Textbooks',
-  'Biographies & Memoir',
-  'Self-Help',
-  'Philosophy & Mindset',
-  'African Literature',
-  'General',
-];
-
-interface FormattedCategory {
-  name: string;
-  count: number;
-  bg: string;
-  border: string;
-  accent: string;
-  cover: string;
-}
-
-const allCategories = computed<FormattedCategory[]>(() => {
-  const counts = new Map<string, number>();
-
+// Compute count per category dynamically
+const countMap = computed(() => {
+  const map = new Map<string, number>();
   if (catalogBooks.value) {
-    for (const book of catalogBooks.value) {
-      const name = (book.category_name || 'General').trim();
-      counts.set(name, (counts.get(name) || 0) + 1);
+    for (const b of catalogBooks.value) {
+      const cat = (b.category_name || 'General').toLowerCase();
+      map.set(cat, (map.get(cat) || 0) + 1);
     }
   }
-
-  // Ensure default categories exist even if 0 items are added yet
-  for (const def of DEFAULT_CATEGORIES) {
-    if (!counts.has(def)) {
-      counts.set(def, 0);
-    }
-  }
-
-  const sortedNames = Array.from(counts.keys()).sort((a, b) => {
-    // Sort by largest book volume first, fallback to alphabetical
-    const countA = counts.get(a) || 0;
-    const countB = counts.get(b) || 0;
-    if (countB !== countA) return countB - countA;
-    return a.localeCompare(b);
-  });
-
-  return sortedNames.map((name, idx) => {
-    const palette = LUXURY_PALETTE[idx % LUXURY_PALETTE.length];
-    return {
-      name,
-      count: counts.get(name) || 0,
-      bg: palette.bg,
-      border: palette.border,
-      accent: palette.accent,
-      cover: palette.cover,
-    };
-  });
+  return map;
 });
 
-// Top 5 Categories populate the Marquee Bento Grid
-const marqueeCategories = computed(() => allCategories.value.slice(0, 5));
+function getCategoryCount(query: string): number {
+  const q = query.toLowerCase();
+  let total = 0;
+  for (const [cat, count] of countMap.value.entries()) {
+    if (cat.includes(q) || q.includes(cat)) {
+      total += count;
+    }
+  }
+  return total;
+}
 
-// Remaining categories populate the sleek architectural sub-shelf
-const subCategories = computed(() => allCategories.value.slice(5));
-
-function handleCategoryClick(catName: string): void {
-  emit('select', catName);
+function handleCategoryClick(catQuery: string): void {
+  emit('select', catQuery);
+  if (process.client) {
+    const el = document.getElementById('catalog-results');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
 }
 </script>
 
 <template>
-  <section id="categories-bento" class="py-12 sm:py-16 px-4 max-w-6xl mx-auto space-y-9 select-none overflow-hidden">
-    <!-- 1. Section Header: Anchored on the font-poster design foundation -->
-    <div class="text-center space-y-1.5">
-      <span class="text-[10px] sm:text-[11px] font-mono uppercase font-bold tracking-widest text-[#F05A36] block">
-        EXPLORE BY GENRE
-      </span>
-      <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#141E1A] tracking-wide uppercase leading-none">
-        WHAT KIND OF STORY ARE YOU CRAVING TODAY?
+  <section id="categories-bento" class="py-12 sm:py-16 px-4 max-w-6xl mx-auto space-y-8 select-none overflow-hidden">
+    <!-- Header: Flashy Hero Vibe -->
+    <div class="text-center space-y-2">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#052219] text-[#2EE59D] text-[10px] font-mono font-bold uppercase tracking-widest border border-[#2EE59D]/30 shadow-xs">
+        <Sparkles :size="12" class="text-[#2EE59D]" />
+        <span>CURATED COLLECTIONS</span>
+      </div>
+      <h2 class="font-poster text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#141E1A] tracking-wide uppercase leading-none">
+        WHAT ARE YOU CRAVING TO READ TODAY?
       </h2>
+      <p class="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto font-sans font-medium">
+        Explore our 5 most demanded collections. Tap any genre to filter the full collection immediately.
+      </p>
     </div>
 
-    <!-- ================================================================= -->
-    <!-- 2. ZONE A: MARQUEE BENTO (TOP 5 FLAGSHIP CATEGORIES)              -->
-    <!-- ================================================================= -->
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4 auto-rows-[165px] sm:auto-rows-[195px]">
+    <!-- 5-Card High-Energy Bento Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4 auto-rows-[170px] sm:auto-rows-[195px]">
       
-      <!-- Card 1: Wide Anchor Tile -->
+      <!-- 1. Finance & Wealth (Wide Anchor Card) -->
       <div
-        v-if="marqueeCategories[0]"
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg border"
-        :class="marqueeCategories[0].border"
-        :style="{ backgroundColor: marqueeCategories[0].bg }"
-        @click="handleCategoryClick(marqueeCategories[0].name)"
-      >
-        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/35 pointer-events-none z-0" />
-
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs font-mono font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-xs" :style="{ color: marqueeCategories[0].accent }">
-            {{ marqueeCategories[0].count }} {{ marqueeCategories[0].count === 1 ? 'Title' : 'Titles' }}
-          </span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-
-        <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide z-10 drop-shadow-xs max-w-[70%]">
-          {{ marqueeCategories[0].name }}
-        </h3>
-
-        <!-- Angled 3D Book Jacket with Depth Shadow -->
-        <div class="absolute -right-2 -bottom-3 w-[36%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[10deg] group-hover:rotate-6 group-hover:scale-105 transition-transform duration-300 z-1 pointer-events-none border border-white/20 book-cover-3d">
-          <img :src="marqueeCategories[0].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-        </div>
-      </div>
-
-      <!-- Card 2: Center Feature Column -->
-      <div
-        v-if="marqueeCategories[1]"
-        class="col-span-2 md:col-span-1 md:row-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg order-last md:order-none min-h-[220px] md:min-h-0 border"
-        :class="marqueeCategories[1].border"
-        :style="{ backgroundColor: marqueeCategories[1].bg }"
-        @click="handleCategoryClick(marqueeCategories[1].name)"
+        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border"
+        :class="FLAGSHIP_BENTO[0].borderColor"
+        :style="{ background: FLAGSHIP_BENTO[0].gradient }"
+        @click="handleCategoryClick(FLAGSHIP_BENTO[0].categoryQuery)"
       >
         <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/40 pointer-events-none z-0" />
 
         <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs font-mono font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-xs" :style="{ color: marqueeCategories[1].accent }">
-            {{ marqueeCategories[1].count }} {{ marqueeCategories[1].count === 1 ? 'Title' : 'Titles' }}
+          <span class="text-[10px] sm:text-[11px] font-mono font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs flex items-center gap-1" :style="{ color: FLAGSHIP_BENTO[0].accentColor }">
+            <component :is="FLAGSHIP_BENTO[0].icon" :size="12" />
+            <span>{{ FLAGSHIP_BENTO[0].tag }}</span>
+            <span v-if="getCategoryCount(FLAGSHIP_BENTO[0].categoryQuery) > 0" class="text-[9px] opacity-75 font-normal">
+              • {{ getCategoryCount(FLAGSHIP_BENTO[0].categoryQuery) }}
+            </span>
           </span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
+          <div class="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
             <ArrowUpRight :size="14" />
           </div>
         </div>
 
-        <!-- Triple Fanned Book Cluster with Ambient Drop Shadow -->
+        <div class="z-10 max-w-[70%] space-y-0.5">
+          <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide leading-tight drop-shadow-xs">
+            {{ FLAGSHIP_BENTO[0].name }}
+          </h3>
+          <p class="text-[10px] sm:text-[11px] text-white/80 font-medium font-sans truncate">
+            {{ FLAGSHIP_BENTO[0].subtitle }}
+          </p>
+        </div>
+
+        <!-- 3D Book Cover Overlay -->
+        <div class="absolute -right-2 -bottom-3 w-[36%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[10deg] group-hover:rotate-6 group-hover:scale-105 transition-transform duration-300 z-1 pointer-events-none border border-white/20 book-cover-3d">
+          <img :src="FLAGSHIP_BENTO[0].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        </div>
+      </div>
+
+      <!-- 2. Self-Help & Mindset (Center Feature Column) -->
+      <div
+        class="col-span-2 md:col-span-1 md:row-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl order-last md:order-none min-h-[220px] md:min-h-0 border"
+        :class="FLAGSHIP_BENTO[1].borderColor"
+        :style="{ background: FLAGSHIP_BENTO[1].gradient }"
+        @click="handleCategoryClick(FLAGSHIP_BENTO[1].categoryQuery)"
+      >
+        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/40 pointer-events-none z-0" />
+
+        <div class="flex justify-between items-start z-10">
+          <span class="text-[10px] sm:text-[11px] font-mono font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs flex items-center gap-1" :style="{ color: FLAGSHIP_BENTO[1].accentColor }">
+            <component :is="FLAGSHIP_BENTO[1].icon" :size="12" />
+            <span>{{ FLAGSHIP_BENTO[1].tag }}</span>
+            <span v-if="getCategoryCount(FLAGSHIP_BENTO[1].categoryQuery) > 0" class="text-[9px] opacity-75 font-normal">
+              • {{ getCategoryCount(FLAGSHIP_BENTO[1].categoryQuery) }}
+            </span>
+          </span>
+          <div class="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
+            <ArrowUpRight :size="14" />
+          </div>
+        </div>
+
+        <!-- Fanned Book Cluster -->
         <div class="relative w-full h-36 sm:h-48 md:h-56 flex items-center justify-center my-auto pointer-events-none z-1">
           <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[1/1.45] rounded-md overflow-hidden shadow-xl -translate-x-[40%] rotate-[-14deg] border border-white/20 book-cover-3d">
             <img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
@@ -170,142 +205,132 @@ function handleCategoryClick(catName: string): void {
             <div class="absolute inset-0 bg-black/30" />
           </div>
           <div class="absolute w-[36%] max-w-[115px] min-w-[68px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl z-10 scale-105 group-hover:scale-110 transition-transform duration-300 border border-white/30 book-cover-3d">
-            <img :src="marqueeCategories[1].cover" alt="" class="w-full h-full object-cover" />
-            <div class="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+            <img :src="FLAGSHIP_BENTO[1].cover" alt="" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
           </div>
         </div>
 
-        <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide z-10 leading-tight drop-shadow-xs">
-          {{ marqueeCategories[1].name }}
-        </h3>
+        <div class="z-10 space-y-0.5">
+          <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide leading-tight drop-shadow-xs">
+            {{ FLAGSHIP_BENTO[1].name }}
+          </h3>
+          <p class="text-[11px] text-white/85 font-medium font-sans">
+            {{ FLAGSHIP_BENTO[1].subtitle }}
+          </p>
+        </div>
       </div>
 
-      <!-- Card 3: Standard Square Card -->
+      <!-- 3. Fiction & Literature -->
       <div
-        v-if="marqueeCategories[2]"
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg border"
-        :class="marqueeCategories[2].border"
-        :style="{ backgroundColor: marqueeCategories[2].bg }"
-        @click="handleCategoryClick(marqueeCategories[2].name)"
+        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border"
+        :class="FLAGSHIP_BENTO[2].borderColor"
+        :style="{ background: FLAGSHIP_BENTO[2].gradient }"
+        @click="handleCategoryClick(FLAGSHIP_BENTO[2].categoryQuery)"
       >
-        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/35 pointer-events-none z-0" />
+        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/40 pointer-events-none z-0" />
 
         <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs font-mono font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-xs" :style="{ color: marqueeCategories[2].accent }">
-            {{ marqueeCategories[2].count }} {{ marqueeCategories[2].count === 1 ? 'Title' : 'Titles' }}
+          <span class="text-[10px] sm:text-[11px] font-mono font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs flex items-center gap-1" :style="{ color: FLAGSHIP_BENTO[2].accentColor }">
+            <component :is="FLAGSHIP_BENTO[2].icon" :size="12" />
+            <span>{{ FLAGSHIP_BENTO[2].tag }}</span>
+            <span v-if="getCategoryCount(FLAGSHIP_BENTO[2].categoryQuery) > 0" class="text-[9px] opacity-75 font-normal">
+              • {{ getCategoryCount(FLAGSHIP_BENTO[2].categoryQuery) }}
+            </span>
           </span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
+          <div class="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
             <ArrowUpRight :size="14" />
           </div>
         </div>
 
-        <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide z-10 drop-shadow-xs max-w-[75%]">
-          {{ marqueeCategories[2].name }}
-        </h3>
+        <div class="z-10 max-w-[75%] space-y-0.5">
+          <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide drop-shadow-xs leading-tight">
+            {{ FLAGSHIP_BENTO[2].name }}
+          </h3>
+          <p class="text-[10px] sm:text-[11px] text-white/80 font-medium font-sans truncate">
+            {{ FLAGSHIP_BENTO[2].subtitle }}
+          </p>
+        </div>
 
         <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[-8deg] group-hover:rotate-0 group-hover:scale-105 transition-transform duration-300 z-1 pointer-events-none border border-white/20 book-cover-3d">
-          <img :src="marqueeCategories[2].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+          <img :src="FLAGSHIP_BENTO[2].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         </div>
       </div>
 
-      <!-- Card 4: Standard Square Card -->
+      <!-- 4. Adult & Erotics (Hot Crimson) -->
       <div
-        v-if="marqueeCategories[3]"
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg border"
-        :class="marqueeCategories[3].border"
-        :style="{ backgroundColor: marqueeCategories[3].bg }"
-        @click="handleCategoryClick(marqueeCategories[3].name)"
+        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border"
+        :class="FLAGSHIP_BENTO[3].borderColor"
+        :style="{ background: FLAGSHIP_BENTO[3].gradient }"
+        @click="handleCategoryClick(FLAGSHIP_BENTO[3].categoryQuery)"
       >
-        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/35 pointer-events-none z-0" />
+        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/40 pointer-events-none z-0" />
 
         <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs font-mono font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-xs" :style="{ color: marqueeCategories[3].accent }">
-            {{ marqueeCategories[3].count }} {{ marqueeCategories[3].count === 1 ? 'Title' : 'Titles' }}
+          <span class="text-[10px] sm:text-[11px] font-mono font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs flex items-center gap-1" :style="{ color: FLAGSHIP_BENTO[3].accentColor }">
+            <component :is="FLAGSHIP_BENTO[3].icon" :size="12" />
+            <span>{{ FLAGSHIP_BENTO[3].tag }}</span>
+            <span v-if="getCategoryCount(FLAGSHIP_BENTO[3].categoryQuery) > 0" class="text-[9px] opacity-75 font-normal">
+              • {{ getCategoryCount(FLAGSHIP_BENTO[3].categoryQuery) }}
+            </span>
           </span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
+          <div class="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
             <ArrowUpRight :size="14" />
           </div>
         </div>
 
-        <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide z-10 drop-shadow-xs max-w-[75%]">
-          {{ marqueeCategories[3].name }}
-        </h3>
+        <div class="z-10 max-w-[75%] space-y-0.5">
+          <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide drop-shadow-xs leading-tight">
+            {{ FLAGSHIP_BENTO[3].name }}
+          </h3>
+          <p class="text-[10px] sm:text-[11px] text-white/80 font-medium font-sans truncate">
+            {{ FLAGSHIP_BENTO[3].subtitle }}
+          </p>
+        </div>
 
         <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[6deg] group-hover:rotate-0 group-hover:scale-105 transition-transform duration-300 z-1 pointer-events-none border border-white/20 book-cover-3d">
-          <img :src="marqueeCategories[3].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+          <img :src="FLAGSHIP_BENTO[3].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         </div>
       </div>
 
-      <!-- Card 5: Standard Square Card -->
+      <!-- 5. Romance & Drama (Royal Amethyst Orchid) -->
       <div
-        v-if="marqueeCategories[4]"
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg border"
-        :class="marqueeCategories[4].border"
-        :style="{ backgroundColor: marqueeCategories[4].bg }"
-        @click="handleCategoryClick(marqueeCategories[4].name)"
+        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border"
+        :class="FLAGSHIP_BENTO[4].borderColor"
+        :style="{ background: FLAGSHIP_BENTO[4].gradient }"
+        @click="handleCategoryClick(FLAGSHIP_BENTO[4].categoryQuery)"
       >
-        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/35 pointer-events-none z-0" />
+        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/40 pointer-events-none z-0" />
 
         <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-xs font-mono font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-xs" :style="{ color: marqueeCategories[4].accent }">
-            {{ marqueeCategories[4].count }} {{ marqueeCategories[4].count === 1 ? 'Title' : 'Titles' }}
+          <span class="text-[10px] sm:text-[11px] font-mono font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs flex items-center gap-1" :style="{ color: FLAGSHIP_BENTO[4].accentColor }">
+            <component :is="FLAGSHIP_BENTO[4].icon" :size="12" />
+            <span>{{ FLAGSHIP_BENTO[4].tag }}</span>
+            <span v-if="getCategoryCount(FLAGSHIP_BENTO[4].categoryQuery) > 0" class="text-[9px] opacity-75 font-normal">
+              • {{ getCategoryCount(FLAGSHIP_BENTO[4].categoryQuery) }}
+            </span>
           </span>
-          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
+          <div class="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
             <ArrowUpRight :size="14" />
           </div>
         </div>
 
-        <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide z-10 drop-shadow-xs max-w-[75%]">
-          {{ marqueeCategories[4].name }}
-        </h3>
+        <div class="z-10 max-w-[75%] space-y-0.5">
+          <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide drop-shadow-xs leading-tight">
+            {{ FLAGSHIP_BENTO[4].name }}
+          </h3>
+          <p class="text-[10px] sm:text-[11px] text-white/80 font-medium font-sans truncate">
+            {{ FLAGSHIP_BENTO[4].subtitle }}
+          </p>
+        </div>
 
         <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[-6deg] group-hover:rotate-0 group-hover:scale-105 transition-transform duration-300 z-1 pointer-events-none border border-white/20 book-cover-3d">
-          <img :src="marqueeCategories[4].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+          <img :src="FLAGSHIP_BENTO[4].cover" alt="" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         </div>
       </div>
 
-    </div>
-
-    <!-- ================================================================= -->
-    <!-- 3. ZONE B: SLEEK ARCHITECTURAL SUB-CATEGORY SHELF (MANY GENRES)  -->
-    <!-- ================================================================= -->
-    <div v-if="subCategories.length > 0" class="space-y-3 pt-2">
-      <div class="flex items-center justify-between border-b border-paper-border pb-2.5">
-        <div class="flex items-center gap-2 text-forest-950">
-          <Layers :size="15" class="text-gold-600" />
-          <span class="font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-forest-950">
-            More Specialty Categories &amp; Subjects
-          </span>
-        </div>
-        <span class="text-[10px] font-mono text-ink-muted">
-          {{ subCategories.length }} Specialized Departments
-        </span>
-      </div>
-
-      <!-- Symmetrical Multi-Column Chip Shelf -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
-        <button
-          v-for="sub in subCategories"
-          :key="sub.name"
-          type="button"
-          class="p-3 bg-paper-cream/60 hover:bg-white border border-paper-border hover:border-forest-900/40 rounded-xl transition-all flex flex-col justify-between text-left group cursor-pointer shadow-2xs hover:shadow-subtle hover:-translate-y-0.5 min-h-[74px]"
-          @click="handleCategoryClick(sub.name)"
-        >
-          <div class="flex justify-between items-center w-full">
-            <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-white text-forest-950 border border-paper-border">
-              {{ sub.count }}
-            </span>
-            <ArrowUpRight :size="13" class="text-ink-subtle group-hover:text-forest-950 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-          </div>
-
-          <span class="font-sans text-xs font-bold text-forest-950 group-hover:text-[#F05A36] transition-colors truncate mt-1">
-            {{ sub.name }}
-          </span>
-        </button>
-      </div>
     </div>
   </section>
 </template>
