@@ -13,7 +13,7 @@ import BookCard from '~/components/storefront/BookCard.vue';
 import CartDrawer from '~/components/storefront/CartDrawer.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
 import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
-import { BookOpen } from 'lucide-vue-next';
+import { BookOpen, Layers } from 'lucide-vue-next';
 import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
 import type { Book } from '~/types';
 
@@ -30,6 +30,31 @@ const searchQuery = ref<string>('');
 const showRequestModal = ref(false);
 const modalInitialTitle = ref('');
 const modalInitialAuthor = ref('');
+
+// Extract dynamic list of distinct categories for the catalogue toggle bar
+const catalogueCategories = computed<string[]>(() => {
+  const set = new Set<string>();
+  if (realBooks.value) {
+    for (const book of realBooks.value) {
+      if (book.category_name && book.category_name.trim()) {
+        set.add(book.category_name.trim());
+      }
+    }
+  }
+  if (set.size > 0) {
+    return ['ALL', ...Array.from(set).sort()];
+  }
+  return [
+    'ALL',
+    'Business & Finance',
+    'Psychology & Self-Help',
+    'Self-Help',
+    'Fiction & Literature',
+    'Christian Books',
+    'Education & Textbooks',
+    'Biographies & Memoir',
+  ];
+});
 
 // Dynamic Filter Engine for Main Catalog Grid
 const filteredBooks = computed(() => {
@@ -61,7 +86,7 @@ const hasActiveFilter = computed(() => {
   return activeCategoryFilter.value !== 'ALL' || searchQuery.value.trim().length > 0;
 });
 
-// 1. FLASH SALE DEALS (Specifically FLASH_SALE & LIMITED_TIME or discounted unbadged items)
+// FLASH SALE DEALS
 const flashSaleBooks = computed<Book[]>(() => {
   const books = realBooks.value || [];
   return books.filter((b) => {
@@ -71,7 +96,7 @@ const flashSaleBooks = computed<Book[]>(() => {
   });
 });
 
-// 2. BESTSELLERS OF THE WEEK (All books with the BESTSELLER badge)
+// BESTSELLERS OF THE WEEK
 const bestsellersOfWeek = computed<Book[]>(() => {
   const books = realBooks.value || [];
   const tagged = books.filter((b) => b.badge === 'BESTSELLER');
@@ -99,8 +124,8 @@ function scrollToSection(sectionId: string): void {
   }
 }
 
-function handleRequestSeed(title: string, author?: string): void {
-  modalInitialTitle.value = title;
+function handleRequestSeed(title?: string, author?: string): void {
+  modalInitialTitle.value = title || '';
   modalInitialAuthor.value = author || '';
   showRequestModal.value = true;
 }
@@ -111,17 +136,21 @@ function handleRequestSeed(title: string, author?: string): void {
     <!-- 1. Topmost Rotating Announcement Ribbon -->
     <PromoTickerStrip :messages="tickerItems" />
 
-    <!-- 2. Sticky White Navbar with Glassmorphic Search Bar -->
-    <StoreNavbar @search="handleSearch" />
+    <!-- 2. Polished Sticky Navbar with Real Logo, Categories Dropdown & "Request Book!" Button -->
+    <StoreNavbar
+      @search="handleSearch"
+      @select-category="handleCategorySelect"
+      @request-book="() => handleRequestSeed()"
+    />
 
-    <!-- 3. Hero Carousel (Custom banners only) -->
+    <!-- 3. Hero Carousel -->
     <HeroCarousel
       @search="handleSearch"
       @select-category="handleCategorySelect"
       @navigate-flash-sale="scrollToSection('flash-sale')"
     />
 
-    <!-- 4. Flash Sale Shelf (Zero margin from hero, 8px padding) -->
+    <!-- 4. Flash Sale Shelf -->
     <div id="flash-sale" class="mt-0">
       <FlashSaleStrip
         :books="flashSaleBooks"
@@ -133,10 +162,10 @@ function handleRequestSeed(title: string, author?: string): void {
     <!-- 5. Genre Grid (Bento Categories) -->
     <BentoCategories @select="handleCategorySelect" />
 
-    <!-- 6. Bestsellers of the Week (All BESTSELLER-badged books, Timer on left, Books on right) -->
+    <!-- 6. Bestsellers of the Week -->
     <DealsWeek :books="bestsellersOfWeek" @request-seed="handleRequestSeed" />
 
-    <!-- 7. Complete Bookstore Catalogue (Filtered results & all titles) -->
+    <!-- 7. Complete Bookstore Catalogue with Categories Filter Toggle Strip -->
     <section
       id="catalog-results"
       class="pt-12 sm:pt-16 pb-10 px-4 max-w-6xl mx-auto w-full space-y-6"
@@ -144,10 +173,10 @@ function handleRequestSeed(title: string, author?: string): void {
       <div class="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-theme-border">
         <div class="space-y-1">
           <span class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#F05A36] block">
-            {{ hasActiveFilter ? 'FILTERED SEARCH RESULTS' : 'COMPLETE CATALOGUE' }}
+            {{ hasActiveFilter ? 'FILTERED RESULTS' : 'COMPLETE CATALOGUE' }}
           </span>
           <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-theme-ink tracking-wide leading-none">
-            {{ hasActiveFilter ? `SHOWING: ${activeCategoryFilter}` : 'BROWSE ALL BOOKS' }}
+            {{ activeCategoryFilter === 'ALL' ? 'BROWSE ALL BOOKS' : activeCategoryFilter }}
           </h2>
         </div>
 
@@ -161,6 +190,29 @@ function handleRequestSeed(title: string, author?: string): void {
           "
         >
           Reset Filters
+        </button>
+      </div>
+
+      <!-- Categories Filter Toggle Bar (Horizontal Scrollable Strip) -->
+      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 pb-2">
+        <div class="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-400 mr-1 flex-shrink-0">
+          <Layers :size="14" class="text-[#E8750D]" />
+          <span class="hidden sm:inline uppercase text-[10px] tracking-wider">Genres:</span>
+        </div>
+
+        <button
+          v-for="cat in catalogueCategories"
+          :key="cat"
+          type="button"
+          class="px-3.5 py-1.5 rounded-full text-xs font-sans whitespace-nowrap transition-all duration-200 cursor-pointer select-none flex-shrink-0"
+          :class="
+            activeCategoryFilter === cat
+              ? 'bg-[#052219] text-[#2EE59D] font-extrabold shadow-sm ring-1 ring-[#052219]'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold'
+          "
+          @click="activeCategoryFilter = cat"
+        >
+          {{ cat === 'ALL' ? 'All Books' : cat }}
         </button>
       </div>
 
@@ -181,10 +233,10 @@ function handleRequestSeed(title: string, author?: string): void {
       <div v-else class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm">
         <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
         <h3 class="font-display font-bold text-base text-slate-800">
-          No books found matching this filter
+          No books found in this category
         </h3>
         <p class="text-xs text-slate-500 max-w-xs mx-auto">
-          We can source this title for you directly via WhatsApp concierge.
+          We can source this title for you directly via our WhatsApp team.
         </p>
         <button
           type="button"
