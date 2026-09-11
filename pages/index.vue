@@ -214,7 +214,7 @@ onUnmounted(() => {
               <span class="text-xs text-white/80 font-mono hidden sm:inline">• Free Nairobi Delivery above KSh 2,500</span>
             </div>
             <h3 class="font-display font-bold text-sm sm:text-base text-white mt-0.5">
-              Original Print Editions &amp; Instant Cloudflare R2 eBooks
+              Original Hardcopy Editions &amp; Instant eBooks
             </h3>
           </div>
         </div>
