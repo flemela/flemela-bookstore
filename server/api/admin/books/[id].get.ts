@@ -1,36 +1,53 @@
 // =============================================================================
-// server/api/admin/books/[id].get.ts
-// Proxy endpoint fetching single book details and all attached formats.
+// flemela/server/api/admin/books/[id].get.ts
+// Single Book Getter (Explicitly rejects 'upload-url' to prevent router collision)
 // =============================================================================
 
-import { sokoClient } from '../../../utils/sokoClient';
-import type { Book, ProductFormat } from '~/types';
+import { defineEventHandler, getCookie, getHeader, createError } from 'h3';
+import { ofetch } from 'ofetch';
 
 export default defineEventHandler(async (event) => {
-  const token = getCookie(event, 'flemela_admin_session') || event.context.authToken;
+  const config = useRuntimeConfig();
+  const id = event.context.params?.id;
+
+  // Crucial guard: If Nitro routed "upload-url" here, reject immediately
+  if (!id || id === 'upload-url') {
+    throw createError({
+      statusCode: 404,
+      statusMessage: 'Not Found',
+      data: { message: 'Invalid book identifier.' },
+    });
+  }
+
+  let token = getCookie(event, 'flemela_admin_session');
+  if (!token) {
+    const authHeader = getHeader(event, 'authorization');
+    if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+      token = authHeader.slice(7).trim();
+    }
+  }
 
   if (!token) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized admin session' });
+    throw createError({ statusCode: 401, message: 'Unauthorized' });
   }
 
-  const id = getRouterParam(event, 'id');
-
-  if (!id) {
-    throw createError({ statusCode: 400, statusMessage: 'Product ID is required' });
-  }
+  const sokoApiUrl = config.sokoApiBaseUrl || process.env.SOKO_API_BASE_URL || 'http://localhost:3000';
 
   try {
-    const product = await sokoClient<Book>(`/products/${id}`, { token, event });
-    const formats = await sokoClient<ProductFormat[]>(`/products/${id}/formats`, { token, event });
+    const res = await ofetch<{ success: boolean; data?: any }>(
+      `${sokoApiUrl}/api/v1/products/${id}`,
+      {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
 
-    return {
-      ...product,
-      formats: formats || [],
-    };
+    return res.data || res;
   } catch (err: any) {
     throw createError({
       statusCode: err.statusCode || 404,
-      statusMessage: err.statusMessage || 'Book not found',
+      statusMessage: 'Not Found',
+      data: { message: 'Book not found in store catalog.' },
     });
   }
 });
