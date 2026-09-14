@@ -1,7 +1,7 @@
 <!-- components/storefront/BookCard.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { ShoppingCart } from 'lucide-vue-next';
+import { ShoppingCart, Zap, Flame, Star, Tag, Clock } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat, BookFormatType } from '~/types';
@@ -167,23 +167,30 @@ const displayAuthor = computed(() => {
   return props.book.author.startsWith('By ') ? props.book.author : `By ${props.book.author}`;
 });
 
-function formatBadge(badgeStr?: string | null): string {
-  if (!badgeStr) return '';
+// Badge → { icon, label } instead of an emoji-prefixed string. Same five
+// badge types, same meaning — rendered with lucide icons so they look
+// consistent across platforms and match the ShoppingCart icon language.
+type BadgeInfo = { icon: typeof Zap; label: string } | null;
+
+function getBadgeInfo(badgeStr?: string | null): BadgeInfo {
+  if (!badgeStr) return null;
   switch (badgeStr) {
     case 'FLASH_SALE':
-      return '⚡ FLASH';
+      return { icon: Zap, label: 'FLASH' };
     case 'BESTSELLER':
-      return '🔥 BESTSELLER';
+      return { icon: Flame, label: 'BESTSELLER' };
     case 'NO1_PICK':
-      return '⭐ #1 PICK';
+      return { icon: Star, label: '#1 PICK' };
     case 'DEAL_OF_WEEK':
-      return '🏷️ DEAL';
+      return { icon: Tag, label: 'DEAL' };
     case 'LIMITED_TIME':
-      return '⏳ LIMITED';
+      return { icon: Clock, label: 'LIMITED' };
     default:
-      return badgeStr.replace(/_/g, ' ');
+      return { icon: Tag, label: badgeStr.replace(/_/g, ' ') };
   }
 }
+
+const badgeInfo = computed(() => getBadgeInfo(props.book.badge));
 
 function handleImageError(): void {
   imageFailed.value = true;
@@ -245,7 +252,17 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <div class="w-full max-w-none sm:max-w-[160px] bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all flex flex-col justify-between group select-none text-left border border-slate-100 hover:border-slate-200">
+  <!--
+    Redesign notes:
+    - Card widened from 160px -> 176px so text isn't starved into micro-sizes.
+    - Type scale collapsed to 3 tiers: label (10px), body (xs), price (sm).
+    - Raw hex swapped for theme.* tokens already defined in tailwind.config.js.
+    - Color now has one job each: coral = action (discount, active format,
+      cart button), forest/turquoise = brand identity (promo badge only),
+      ink/slate = everything neutral. Strikethrough price moved off red
+      onto slate, since the discount badge already signals "on sale".
+  -->
+  <div class="w-full max-w-none sm:max-w-[176px] bg-white text-theme-ink rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-medium transition-all flex flex-col justify-between group select-none text-left border border-theme-border hover:border-theme-border-strong">
     <div>
       <!-- Book Cover -->
       <NuxtLink
@@ -255,17 +272,17 @@ function handleAddToCart(event: Event): void {
       >
         <div
           v-if="imageFailed || !coverImage"
-          class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none"
+          class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-theme-dark to-theme-forest text-white text-left select-none"
         >
           <div class="space-y-0.5">
-            <span class="text-[8px] font-mono uppercase tracking-widest text-[#2EE59D] font-bold block truncate">
+            <span class="text-[10px] font-mono uppercase tracking-widest text-theme-turquoise font-bold block truncate">
               {{ book.category_name || 'Book' }}
             </span>
-            <h4 class="font-display font-bold text-[11px] leading-tight line-clamp-3 text-white">
+            <h4 class="font-display font-bold text-xs leading-tight line-clamp-3 text-white">
               {{ book.name }}
             </h4>
           </div>
-          <span class="text-[8px] font-mono text-white/70 truncate block pt-0.5 border-t border-white/10">
+          <span class="text-[10px] font-mono text-white/70 truncate block pt-0.5 border-t border-white/10">
             {{ book.author || 'Edition' }}
           </span>
         </div>
@@ -276,92 +293,94 @@ function handleAddToCart(event: Event): void {
           :alt="book.name"
           class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
-          width="132"
-          height="170"
+          width="144"
+          height="188"
           referrerpolicy="no-referrer"
           @error="handleImageError"
         />
 
+        <!-- Discount badge: coral is the ONLY "act now" color on this card -->
         <span
           v-if="discountPercentage > 0"
-          class="absolute top-1.5 right-1.5 bg-red-600 text-white font-mono font-extrabold text-[9px] px-1.5 py-0.5 rounded shadow-xs z-10"
+          class="absolute top-1.5 right-1.5 bg-theme-coral text-white font-mono font-extrabold text-[10px] px-1.5 py-0.5 rounded shadow-xs z-10"
         >
           -{{ discountPercentage }}%
         </span>
 
+        <!-- Identity badge: forest + turquoise, icon instead of emoji -->
         <span
-          v-if="book.badge"
-          class="absolute top-1.5 left-1.5 bg-[#052219] text-[#2EE59D] font-mono font-bold text-[8px] px-1.5 py-0.5 rounded uppercase z-10"
+          v-if="badgeInfo"
+          class="absolute top-1.5 left-1.5 bg-theme-forest text-theme-turquoise font-mono font-bold text-[10px] px-1.5 py-0.5 rounded uppercase z-10 flex items-center gap-1"
         >
-          {{ formatBadge(book.badge) }}
+          <component :is="badgeInfo.icon" :size="10" />
+          {{ badgeInfo.label }}
         </span>
       </NuxtLink>
 
       <!-- Book Title -->
       <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
-        <h3 class="font-display text-[11px] sm:text-xs font-bold text-slate-900 group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug">
+        <h3 class="font-display text-xs font-bold text-theme-ink group-hover:text-theme-coral transition-colors line-clamp-1 leading-snug">
           {{ book.name }}
         </h3>
       </NuxtLink>
 
       <!-- Author -->
-      <p class="text-[10px] text-slate-500 italic truncate mt-0.5">
+      <p class="text-[10px] text-theme-muted italic truncate mt-0.5">
         {{ displayAuthor }}
       </p>
 
-      <!-- Stacked Format Selector with Brand Orange & Prices -->
+      <!-- Stacked Format Selector -->
       <div class="mt-2 space-y-1">
         <template v-if="availableFormats.length > 1">
           <button
             v-for="fmt in availableFormats"
             :key="fmt.id"
             type="button"
-            class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] sm:text-[10.5px] font-sans transition-all cursor-pointer select-none leading-none border"
+            class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans transition-all cursor-pointer select-none leading-none border"
             :class="
               activeFormat?.id === fmt.id
-                ? 'bg-[#FFF7ED] border-[#E8750D] text-[#C25E00] font-extrabold shadow-2xs'
+                ? 'bg-theme-coral/10 border-theme-coral text-theme-coral-hover font-extrabold shadow-2xs'
                 : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold'
             "
             @click="selectFormat(fmt.id, $event)"
           >
             <span class="truncate pr-1">{{ getFormatDisplayLabel(fmt) }}</span>
-            <span class="font-mono font-bold tracking-tight text-[9.5px] flex-shrink-0" :class="activeFormat?.id === fmt.id ? 'text-[#C25E00]' : 'text-slate-600'">
+            <span class="font-mono font-bold text-[10px] flex-shrink-0" :class="activeFormat?.id === fmt.id ? 'text-theme-coral-hover' : 'text-slate-600'">
               {{ formatCurrency(fmt.price) }}
             </span>
           </button>
         </template>
         <div
           v-else-if="activeFormat"
-          class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans font-bold bg-[#FFF7ED] border border-[#E8750D]/60 text-[#C25E00]"
+          class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans font-bold bg-theme-coral/10 border border-theme-coral/60 text-theme-coral-hover"
         >
           <span class="truncate pr-1">{{ getFormatDisplayLabel(activeFormat) }}</span>
-          <span class="font-mono font-bold text-[9.5px] flex-shrink-0">
+          <span class="font-mono font-bold text-[10px] flex-shrink-0">
             {{ formatCurrency(activeFormat.price) }}
           </span>
         </div>
       </div>
     </div>
 
-    <!-- Bottom Bar: Prices + Supermarket Shopping Cart Button -->
-    <div class="pt-2 mt-2.5 border-t border-slate-100 flex items-end justify-between gap-1.5">
+    <!-- Bottom Bar: Price + Cart Button -->
+    <div class="pt-2 mt-2.5 border-t border-theme-border flex items-end justify-between gap-1.5">
       <div class="min-w-0 flex flex-col justify-center">
-        <!-- Red Strike-Through Price -->
+        <!-- Strikethrough moved off red -> slate. The discount badge already
+             says "on sale"; this doesn't need to shout too. -->
         <span
           v-if="originalPrice && originalPrice > currentPrice"
-          class="text-[10px] sm:text-[10.5px] text-red-600 line-through decoration-red-500 decoration-1 font-mono font-bold block leading-none mb-0.5"
+          class="text-[10px] text-slate-400 line-through decoration-slate-400 decoration-1 font-mono font-bold block leading-none mb-0.5"
         >
           {{ formatCurrency(originalPrice) }}
         </span>
-        <!-- Bigger, Bolder, Solid Black Price -->
-        <span class="text-xs sm:text-sm font-black font-mono leading-tight text-black tracking-tight">
+        <span class="text-sm font-black font-mono leading-tight text-theme-ink tracking-tight">
           {{ formatCurrency(currentPrice) }}
         </span>
       </div>
 
-      <!-- Supermarket Shopping Cart Action Button -->
       <button
         type="button"
-        class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#052219] hover:bg-[#E8750D] text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-sm hover:shadow flex-shrink-0"
+        class="w-8 h-8 rounded-lg bg-theme-forest hover:bg-theme-coral text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-sm hover:shadow flex-shrink-0"
         :title="book.isSeed ? 'Request Book' : (activeFormat?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart')"
         :aria-label="book.isSeed ? 'Request Book' : (activeFormat?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart')"
         @click="handleAddToCart"

@@ -1,7 +1,7 @@
 <!-- components/storefront/FlashSaleStrip.vue -->
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, ShoppingCart, Zap, Clock } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat, BookFormatType } from '~/types';
@@ -164,16 +164,12 @@ function getBookPricing(book: Book) {
   };
 }
 
-function formatBadge(badgeStr?: string | null): string {
-  if (!badgeStr) return '⚡ FLASH';
-  switch (badgeStr) {
-    case 'LIMITED_TIME':
-      return '⏳ LIMITED';
-    case 'FLASH_SALE':
-      return '⚡ FLASH';
-    default:
-      return badgeStr.replace(/_/g, ' ');
-  }
+// Badge is always "flash" or the passed-in label here — icon instead of emoji
+function getBadgeLabel(badgeStr?: string | null): string {
+  if (!badgeStr) return 'FLASH';
+  if (badgeStr === 'LIMITED_TIME') return 'LIMITED';
+  if (badgeStr === 'FLASH_SALE') return 'FLASH';
+  return badgeStr.replace(/_/g, ' ');
 }
 
 function selectBookFormat(bookId: string, formatId: string, event: Event): void {
@@ -217,9 +213,21 @@ function handleQuickAdd(book: Book, event: Event): void {
 </script>
 
 <template>
+  <!--
+    Redesign notes (matches BookCard fixes):
+    - Strip background moved from raw #f50000 to theme-coral-hover — same
+      urgency red-orange, now sourced from the token system.
+    - Cards: type scale collapsed to the same 3 tiers as BookCard (10px
+      label / xs title / sm price), width widened 148/156px -> 160/168px.
+    - Discount + badge use coral/forest+turquoise the same way BookCard
+      does, so a card here and a card on the homepage grid read as the
+      same component, not two different systems.
+    - Strikethrough price moved off red onto slate for the same reason:
+      the discount badge already signals "on sale".
+  -->
   <section
     v-if="books.length > 0"
-    class="bg-[#f50000] text-white py-3 px-4 sm:px-6 relative overflow-hidden select-none rounded-2xl max-w-6xl mx-auto shadow-md"
+    class="bg-theme-coral-hover text-white py-3 px-4 sm:px-6 relative overflow-hidden select-none rounded-2xl max-w-6xl mx-auto shadow-md"
   >
     <!-- Background Texture -->
     <svg class="absolute -left-16 -bottom-16 w-80 h-80 text-white/10 pointer-events-none" viewBox="0 0 200 200" fill="none">
@@ -230,11 +238,12 @@ function handleQuickAdd(book: Book, event: Event): void {
 
     <!-- Controls on the Left, Shelf on the Right -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 sm:gap-8 relative z-10">
-      
+
       <!-- CONTROLS CONTAINER -->
       <div class="w-full sm:w-72 sm:flex-shrink-0 space-y-2.5 text-left py-1">
         <div class="space-y-1">
-          <span class="inline-block text-[9px] sm:text-[10px] font-mono font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-[#052219] text-[#2EE59D] shadow-2xs">
+          <span class="inline-flex items-center gap-1 text-[10px] font-mono font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-theme-dark text-theme-turquoise shadow-2xs">
+            <Zap :size="10" />
             {{ badgeLabel }}
           </span>
           <h2 class="font-poster text-3xl sm:text-4xl font-extrabold uppercase tracking-wide leading-none text-white drop-shadow-xs">
@@ -249,16 +258,17 @@ function handleQuickAdd(book: Book, event: Event): void {
         <!-- Live Countdown Timer -->
         <ClientOnly>
           <div class="flex items-center gap-2 pt-0.5">
-            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
+            <div class="bg-white text-theme-ink rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
               <span class="font-mono text-sm font-bold block">{{ hours }}H</span>
             </div>
             <span class="font-bold text-white">:</span>
-            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
+            <div class="bg-white text-theme-ink rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
               <span class="font-mono text-sm font-bold block">{{ minutes }}M</span>
             </div>
             <span class="font-bold text-white">:</span>
-            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
-              <span class="font-mono text-sm font-bold text-[#F05A36] block">{{ seconds }}S</span>
+            <div class="bg-white text-theme-ink rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px] flex items-center justify-center gap-1">
+              <Clock :size="10" class="text-theme-coral" />
+              <span class="font-mono text-sm font-bold text-theme-coral block">{{ seconds }}S</span>
             </div>
           </div>
         </ClientOnly>
@@ -267,7 +277,7 @@ function handleQuickAdd(book: Book, event: Event): void {
         <div class="hidden sm:flex items-center gap-2.5 pt-1">
           <button
             type="button"
-            class="w-8 h-8 rounded-full bg-[#052219]/30 hover:bg-[#052219] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 border border-white/20"
+            class="w-8 h-8 rounded-full bg-theme-dark/30 hover:bg-theme-dark text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 border border-white/20"
             aria-label="Previous deal"
             @click="scrollLeft"
           >
@@ -275,7 +285,7 @@ function handleQuickAdd(book: Book, event: Event): void {
           </button>
           <button
             type="button"
-            class="w-8 h-8 rounded-full bg-[#052219] text-[#2EE59D] hover:bg-[#073023] flex items-center justify-center cursor-pointer shadow-xs active:scale-95 transition-all border border-[#2EE59D]/30"
+            class="w-8 h-8 rounded-full bg-theme-dark text-theme-turquoise hover:bg-theme-forest flex items-center justify-center cursor-pointer shadow-xs active:scale-95 transition-all border border-theme-turquoise/30"
             aria-label="Next deal"
             @click="scrollRight"
           >
@@ -293,7 +303,7 @@ function handleQuickAdd(book: Book, event: Event): void {
           <div
             v-for="book in books"
             :key="book.id"
-            class="w-[148px] sm:w-[156px] flex-shrink-0 bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all snap-start flex flex-col justify-between group select-none text-left border border-slate-100"
+            class="w-[160px] sm:w-[168px] flex-shrink-0 bg-white text-theme-ink rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-medium transition-all snap-start flex flex-col justify-between group select-none text-left border border-theme-border"
           >
             <div>
               <!-- Book Cover -->
@@ -311,29 +321,30 @@ function handleQuickAdd(book: Book, event: Event): void {
 
                 <span
                   v-if="getBookPricing(book).discountPercentage > 0"
-                  class="absolute top-1.5 right-1.5 bg-red-600 text-white font-mono font-extrabold text-[8.5px] px-1.5 py-0.5 rounded shadow-xs z-10"
+                  class="absolute top-1.5 right-1.5 bg-theme-coral text-white font-mono font-extrabold text-[10px] px-1.5 py-0.5 rounded shadow-xs z-10"
                 >
                   -{{ getBookPricing(book).discountPercentage }}%
                 </span>
 
                 <span
-                  class="absolute top-1.5 left-1.5 bg-[#052219] text-[#2EE59D] font-mono font-bold text-[7.5px] px-1.5 py-0.5 rounded uppercase z-10"
+                  class="absolute top-1.5 left-1.5 bg-theme-forest text-theme-turquoise font-mono font-bold text-[10px] px-1.5 py-0.5 rounded uppercase z-10 flex items-center gap-1"
                 >
-                  {{ formatBadge(book.badge) }}
+                  <Zap :size="9" />
+                  {{ getBadgeLabel(book.badge) }}
                 </span>
               </NuxtLink>
 
               <!-- Book Title -->
               <NuxtLink :to="`/book/${book.slug}`" class="block">
-                <h3 class="font-display text-[11px] font-bold text-slate-900 group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug">
+                <h3 class="font-display text-xs font-bold text-theme-ink group-hover:text-theme-coral transition-colors line-clamp-1 leading-snug">
                   {{ book.name }}
                 </h3>
               </NuxtLink>
-              <p class="text-[9.5px] text-slate-500 italic truncate mt-0.5">
+              <p class="text-[10px] text-theme-muted italic truncate mt-0.5">
                 {{ book.author ? (book.author.startsWith('By ') ? book.author : `By ${book.author}`) : 'Original Edition' }}
               </p>
 
-              <!-- Stacked Format Selector with Brand Orange & Prices -->
+              <!-- Stacked Format Selector -->
               <div class="mt-2 space-y-1">
                 <template v-if="getBookDisplayFormats(book).length > 1">
                   <button
@@ -343,46 +354,46 @@ function handleQuickAdd(book: Book, event: Event): void {
                     class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans transition-all cursor-pointer select-none leading-none border"
                     :class="
                       getSelectedFormat(book)?.id === fmt.id
-                        ? 'bg-[#FFF7ED] border-[#E8750D] text-[#C25E00] font-extrabold shadow-2xs'
+                        ? 'bg-theme-coral/10 border-theme-coral text-theme-coral-hover font-extrabold shadow-2xs'
                         : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold'
                     "
                     @click="selectBookFormat(book.id, fmt.id, $event)"
                   >
                     <span class="truncate pr-1">{{ getFormatDisplayLabel(fmt) }}</span>
-                    <span class="font-mono font-bold text-[9px] flex-shrink-0" :class="getSelectedFormat(book)?.id === fmt.id ? 'text-[#C25E00]' : 'text-slate-600'">
+                    <span class="font-mono font-bold text-[10px] flex-shrink-0" :class="getSelectedFormat(book)?.id === fmt.id ? 'text-theme-coral-hover' : 'text-slate-600'">
                       {{ formatCurrency(fmt.price) }}
                     </span>
                   </button>
                 </template>
                 <div
                   v-else
-                  class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans font-bold bg-[#FFF7ED] border border-[#E8750D]/60 text-[#C25E00]"
+                  class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans font-bold bg-theme-coral/10 border border-theme-coral/60 text-theme-coral-hover"
                 >
                   <span class="truncate pr-1">{{ getFormatDisplayLabel(getSelectedFormat(book)) }}</span>
-                  <span class="font-mono font-bold text-[9px] flex-shrink-0">
+                  <span class="font-mono font-bold text-[10px] flex-shrink-0">
                     {{ formatCurrency(getSelectedFormat(book).price) }}
                   </span>
                 </div>
               </div>
             </div>
 
-            <!-- Bottom Bar: Price Box + Supermarket Cart Button -->
-            <div class="pt-2 mt-2 border-t border-slate-100 flex items-end justify-between gap-1.5">
+            <!-- Bottom Bar: Price + Cart Button -->
+            <div class="pt-2 mt-2 border-t border-theme-border flex items-end justify-between gap-1.5">
               <div class="min-w-0 flex flex-col justify-center">
                 <span
                   v-if="getBookPricing(book).originalPrice && getBookPricing(book).originalPrice! > getBookPricing(book).currentPrice"
-                  class="text-[9.5px] text-red-600 line-through decoration-red-500 decoration-1 font-mono font-bold block leading-none mb-0.5"
+                  class="text-[10px] text-slate-400 line-through decoration-slate-400 decoration-1 font-mono font-bold block leading-none mb-0.5"
                 >
                   {{ formatCurrency(getBookPricing(book).originalPrice!) }}
                 </span>
-                <span class="text-xs sm:text-[13px] font-black font-mono leading-tight text-black tracking-tight">
+                <span class="text-sm font-black font-mono leading-tight text-theme-ink tracking-tight">
                   {{ formatCurrency(getBookPricing(book).currentPrice) }}
                 </span>
               </div>
 
               <button
                 type="button"
-                class="w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg bg-[#052219] hover:bg-[#E8750D] text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95 shadow-xs flex-shrink-0"
+                class="w-8 h-8 rounded-lg bg-theme-forest hover:bg-theme-coral text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95 shadow-xs flex-shrink-0"
                 :title="getSelectedFormat(book)?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart'"
                 :aria-label="getSelectedFormat(book)?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart'"
                 @click="handleQuickAdd(book, $event)"
