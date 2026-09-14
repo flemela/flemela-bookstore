@@ -7308,113 +7308,6 @@ export default defineEventHandler(async (event) => {
 });
 </file>
 
-<file path="server/api/admin/books/index.post.ts">
-// =============================================================================
-// server/api/admin/books/index.post.ts
-// Creates a new book product and attaches its multi-format offerings in sequence.
-// =============================================================================
-
-import { z } from 'zod';
-import { sokoClient } from '../../../utils/sokoClient';
-import type { Book } from '~/types';
-
-const CreateBookSchema = z.object({
-  name: z.string().min(1, 'Title is required').max(200),
-  author: z.string().max(200).optional(),
-  category_id: z
-    .string()
-    .uuid('Invalid category ID')
-    .nullable()
-    .optional()
-    .or(z.literal(''))
-    .transform((v) => (v === '' ? null : v)),
-  description: z.string().max(3000).nullable().optional(),
-  price: z.number().nonnegative(),
-  compare_at_price: z.number().nonnegative().nullable().optional(),
-  badge: z.enum(['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME']).nullable().optional(),
-  sale_ends_at: z.string().datetime().nullable().optional(),
-  cover_image_url: z
-    .string()
-    .url()
-    .nullable()
-    .optional()
-    .or(z.literal(''))
-    .transform((v) => (v === '' ? null : v)),
-  cover_image_public_id: z
-    .string()
-    .nullable()
-    .optional()
-    .or(z.literal(''))
-    .transform((v) => (v === '' ? null : v)),
-  status: z.enum(['draft', 'published', 'archived']).default('published'),
-  formats: z
-    .array(
-      z.object({
-        format: z.enum(['pdf', 'epub', 'hardcopy']),
-        price: z.number().nonnegative(),
-        compare_at_price: z.number().nonnegative().nullable().optional(),
-        file_url: z.string().nullable().optional(),
-        file_public_id: z.string().nullable().optional(),
-        file_size_bytes: z.number().int().nonnegative().nullable().optional(),
-        stock: z.number().int().nonnegative().nullable().optional(),
-      })
-    )
-    .min(1, 'At least one format is required'),
-});
-
-export default defineEventHandler(async (event) => {
-  const rawBody = await readBody(event);
-  const parsed = CreateBookSchema.safeParse(rawBody);
-
-  if (!parsed.success) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: parsed.error.issues[0]?.message || 'Invalid book payload',
-    });
-  }
-
-  const { formats, cover_image_url, cover_image_public_id, ...bookData } = parsed.data;
-
-  // 1. Create canonical product
-  const createdProducts = await sokoClient<Book[]>('/products/bulk', {
-    method: 'POST',
-    body: {
-      products: [
-        {
-          name: bookData.name,
-          category_id: bookData.category_id || null,
-          price: bookData.price,
-          compare_at_price: bookData.compare_at_price || null,
-          badge: bookData.badge || null,
-          sale_ends_at: bookData.sale_ends_at || null,
-          stock: formats.find((f) => f.format === 'hardcopy')?.stock || 0,
-          description: bookData.description,
-          publish: bookData.status === 'published',
-          images: cover_image_url
-            ? [{ image_url: cover_image_url, image_public_id: cover_image_public_id || 'cover_img' }]
-            : [],
-        },
-      ],
-    },
-  });
-
-  const product = createdProducts[0];
-  if (!product) {
-    throw createError({ statusCode: 500, statusMessage: 'Failed to create book product' });
-  }
-
-  // 2. Attach formats with format-specific compare-at prices
-  for (const fmt of formats) {
-    await sokoClient(`/products/${product.id}/formats`, {
-      method: 'POST',
-      body: fmt,
-    });
-  }
-
-  return { success: true, productId: product.id };
-});
-</file>
-
 <file path="server/api/admin/books/upload-url.post.ts">
 // =============================================================================
 // server/api/admin/books/upload-url.post.ts
@@ -7931,378 +7824,6 @@ export default defineNuxtConfig({
 });
 </file>
 
-<file path="components/admin/AdminLayout.vue">
-<!-- components/admin/AdminLayout.vue -->
-<script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue';
-import {
-  LayoutDashboard,
-  Inbox,
-  BookOpen,
-  PlusCircle,
-  FileSpreadsheet,
-  Images,
-  MapPin,
-  Zap,
-  ExternalLink,
-  LogOut,
-  Menu,
-  X,
-} from 'lucide-vue-next';
-import { useAdminAuth } from '~/composables/useAdminAuth';
-
-const { logout } = useAdminAuth();
-const route = useRoute();
-
-const isMobileDrawerOpen = ref(false);
-
-function closeMobileDrawer(): void {
-  isMobileDrawerOpen.value = false;
-}
-
-// Auto-close mobile drawer on route navigation
-watch(
-  () => route.fullPath,
-  () => {
-    closeMobileDrawer();
-  }
-);
-
-function handleKeydown(e: KeyboardEvent): void {
-  if (e.key === 'Escape' && isMobileDrawerOpen.value) {
-    closeMobileDrawer();
-  }
-}
-
-onMounted(() => {
-  if (process.client) {
-    window.addEventListener('keydown', handleKeydown);
-  }
-});
-
-onUnmounted(() => {
-  if (process.client) {
-    window.removeEventListener('keydown', handleKeydown);
-  }
-});
-
-interface NavItem {
-  label: string;
-  to: string;
-  icon: any;
-  exact?: boolean;
-  activeMatch: (path: string) => boolean;
-}
-
-interface NavSection {
-  title: string;
-  items: NavItem[];
-}
-
-const navSections: NavSection[] = [
-  {
-    title: 'Operations',
-    items: [
-      {
-        label: 'Overview',
-        to: '/admin',
-        icon: LayoutDashboard,
-        activeMatch: (p) => p === '/admin',
-      },
-      {
-        label: 'Orders Desk',
-        to: '/admin/orders',
-        icon: Inbox,
-        activeMatch: (p) => p.startsWith('/admin/orders'),
-      },
-    ],
-  },
-  {
-    title: 'Catalog & Merchandising',
-    items: [
-      {
-        label: 'Books Catalog',
-        to: '/admin/books',
-        icon: BookOpen,
-        activeMatch: (p) => p.startsWith('/admin/books') && !p.includes('new') && !p.includes('import'),
-      },
-      {
-        label: 'Add New Book',
-        to: '/admin/books/new',
-        icon: PlusCircle,
-        activeMatch: (p) => p.includes('/admin/books/new'),
-      },
-      {
-        label: 'Excel / CSV Import',
-        to: '/admin/books/import',
-        icon: FileSpreadsheet,
-        activeMatch: (p) => p.includes('/admin/books/import'),
-      },
-      {
-        label: 'Hero Banners',
-        to: '/admin/banners',
-        icon: Images,
-        activeMatch: (p) => p.includes('/admin/banners'),
-      },
-    ],
-  },
-  {
-    title: 'Store Settings',
-    items: [
-      {
-        label: 'Hub & Delivery',
-        to: '/admin/location',
-        icon: MapPin,
-        activeMatch: (p) => p.includes('/admin/location'),
-      },
-      {
-        label: 'M-Pesa Setup',
-        to: '/admin/mpesa',
-        icon: Zap,
-        activeMatch: (p) => p.includes('/admin/mpesa'),
-      },
-    ],
-  },
-];
-</script>
-
-<template>
-  <div class="min-h-screen bg-paper-canvas text-ink flex flex-col lg:flex-row antialiased">
-    
-    <!-- ===================================================================== -->
-    <!-- 1. MOBILE TOP BAR (< lg)                                              -->
-    <!-- ===================================================================== -->
-    <header class="lg:hidden bg-forest-950 text-paper h-14 px-4 sticky top-0 z-40 border-b border-forest-900/80 flex items-center justify-between shadow-sm">
-      <div class="flex items-center gap-3">
-        <button
-          type="button"
-          class="p-1.5 text-paper/80 hover:text-paper hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-          aria-label="Open navigation menu"
-          @click="isMobileDrawerOpen = true"
-        >
-          <Menu :size="20" />
-        </button>
-
-        <NuxtLink to="/admin" class="flex items-center gap-2">
-          <img
-            src="/images/logo.png"
-            alt="Flemela Logo"
-            class="h-7 w-auto object-contain brightness-0 invert"
-          />
-          <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold pl-2 border-l border-white/15">
-            Admin
-          </span>
-        </NuxtLink>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <NuxtLink
-          to="/"
-          target="_blank"
-          class="text-xs text-paper/70 hover:text-paper flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
-          title="Open live storefront"
-        >
-          <span>Store</span>
-          <ExternalLink :size="12" />
-        </NuxtLink>
-
-        <button
-          type="button"
-          class="p-1.5 text-red-300 hover:text-white hover:bg-red-900/40 rounded-lg transition-colors cursor-pointer"
-          title="Sign out"
-          @click="logout"
-        >
-          <LogOut :size="16" />
-        </button>
-      </div>
-    </header>
-
-    <!-- ===================================================================== -->
-    <!-- 2. MOBILE SLIDE-OVER DRAWER (< lg)                                    -->
-    <!-- ===================================================================== -->
-    <Teleport to="body">
-      <div
-        v-if="isMobileDrawerOpen"
-        class="lg:hidden fixed inset-0 z-50 flex"
-        role="dialog"
-        aria-modal="true"
-      >
-        <!-- Backdrop -->
-        <div
-          class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
-          @click="closeMobileDrawer"
-        />
-
-        <!-- Slide-Over Panel -->
-        <aside
-          class="relative w-72 max-w-[85vw] bg-forest-950 text-paper h-full shadow-2xl flex flex-col z-10 border-r border-forest-900/80 animate-in slide-in-from-left duration-200"
-        >
-          <!-- Drawer Header -->
-          <div class="h-14 px-4 flex items-center justify-between border-b border-forest-900/80">
-            <NuxtLink to="/admin" class="flex items-center gap-2" @click="closeMobileDrawer">
-              <img
-                src="/images/logo.png"
-                alt="Flemela Logo"
-                class="h-7 w-auto object-contain brightness-0 invert"
-              />
-              <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold pl-2 border-l border-white/15">
-                Admin Portal
-              </span>
-            </NuxtLink>
-
-            <button
-              type="button"
-              class="p-1.5 text-paper/70 hover:text-paper hover:bg-white/10 rounded-lg cursor-pointer"
-              aria-label="Close menu"
-              @click="closeMobileDrawer"
-            >
-              <X :size="18" />
-            </button>
-          </div>
-
-          <!-- Drawer Navigation Links -->
-          <div class="flex-1 overflow-y-auto p-4 space-y-6">
-            <div v-for="section in navSections" :key="section.title" class="space-y-1.5">
-              <span class="text-[9px] font-mono font-bold uppercase tracking-wider text-paper/40 px-3 block">
-                {{ section.title }}
-              </span>
-
-              <nav class="space-y-0.5">
-                <NuxtLink
-                  v-for="item in section.items"
-                  :key="item.to"
-                  :to="item.to"
-                  class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-                  :class="
-                    item.activeMatch(route.path)
-                      ? 'bg-white/15 text-paper font-bold shadow-xs border-l-2 border-gold-400'
-                      : 'text-paper/70 hover:text-paper hover:bg-white/5'
-                  "
-                  @click="closeMobileDrawer"
-                >
-                  <component :is="item.icon" :size="16" :class="item.activeMatch(route.path) ? 'text-gold-300' : 'text-paper/60'" />
-                  <span>{{ item.label }}</span>
-                </NuxtLink>
-              </nav>
-            </div>
-          </div>
-
-          <!-- Drawer Bottom Actions -->
-          <div class="p-4 border-t border-forest-900/80 space-y-2">
-            <NuxtLink
-              to="/"
-              target="_blank"
-              class="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-paper/70 hover:text-paper hover:bg-white/5 rounded-xl transition-colors"
-            >
-              <span class="flex items-center gap-2">
-                <ExternalLink :size="15" class="text-gold-300" />
-                <span>Live Storefront</span>
-              </span>
-              <span class="text-[10px] font-mono text-paper/40">Open ↗</span>
-            </NuxtLink>
-
-            <button
-              type="button"
-              class="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-300 hover:text-white hover:bg-red-900/40 rounded-xl transition-colors cursor-pointer"
-              @click="logout"
-            >
-              <LogOut :size="15" />
-              <span>Sign Out</span>
-            </button>
-          </div>
-        </aside>
-      </div>
-    </Teleport>
-
-    <!-- ===================================================================== -->
-    <!-- 3. DESKTOP VERTICAL SIDEBAR (lg: $\ge$ 1024px)                        -->
-    <!-- ===================================================================== -->
-    <aside
-      class="hidden lg:flex flex-col w-64 fixed inset-y-0 left-0 bg-forest-950 text-paper z-30 border-r border-forest-900/80 shadow-medium"
-      aria-label="Admin Sidebar Navigation"
-    >
-      <!-- Brand Header -->
-      <div class="h-16 px-6 flex items-center border-b border-forest-900/80">
-        <NuxtLink to="/admin" class="flex items-center gap-2.5 group">
-          <img
-            src="/images/logo.png"
-            alt="Flemela Logo"
-            class="h-8 w-auto object-contain brightness-0 invert transition-transform group-hover:scale-105"
-          />
-          <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold pl-2.5 border-l border-white/15">
-            Admin Portal
-          </span>
-        </NuxtLink>
-      </div>
-
-      <!-- Navigation Links Sections -->
-      <div class="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-        <div v-for="section in navSections" :key="section.title" class="space-y-1.5">
-          <span class="text-[9px] font-mono font-bold uppercase tracking-wider text-paper/40 px-3 block">
-            {{ section.title }}
-          </span>
-
-          <nav class="space-y-1">
-            <NuxtLink
-              v-for="item in section.items"
-              :key="item.to"
-              :to="item.to"
-              class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all group"
-              :class="
-                item.activeMatch(route.path)
-                  ? 'bg-white/15 text-paper font-bold shadow-xs border-l-2 border-gold-400'
-                  : 'text-paper/70 hover:text-paper hover:bg-white/5'
-              "
-            >
-              <component
-                :is="item.icon"
-                :size="16"
-                :class="item.activeMatch(route.path) ? 'text-gold-300' : 'text-paper/60 group-hover:text-paper'"
-              />
-              <span>{{ item.label }}</span>
-            </NuxtLink>
-          </nav>
-        </div>
-      </div>
-
-      <!-- Footer Actions -->
-      <div class="p-4 border-t border-forest-900/80 space-y-1.5">
-        <NuxtLink
-          to="/"
-          target="_blank"
-          class="flex items-center justify-between px-3 py-2 text-xs font-semibold text-paper/70 hover:text-paper hover:bg-white/5 rounded-xl transition-colors"
-        >
-          <span class="flex items-center gap-2">
-            <ExternalLink :size="14" class="text-gold-300" />
-            <span>Live Storefront</span>
-          </span>
-          <span class="text-[10px] font-mono text-paper/40">↗</span>
-        </NuxtLink>
-
-        <button
-          type="button"
-          class="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-300 hover:text-white hover:bg-red-900/40 rounded-xl transition-colors cursor-pointer"
-          title="Sign out of portal"
-          @click="logout"
-        >
-          <LogOut :size="14" />
-          <span>Sign Out</span>
-        </button>
-      </div>
-    </aside>
-
-    <!-- ===================================================================== -->
-    <!-- 4. MAIN CONTENT CANVAS                                                -->
-    <!-- ===================================================================== -->
-    <main class="flex-1 min-w-0 lg:pl-64 flex flex-col">
-      <div class="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1">
-        <slot />
-      </div>
-    </main>
-  </div>
-</template>
-</file>
-
 <file path="pages/admin/books/index.vue">
 <!-- pages/admin/books/index.vue -->
 <script setup lang="ts">
@@ -8651,781 +8172,6 @@ async function handleBulkDelete(): Promise<void> {
 </template>
 </file>
 
-<file path="pages/admin/books/new.vue">
-<!-- pages/admin/books/new.vue -->
-<script setup lang="ts">
-import { ref, computed } from 'vue';
-import {
-  ArrowLeft,
-  Trash2,
-  Upload,
-  BookOpen,
-  AlertCircle,
-  Sparkles,
-  Link as LinkIcon,
-  RefreshCw,
-  ShieldCheck,
-  CheckCircle2,
-  FolderPlus,
-  X,
-} from 'lucide-vue-next';
-import AdminLayout from '~/components/admin/AdminLayout.vue';
-import AddCategoryModal from '~/components/admin/AddCategoryModal.vue';
-import { useToast } from '~/composables/useToast';
-import type { BookFormatType } from '~/types';
-
-definePageMeta({
-  middleware: 'admin-auth',
-});
-
-const router = useRouter();
-const { push: pushToast } = useToast();
-
-const { data: categories } = await useFetch<Array<{ id: string; name: string }>>('/api/admin/categories');
-
-// Dynamic Inline Category State
-const showAddCategoryModal = ref(false);
-
-// Book base fields
-const name = ref('');
-const author = ref('');
-const categoryId = ref('');
-const description = ref('');
-const price = ref(999);
-const compareAtPrice = ref<number | null>(null);
-const badge = ref<'BESTSELLER' | 'FLASH_SALE' | 'NO1_PICK' | 'DEAL_OF_WEEK' | 'LIMITED_TIME' | null>(null);
-const saleEndsAt = ref<string>('');
-const status = ref<'draft' | 'published'>('published');
-
-// Cover art state
-const coverUrl = ref('');
-const coverPublicId = ref('');
-const isUploadingCover = ref(false);
-const isSearchingCover = ref(false);
-
-interface FormatDraft {
-  format: BookFormatType;
-  price: number;
-  compare_at_price: number | null;
-  stock: number | null;
-  file_url: string | null;
-  file_public_id: string | null;
-  file_size_bytes: number | null;
-  uploading: boolean;
-  uploadProgress: number;
-  fileName?: string;
-}
-
-const formats = ref<FormatDraft[]>([
-  {
-    format: 'hardcopy',
-    price: 999,
-    compare_at_price: null,
-    stock: 25,
-    file_url: null,
-    file_public_id: null,
-    file_size_bytes: null,
-    uploading: false,
-    uploadProgress: 0,
-  },
-  {
-    format: 'pdf',
-    price: 149,
-    compare_at_price: null,
-    stock: null,
-    file_url: null,
-    file_public_id: null,
-    file_size_bytes: null,
-    uploading: false,
-    uploadProgress: 0,
-  },
-]);
-
-// Modal State: Cloudflare R2 Upload Confirmation Dialog
-const showR2SuccessModal = ref(false);
-const r2ConfirmedAsset = ref<{
-  fileName: string;
-  format: string;
-  fileSizeMb: string;
-  key: string;
-} | null>(null);
-
-const isSubmitting = ref(false);
-const formError = ref<string | null>(null);
-
-const isAnyUploadInProgress = computed(() => {
-  return isUploadingCover.value || formats.value.some((f) => f.uploading);
-});
-
-function handleCategoryCreated(newCat: { id: string; name: string; slug: string }): void {
-  if (categories.value) {
-    categories.value.push({ id: newCat.id, name: newCat.name });
-  }
-  categoryId.value = newCat.id;
-}
-
-function addFormatRow(type: BookFormatType): void {
-  if (formats.value.some((f) => f.format === type)) return;
-  formats.value.push({
-    format: type,
-    price: type === 'hardcopy' ? 999 : 149,
-    compare_at_price: null,
-    stock: type === 'hardcopy' ? 20 : null,
-    file_url: null,
-    file_public_id: null,
-    file_size_bytes: null,
-    uploading: false,
-    uploadProgress: 0,
-  });
-}
-
-function removeFormatRow(index: number): void {
-  formats.value.splice(index, 1);
-}
-
-function removeFormatFile(index: number): void {
-  formats.value[index].file_url = null;
-  formats.value[index].file_public_id = null;
-  formats.value[index].file_size_bytes = null;
-  formats.value[index].fileName = undefined;
-  formats.value[index].uploadProgress = 0;
-}
-
-async function handleAutoFindCover(): Promise<void> {
-  if (!name.value.trim()) {
-    pushToast({ message: 'Enter a book title first to auto-discover cover art', variant: 'error' });
-    return;
-  }
-
-  isSearchingCover.value = true;
-  try {
-    const res = await $fetch<{ coverUrl: string | null; title: string; source: string | null }>(
-      '/api/admin/books/find-cover',
-      {
-        query: {
-          title: name.value.trim(),
-          author: author.value.trim() || undefined,
-        },
-      }
-    );
-
-    if (res?.coverUrl) {
-      coverUrl.value = res.coverUrl;
-      coverPublicId.value = `auto_${res.source || 'web'}`;
-      pushToast({
-        message: `Discovered cover art from ${res.source === 'googlebooks' ? 'Google Books' : 'Open Library'}!`,
-        variant: 'success',
-      });
-    } else {
-      pushToast({ message: 'No online cover found. You can upload or paste an image link.', variant: 'info' });
-    }
-  } catch {
-    pushToast({ message: 'Auto-discovery timed out. You can upload an image directly.', variant: 'error' });
-  } finally {
-    isSearchingCover.value = false;
-  }
-}
-
-async function handleCoverUpload(event: Event): Promise<void> {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
-
-  isUploadingCover.value = true;
-  try {
-    const sig = await $fetch<{
-      signature: string;
-      timestamp: number;
-      folder: string;
-      apiKey: string;
-      cloudName: string;
-    }>('/api/admin/upload-signature', { method: 'POST' });
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('api_key', sig.apiKey);
-    formData.append('timestamp', String(sig.timestamp));
-    formData.append('signature', sig.signature);
-    formData.append('folder', sig.folder);
-
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
-      method: 'POST',
-      body: formData,
-    });
-    const data = await res.json();
-
-    if (data.secure_url) {
-      coverUrl.value = data.secure_url;
-      coverPublicId.value = data.public_id;
-      pushToast({ message: 'Cover image uploaded to Cloudinary', variant: 'success' });
-    }
-  } catch {
-    pushToast({ message: 'Cloudinary upload failed', variant: 'error' });
-  } finally {
-    isUploadingCover.value = false;
-  }
-}
-
-async function handleEbookUpload(event: Event, index: number): Promise<void> {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
-
-  const currentFmt = formats.value[index];
-  currentFmt.uploading = true;
-  currentFmt.uploadProgress = 0;
-  currentFmt.fileName = file.name;
-
-  try {
-    const mimeType = file.type || (currentFmt.format === 'pdf' ? 'application/pdf' : 'application/epub+zip');
-
-    const presigned = await $fetch<{ uploadUrl: string; key: string }>('/api/admin/books/upload-url', {
-      method: 'POST',
-      body: {
-        filename: file.name,
-        format: currentFmt.format,
-        contentType: mimeType,
-      },
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', presigned.uploadUrl);
-      xhr.setRequestHeader('Content-Type', mimeType);
-
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          currentFmt.uploadProgress = Math.round((e.loaded / e.total) * 100);
-        }
-      };
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-        } else {
-          reject(new Error(`Cloudflare R2 returned HTTP ${xhr.status}`));
-        }
-      };
-
-      xhr.onerror = () => {
-        reject(new Error('Network error or CORS failure communicating with Cloudflare R2'));
-      };
-
-      xhr.send(file);
-    });
-
-    currentFmt.file_url = presigned.key;
-    currentFmt.file_public_id = presigned.key;
-    currentFmt.file_size_bytes = file.size;
-
-    const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
-
-    r2ConfirmedAsset.value = {
-      fileName: file.name,
-      format: currentFmt.format.toUpperCase(),
-      fileSizeMb: `${sizeMb} MB`,
-      key: presigned.key,
-    };
-    showR2SuccessModal.value = true;
-  } catch (err: any) {
-    pushToast({
-      message: err.message || 'eBook upload to Cloudflare R2 failed',
-      variant: 'error',
-    });
-    removeFormatFile(index);
-  } finally {
-    currentFmt.uploading = false;
-  }
-}
-
-async function handleSubmit(): Promise<void> {
-  if (!name.value.trim() || formats.value.length === 0) return;
-
-  if (isAnyUploadInProgress.value) {
-    pushToast({
-      message: 'Please wait for file uploads to complete before saving.',
-      variant: 'error',
-    });
-    return;
-  }
-
-  for (const f of formats.value) {
-    if (f.compare_at_price !== null && f.compare_at_price <= f.price) {
-      formError.value = `Strike-through price for ${f.format.toUpperCase()} must be greater than its selling price.`;
-      return;
-    }
-  }
-
-  isSubmitting.value = true;
-  formError.value = null;
-
-  try {
-    await $fetch('/api/admin/books', {
-      method: 'POST',
-      body: {
-        name: name.value.trim(),
-        author: author.value.trim() || undefined,
-        category_id: categoryId.value || null,
-        description: description.value.trim() || undefined,
-        price: formats.value[0]?.price || price.value,
-        compare_at_price: compareAtPrice.value || null,
-        badge: badge.value || null,
-        sale_ends_at: saleEndsAt.value ? new Date(saleEndsAt.value).toISOString() : null,
-        cover_image_url: coverUrl.value.trim() || undefined,
-        cover_image_public_id: coverPublicId.value || undefined,
-        status: status.value,
-        formats: formats.value.map((f) => ({
-          format: f.format,
-          price: Number(f.price),
-          compare_at_price: f.compare_at_price ? Number(f.compare_at_price) : null,
-          file_url: f.file_url,
-          file_public_id: f.file_public_id,
-          file_size_bytes: f.file_size_bytes,
-          stock: f.format === 'hardcopy' ? Number(f.stock) : null,
-        })),
-      },
-    });
-
-    pushToast({ message: `Book "${name.value}" created and published!`, variant: 'success' });
-    router.push('/admin/books');
-  } catch (err: any) {
-    formError.value = err.data?.message || err.data?.statusMessage || err.statusMessage || 'Failed to save book';
-  } finally {
-    isSubmitting.value = false;
-  }
-}
-</script>
-
-<template>
-  <AdminLayout>
-    <div class="max-w-4xl mx-auto space-y-6">
-      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline">
-        <ArrowLeft :size="14" /> Back to Books
-      </NuxtLink>
-
-      <div class="bg-white rounded-xl shadow-subtle border border-ink-border p-6 sm:p-8 space-y-6">
-        <div class="pb-4 border-b border-ink-border">
-          <h1 class="font-display text-2xl font-bold text-forest-950">Add New Book</h1>
-          <p class="text-xs text-ink-muted">
-            Configure catalog details, custom categories, strike-through discounts, and verified Cloudflare R2 digital storage.
-          </p>
-        </div>
-
-        <form class="space-y-6" @submit.prevent="handleSubmit">
-          <!-- 1. General Details -->
-          <div class="space-y-4">
-            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
-              Book Information
-            </h3>
-
-            <div class="grid sm:grid-cols-2 gap-4">
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Book Title *</label>
-                <div class="flex gap-2">
-                  <input
-                    v-model="name"
-                    type="text"
-                    placeholder="e.g. Atomic Habits"
-                    class="flex-1 px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
-                    required
-                    @blur="
-                      () => {
-                        if (!coverUrl && name) handleAutoFindCover();
-                      }
-                    "
-                  />
-                  <button
-                    type="button"
-                    class="px-3 py-2 bg-paper-cream border border-ink-border hover:border-forest-900 text-forest-950 rounded text-xs font-bold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap"
-                    :disabled="isSearchingCover || !name"
-                    @click="handleAutoFindCover"
-                  >
-                    <RefreshCw v-if="isSearchingCover" :size="12" class="animate-spin" />
-                    <Sparkles v-else :size="12" class="text-gold-600" />
-                    <span>{{ isSearchingCover ? 'Searching...' : '🪄 Find Cover' }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Author Name</label>
-                <input
-                  v-model="author"
-                  type="text"
-                  placeholder="e.g. James Clear"
-                  class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
-                />
-              </div>
-            </div>
-
-            <div class="grid sm:grid-cols-2 gap-4">
-              <!-- Category Selector with Inline + New Category Trigger -->
-              <div class="space-y-1">
-                <div class="flex justify-between items-center">
-                  <label class="text-xs font-semibold text-forest-950">Category</label>
-                  <button
-                    type="button"
-                    class="text-[11px] font-bold text-forest-900 hover:text-gold-600 flex items-center gap-1 cursor-pointer"
-                    @click="showAddCategoryModal = true"
-                  >
-                    <FolderPlus :size="12" />
-                    <span>+ New Category</span>
-                  </button>
-                </div>
-                <select
-                  v-model="categoryId"
-                  class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 bg-white"
-                >
-                  <option value="">Select category (or leave for default)...</option>
-                  <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
-                </select>
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Publishing Status</label>
-                <select
-                  v-model="status"
-                  class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 bg-white"
-                >
-                  <option value="published">Published &amp; Live</option>
-                  <option value="draft">Draft Mode</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Merchandising & Compare-at Price -->
-            <div class="p-4 bg-paper-cream/60 rounded-xl border border-ink-border grid sm:grid-cols-2 gap-4">
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">
-                  Promotional Badge / Placement
-                </label>
-                <select
-                  v-model="badge"
-                  class="w-full px-3 py-2 bg-white border border-ink-border rounded text-xs outline-none focus:border-forest-900 font-semibold"
-                >
-                  <option :value="null">None (Standard Catalog)</option>
-                  <option value="BESTSELLER">🔥 Bestseller (Monthly Section)</option>
-                  <option value="NO1_PICK">⭐ #1 Pick (Featured Top Slot)</option>
-                  <option value="FLASH_SALE">⚡ Flash Sale (High Urgency)</option>
-                  <option value="DEAL_OF_WEEK">🏷️ Deal of the Week</option>
-                  <option value="LIMITED_TIME">⏳ Limited Time Sale</option>
-                </select>
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs font-semibold text-forest-950">Sale Expiration (Optional)</label>
-                <input
-                  v-model="saleEndsAt"
-                  type="datetime-local"
-                  class="w-full px-3 py-1.5 bg-white border border-ink-border rounded text-xs font-mono outline-none focus:border-forest-900"
-                />
-                <span class="text-[10px] text-ink-muted">
-                  Auto-removes flash sale badge once passed.
-                </span>
-              </div>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-forest-950">Description / Synopsis</label>
-              <textarea
-                v-model="description"
-                rows="3"
-                placeholder="Overview of the book..."
-                class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 resize-none"
-              />
-            </div>
-          </div>
-
-          <!-- 2. Cover Art -->
-          <div class="space-y-3 pt-4 border-t border-ink-border">
-            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
-              Cover Art
-            </h3>
-            <div class="flex items-start gap-4">
-              <div
-                class="w-20 h-28 bg-paper-cream rounded border border-ink-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm relative"
-              >
-                <img
-                  v-if="coverUrl"
-                  :src="coverUrl"
-                  :alt="name ? `${name} Cover` : 'Cover'"
-                  class="w-full h-full object-cover"
-                  @error="coverUrl = ''"
-                />
-                <BookOpen v-else :size="24" class="text-ink-muted opacity-40" />
-              </div>
-              <div class="space-y-2 flex-1">
-                <div class="flex flex-wrap gap-2 items-center">
-                  <button
-                    type="button"
-                    class="bg-forest-950 text-white hover:bg-forest-800 text-xs font-bold px-3 py-1.5 rounded inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
-                    :disabled="isSearchingCover || !name"
-                    @click="handleAutoFindCover"
-                  >
-                    <Sparkles :size="13" class="text-gold-300" /> Auto-Find HD Cover
-                  </button>
-
-                  <label
-                    class="cursor-pointer bg-white border border-ink-border text-forest-950 text-xs font-bold px-3 py-1.5 rounded hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 shadow-xs"
-                  >
-                    <Upload :size="13" /> {{ isUploadingCover ? 'Uploading...' : 'Upload File' }}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      class="hidden"
-                      :disabled="isUploadingCover"
-                      @change="handleCoverUpload"
-                    />
-                  </label>
-                </div>
-
-                <div class="space-y-1 pt-1">
-                  <label class="text-[11px] text-ink-muted flex items-center gap-1">
-                    <LinkIcon :size="12" /> Direct Cover Image URL:
-                  </label>
-                  <input
-                    v-model="coverUrl"
-                    type="url"
-                    placeholder="https://..."
-                    class="w-full px-3 py-1.5 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 3. Formats & Verified Cloudflare R2 Uploads -->
-        	<div class="space-y-4 pt-4 border-t border-ink-border">
-            <div class="flex justify-between items-center">
-              <div>
-                <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
-                  Reading Formats &amp; Digital Assets
-                </h3>
-                <p class="text-[11px] text-ink-muted">
-                  Stream files directly into private Cloudflare R2 storage buckets.
-                </p>
-              </div>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded hover:bg-amber-100 cursor-pointer"
-                  @click="addFormatRow('hardcopy')"
-                >
-                  + Hardcopy
-                </button>
-                <button
-                  type="button"
-                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-emerald-50 text-emerald-900 border border-emerald-200 rounded hover:bg-emerald-100 cursor-pointer"
-                  @click="addFormatRow('pdf')"
-                >
-                  + PDF
-                </button>
-                <button
-                  type="button"
-                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-blue-50 text-blue-900 border border-blue-200 rounded hover:bg-blue-100 cursor-pointer"
-                  @click="addFormatRow('epub')"
-                >
-                  + EPUB
-                </button>
-              </div>
-            </div>
-
-            <div class="space-y-3">
-              <div
-                v-for="(fmt, idx) in formats"
-                :key="fmt.format"
-                class="p-4 bg-slate-50 border border-ink-border rounded-xl grid sm:grid-cols-12 gap-3 items-center"
-              >
-                <div class="sm:col-span-2">
-                  <span class="text-xs font-bold uppercase text-forest-950 font-mono">{{ fmt.format }}</span>
-                </div>
-
-                <div class="sm:col-span-2 space-y-1">
-                  <label class="text-[10px] text-ink-muted font-semibold">Sale (KSh) *</label>
-                  <input
-                    v-model.number="fmt.price"
-                    type="number"
-                    min="1"
-                    class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono font-bold"
-                  />
-                </div>
-
-                <div class="sm:col-span-3 space-y-1">
-                  <label class="text-[10px] text-ink-muted font-semibold">Strike-through (KSh)</label>
-                  <input
-                    v-model.number="fmt.compare_at_price"
-                    type="number"
-                    min="1"
-                    placeholder="e.g. 1200"
-                    class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono"
-                  />
-                </div>
-
-                <div v-if="fmt.format === 'hardcopy'" class="sm:col-span-4 space-y-1">
-                  <label class="text-[10px] text-ink-muted font-semibold">Physical Stock</label>
-                  <input
-                    v-model.number="fmt.stock"
-                    type="number"
-                    min="0"
-                    class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono"
-                  />
-                </div>
-
-                <!-- Digital Format File Picker with Real-Time Progress -->
-                <div v-else class="sm:col-span-4 space-y-1">
-                  <label class="text-[10px] text-ink-muted font-semibold">Digital File (Cloudflare R2)</label>
-                  
-                  <div v-if="fmt.uploading" class="space-y-1">
-                    <div class="flex justify-between text-[10px] font-mono text-forest-950 font-bold">
-                      <span>Uploading to R2...</span>
-                      <span>{{ fmt.uploadProgress }}%</span>
-                    </div>
-                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                      <div
-                        class="bg-forest-950 h-full transition-all duration-150 rounded-full"
-                        :style="{ width: `${fmt.uploadProgress}%` }"
-                      />
-                    </div>
-                  </div>
-
-                  <div v-else-if="fmt.file_public_id" class="flex items-center justify-between bg-emerald-50 border border-emerald-300 px-2.5 py-1 rounded-lg text-[11px]">
-                    <span class="text-emerald-900 font-semibold truncate flex items-center gap-1">
-                      <ShieldCheck :size="13" class="text-emerald-700" /> R2 Asset Verified
-                    </span>
-                    <button
-                      type="button"
-                      class="text-ink-muted hover:text-red-700 text-[10px] font-mono underline ml-2"
-                      @click="removeFormatFile(idx)"
-                    >
-                      Remove
-                    </button>
-                  </div>
-
-                  <label
-                    v-else
-                    class="w-full bg-white border border-ink-border text-forest-950 text-[11px] font-medium px-2 py-1.5 rounded flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
-                  >
-                    <span class="truncate">Upload {{ fmt.format.toUpperCase() }} to R2</span>
-                    <input
-                      type="file"
-                      :accept="fmt.format === 'pdf' ? '.pdf' : '.epub'"
-                      class="hidden"
-                      :disabled="fmt.uploading"
-                      @change="handleEbookUpload($event, idx)"
-                    />
-                  </label>
-                </div>
-
-                <div class="sm:col-span-1 text-right">
-                  <button
-                    type="button"
-                    class="text-red-500 hover:text-red-700 p-1 cursor-pointer"
-                    @click="removeFormatRow(idx)"
-                  >
-                    <Trash2 :size="14" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-if="formError"
-            class="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-center gap-2"
-          >
-            <AlertCircle :size="14" class="flex-shrink-0" />
-            <span>{{ formError }}</span>
-          </div>
-
-          <div class="pt-4 border-t border-ink-border flex justify-end gap-3">
-            <NuxtLink
-              to="/admin/books"
-              class="px-4 py-2.5 border border-ink-border rounded text-xs font-semibold hover:bg-slate-50"
-            >
-              Cancel
-            </NuxtLink>
-            <button
-              type="submit"
-              class="bg-forest-900 text-white text-xs font-bold uppercase px-6 py-2.5 rounded hover:bg-forest-800 transition-colors shadow cursor-pointer disabled:opacity-50 flex items-center gap-2"
-              :disabled="isSubmitting || isAnyUploadInProgress"
-            >
-              <RefreshCw v-if="isSubmitting || isAnyUploadInProgress" :size="14" class="animate-spin" />
-              <span>{{ isAnyUploadInProgress ? 'Upload in Progress...' : (isSubmitting ? 'Saving Book...' : 'Save & Publish Book') }}</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- DIALOGUE MODAL: Cloudflare R2 Upload Verification -->
-    <Teleport to="body">
-      <div
-        v-if="showR2SuccessModal"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
-      >
-        <div class="bg-white rounded-2xl shadow-2xl border border-paper-border max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
-          <div class="flex items-start justify-between pb-2 border-b border-paper-border">
-            <div class="flex items-center gap-2 text-emerald-800 font-display font-bold text-base">
-              <CheckCircle2 :size="20" class="text-emerald-600" />
-              <span>Cloudflare R2 Asset Verified</span>
-            </div>
-            <button
-              type="button"
-              class="text-ink-muted hover:text-ink p-1 cursor-pointer"
-              @click="showR2SuccessModal = false"
-            >
-              <X :size="16" />
-            </button>
-          </div>
-
-          <div class="p-4 bg-paper-cream/60 rounded-xl border border-gold-300 space-y-2 text-xs">
-            <div class="flex justify-between">
-              <span class="text-ink-muted">File:</span>
-              <strong class="text-forest-950 font-mono truncate max-w-[200px]">{{ r2ConfirmedAsset?.fileName }}</strong>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-ink-muted">Format:</span>
-              <span class="font-mono font-bold text-forest-950">{{ r2ConfirmedAsset?.format }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-ink-muted">Payload Size:</span>
-              <span class="font-mono font-bold text-forest-950">{{ r2ConfirmedAsset?.fileSizeMb }}</span>
-            </div>
-            <div class="pt-2 border-t border-paper-border/60">
-              <span class="text-[10px] text-ink-muted block">Storage Key:</span>
-              <code class="text-[10px] font-mono text-forest-950 break-all bg-white px-2 py-1 rounded block mt-0.5 border border-ink-border">
-                {{ r2ConfirmedAsset?.key }}
-              </code>
-            </div>
-          </div>
-
-          <p class="text-[11px] text-ink-muted leading-relaxed">
-            This digital file is now stored in your private R2 bucket. Customers who purchase this edition will receive verified, expiring signed tokens.
-          </p>
-
-          <div class="flex justify-end pt-2">
-            <button
-              type="button"
-              class="bg-forest-950 text-paper text-xs font-bold uppercase px-5 py-2.5 rounded-xl hover:bg-forest-900 cursor-pointer transition-colors shadow-sm"
-              @click="showR2SuccessModal = false"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- INLINE MODAL: Create New Category on the fly -->
-    <AddCategoryModal
-      :open="showAddCategoryModal"
-      @close="showAddCategoryModal = false"
-      @created="handleCategoryCreated"
-    />
-  </AdminLayout>
-</template>
-</file>
-
 <file path="server/api/admin/books/[id].delete.ts">
 // =============================================================================
 // server/api/admin/books/[id].delete.ts
@@ -9576,6 +8322,148 @@ export default defineEventHandler(async (event) => {
     await sokoClient(`/products/${product.id}/formats`, {
       method: 'POST',
       body: fmt,
+      token,
+      event,
+    });
+  }
+
+  return { success: true, productId: product.id };
+});
+</file>
+
+<file path="server/api/admin/books/index.post.ts">
+// =============================================================================
+// server/api/admin/books/index.post.ts
+// Creates a new book product and attaches its multi-format offerings in sequence.
+// =============================================================================
+
+import { z } from 'zod';
+import { sokoClient } from '../../../utils/sokoClient';
+import type { Book } from '~/types';
+
+const CreateBookSchema = z.object({
+  name: z.string().min(1, 'Title is required').max(200),
+  author: z.string().max(200).optional(),
+  category_id: z
+    .string()
+    .uuid('Invalid category ID')
+    .nullable()
+    .optional()
+    .or(z.literal(''))
+    .transform((v) => (v === '' ? null : v)),
+  description: z.string().max(3000).nullable().optional(),
+  price: z.number().nonnegative('Price must be greater than or equal to zero'),
+  compare_at_price: z.number().nonnegative().nullable().optional(),
+  badge: z.enum(['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME']).nullable().optional(),
+  sale_ends_at: z.string().datetime().nullable().optional(),
+  cover_image_url: z
+    .string()
+    .nullable()
+    .optional()
+    .or(z.literal(''))
+    .transform((v) => (v && v.trim() ? v.trim() : null)),
+  cover_image_public_id: z
+    .string()
+    .nullable()
+    .optional()
+    .or(z.literal(''))
+    .transform((v) => (v && v.trim() ? v.trim() : null)),
+  status: z.enum(['draft', 'published', 'archived']).default('published'),
+  formats: z
+    .array(
+      z.object({
+        format: z.enum(['pdf', 'epub', 'hardcopy']),
+        price: z.number().nonnegative(),
+        compare_at_price: z.number().nonnegative().nullable().optional(),
+        file_url: z.string().nullable().optional(),
+        file_public_id: z.string().nullable().optional(),
+        file_size_bytes: z.number().int().nonnegative().nullable().optional(),
+        stock: z.number().int().nonnegative().nullable().optional(),
+      })
+    )
+    .min(1, 'At least one format is required'),
+});
+
+export default defineEventHandler(async (event) => {
+  // 1. Resolve and verify admin bearer session token
+  const token =
+    getCookie(event, 'flemela_admin_session') ||
+    event.context.authToken ||
+    getHeader(event, 'authorization')?.replace(/^Bearer\s+/i, '');
+
+  if (!token) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized admin session. Please log in again.',
+    });
+  }
+
+  const rawBody = await readBody(event);
+  const parsed = CreateBookSchema.safeParse(rawBody);
+
+  if (!parsed.success) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: parsed.error.issues[0]?.message || 'Invalid book payload',
+    });
+  }
+
+  const { formats, cover_image_url, cover_image_public_id, ...bookData } = parsed.data;
+
+  // 2. Format author into description (so both storefront and admin extract author properly)
+  const author = bookData.author?.trim();
+  const desc = bookData.description?.trim();
+  const formattedDescription = author
+    ? (desc ? `By ${author}\n\n${desc}` : `By ${author}`)
+    : desc || null;
+
+  // 3. Prevent compare_at_price <= price database constraint violation
+  const validatedCompareAt =
+    bookData.compare_at_price && bookData.compare_at_price > bookData.price
+      ? bookData.compare_at_price
+      : null;
+
+  // 4. Create canonical product via Soko backend (forwarding token and event context)
+  const createdProducts = await sokoClient<Book[]>('/products/bulk', {
+    method: 'POST',
+    body: {
+      products: [
+        {
+          name: bookData.name,
+          category_id: bookData.category_id || null,
+          price: bookData.price,
+          compare_at_price: validatedCompareAt,
+          badge: bookData.badge || null,
+          sale_ends_at: bookData.sale_ends_at || null,
+          stock: formats.find((f) => f.format === 'hardcopy')?.stock || 0,
+          description: formattedDescription,
+          publish: bookData.status === 'published',
+          images: cover_image_url
+            ? [{ image_url: cover_image_url, image_public_id: cover_image_public_id || 'cover_img' }]
+            : [],
+        },
+      ],
+    },
+    token,
+    event,
+  });
+
+  const product = createdProducts[0];
+  if (!product) {
+    throw createError({ statusCode: 500, statusMessage: 'Failed to create book product' });
+  }
+
+  // 5. Attach formats (forwarding token and event context)
+  for (const fmt of formats) {
+    const validatedFmtCompareAt =
+      fmt.compare_at_price && fmt.compare_at_price > fmt.price ? fmt.compare_at_price : null;
+
+    await sokoClient(`/products/${product.id}/formats`, {
+      method: 'POST',
+      body: {
+        ...fmt,
+        compare_at_price: validatedFmtCompareAt,
+      },
       token,
       event,
     });
@@ -9843,6 +8731,372 @@ export default {
   },
   plugins: [],
 };
+</file>
+
+<file path="components/admin/AdminLayout.vue">
+<!-- components/admin/AdminLayout.vue -->
+<script setup lang="ts">
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import {
+  LayoutDashboard,
+  Inbox,
+  BookOpen,
+  PlusCircle,
+  FileSpreadsheet,
+  Images,
+  MapPin,
+  Zap,
+  Mail,
+  ExternalLink,
+  LogOut,
+  Menu,
+  X,
+} from 'lucide-vue-next';
+import ToastContainer from '~/components/ui/ToastContainer.vue';
+import { useAdminAuth } from '~/composables/useAdminAuth';
+
+const { logout } = useAdminAuth();
+const route = useRoute();
+
+const isMobileDrawerOpen = ref(false);
+
+function closeMobileDrawer(): void {
+  isMobileDrawerOpen.value = false;
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    closeMobileDrawer();
+  }
+);
+
+function handleKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Escape' && isMobileDrawerOpen.value) {
+    closeMobileDrawer();
+  }
+}
+
+onMounted(() => {
+  if (process.client) {
+    window.addEventListener('keydown', handleKeydown);
+  }
+});
+
+onUnmounted(() => {
+  if (process.client) {
+    window.removeEventListener('keydown', handleKeydown);
+  }
+});
+
+interface NavItem {
+  label: string;
+  to: string;
+  icon: any;
+  exact?: boolean;
+  activeMatch: (path: string) => boolean;
+}
+
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
+  {
+    title: 'Operations',
+    items: [
+      {
+        label: 'Overview',
+        to: '/admin',
+        icon: LayoutDashboard,
+        activeMatch: (p) => p === '/admin',
+      },
+      {
+        label: 'Orders Desk',
+        to: '/admin/orders',
+        icon: Inbox,
+        activeMatch: (p) => p.startsWith('/admin/orders'),
+      },
+    ],
+  },
+  {
+    title: 'Catalog & Merchandising',
+    items: [
+      {
+        label: 'Books Catalog',
+        to: '/admin/books',
+        icon: BookOpen,
+        activeMatch: (p) => p.startsWith('/admin/books') && !p.includes('new') && !p.includes('import'),
+      },
+      {
+        label: 'Add New Book',
+        to: '/admin/books/new',
+        icon: PlusCircle,
+        activeMatch: (p) => p.includes('/admin/books/new'),
+      },
+      {
+        label: 'Excel / CSV Import',
+        to: '/admin/books/import',
+        icon: FileSpreadsheet,
+        activeMatch: (p) => p.includes('/admin/books/import'),
+      },
+      {
+        label: 'Hero Banners',
+        to: '/admin/banners',
+        icon: Images,
+        activeMatch: (p) => p.includes('/admin/banners'),
+      },
+    ],
+  },
+  {
+    title: 'Store Settings',
+    items: [
+      {
+        label: 'Hub & Delivery',
+        to: '/admin/location',
+        icon: MapPin,
+        activeMatch: (p) => p.includes('/admin/location'),
+      },
+      {
+        label: 'M-Pesa Setup',
+        to: '/admin/mpesa',
+        icon: Zap,
+        activeMatch: (p) => p.includes('/admin/mpesa'),
+      },
+      {
+        label: 'Email (SMTP)',
+        to: '/admin/smtp',
+        icon: Mail,
+        activeMatch: (p) => p.includes('/admin/smtp'),
+      },
+    ],
+  },
+];
+</script>
+
+<template>
+  <div class="min-h-screen bg-paper-canvas text-ink flex flex-col lg:flex-row antialiased">
+    
+    <!-- 1. MOBILE TOP BAR (< lg) -->
+    <header class="lg:hidden bg-forest-950 text-paper h-14 px-4 sticky top-0 z-40 border-b border-forest-900/80 flex items-center justify-between shadow-sm">
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="p-1.5 text-paper/80 hover:text-paper hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+          aria-label="Open navigation menu"
+          @click="isMobileDrawerOpen = true"
+        >
+          <Menu :size="20" />
+        </button>
+
+        <NuxtLink to="/admin" class="flex items-center gap-2">
+          <img
+            src="/images/logo.png"
+            alt="Logo"
+            class="h-7 w-auto object-contain brightness-0 invert"
+          />
+          <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold pl-2 border-l border-white/15">
+            Admin
+          </span>
+        </NuxtLink>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <NuxtLink
+          to="/"
+          target="_blank"
+          class="text-xs text-paper/70 hover:text-paper flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
+          title="Open live storefront"
+        >
+          <span>Store</span>
+          <ExternalLink :size="12" />
+        </NuxtLink>
+
+        <button
+          type="button"
+          class="p-1.5 text-red-300 hover:text-white hover:bg-red-900/40 rounded-lg transition-colors cursor-pointer"
+          title="Sign out"
+          @click="logout"
+        >
+          <LogOut :size="16" />
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. MOBILE SLIDE-OVER DRAWER (< lg) -->
+    <Teleport to="body">
+      <div
+        v-if="isMobileDrawerOpen"
+        class="lg:hidden fixed inset-0 z-50 flex"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div
+          class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+          @click="closeMobileDrawer"
+        />
+
+        <aside
+          class="relative w-72 max-w-[85vw] bg-forest-950 text-paper h-full shadow-2xl flex flex-col z-10 border-r border-forest-900/80 animate-in slide-in-from-left duration-200"
+        >
+          <div class="h-14 px-4 flex items-center justify-between border-b border-forest-900/80">
+            <NuxtLink to="/admin" class="flex items-center gap-2" @click="closeMobileDrawer">
+              <img
+                src="/images/logo.png"
+                alt="Logo"
+                class="h-7 w-auto object-contain brightness-0 invert"
+              />
+              <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold pl-2 border-l border-white/15">
+                Admin Portal
+              </span>
+            </NuxtLink>
+
+            <button
+              type="button"
+              class="p-1.5 text-paper/70 hover:text-paper hover:bg-white/10 rounded-lg cursor-pointer"
+              aria-label="Close menu"
+              @click="closeMobileDrawer"
+            >
+              <X :size="18" />
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-4 space-y-6">
+            <div v-for="section in navSections" :key="section.title" class="space-y-1.5">
+              <span class="text-[9px] font-mono font-bold uppercase tracking-wider text-paper/40 px-3 block">
+                {{ section.title }}
+              </span>
+
+              <nav class="space-y-0.5">
+                <NuxtLink
+                  v-for="item in section.items"
+                  :key="item.to"
+                  :to="item.to"
+                  class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                  :class="
+                    item.activeMatch(route.path)
+                      ? 'bg-white/15 text-paper font-bold shadow-xs border-l-2 border-gold-400'
+                      : 'text-paper/70 hover:text-paper hover:bg-white/5'
+                  "
+                  @click="closeMobileDrawer"
+                >
+                  <component :is="item.icon" :size="16" :class="item.activeMatch(route.path) ? 'text-gold-300' : 'text-paper/60'" />
+                  <span>{{ item.label }}</span>
+                </NuxtLink>
+              </nav>
+            </div>
+          </div>
+
+          <div class="p-4 border-t border-forest-900/80 space-y-2">
+            <NuxtLink
+              to="/"
+              target="_blank"
+              class="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-paper/70 hover:text-paper hover:bg-white/5 rounded-xl transition-colors"
+            >
+              <span class="flex items-center gap-2">
+                <ExternalLink :size="15" class="text-gold-300" />
+                <span>Live Storefront</span>
+              </span>
+              <span class="text-[10px] font-mono text-paper/40">Open ↗</span>
+            </NuxtLink>
+
+            <button
+              type="button"
+              class="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-300 hover:text-white hover:bg-red-900/40 rounded-xl transition-colors cursor-pointer"
+              @click="logout"
+            >
+              <LogOut :size="15" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </aside>
+      </div>
+    </Teleport>
+
+    <!-- 3. DESKTOP VERTICAL SIDEBAR (lg: >= 1024px) -->
+    <aside
+      class="hidden lg:flex flex-col w-64 fixed inset-y-0 left-0 bg-forest-950 text-paper z-30 border-r border-forest-900/80 shadow-medium"
+      aria-label="Admin Sidebar Navigation"
+    >
+      <div class="h-16 px-6 flex items-center border-b border-forest-900/80">
+        <NuxtLink to="/admin" class="flex items-center gap-2.5 group">
+          <img
+            src="/images/logo.png"
+            alt="Logo"
+            class="h-8 w-auto object-contain brightness-0 invert transition-transform group-hover:scale-105"
+          />
+          <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold pl-2.5 border-l border-white/15">
+            Admin Portal
+          </span>
+        </NuxtLink>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+        <div v-for="section in navSections" :key="section.title" class="space-y-1.5">
+          <span class="text-[9px] font-mono font-bold uppercase tracking-wider text-paper/40 px-3 block">
+            {{ section.title }}
+          </span>
+
+          <nav class="space-y-1">
+            <NuxtLink
+              v-for="item in section.items"
+              :key="item.to"
+              :to="item.to"
+              class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all group"
+              :class="
+                item.activeMatch(route.path)
+                  ? 'bg-white/15 text-paper font-bold shadow-xs border-l-2 border-gold-400'
+                  : 'text-paper/70 hover:text-paper hover:bg-white/5'
+              "
+            >
+              <component
+                :is="item.icon"
+                :size="16"
+                :class="item.activeMatch(route.path) ? 'text-gold-300' : 'text-paper/60 group-hover:text-paper'"
+              />
+              <span>{{ item.label }}</span>
+            </NuxtLink>
+          </nav>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-forest-900/80 space-y-1.5">
+        <NuxtLink
+          to="/"
+          target="_blank"
+          class="flex items-center justify-between px-3 py-2 text-xs font-semibold text-paper/70 hover:text-paper hover:bg-white/5 rounded-xl transition-colors"
+        >
+          <span class="flex items-center gap-2">
+            <ExternalLink :size="14" class="text-gold-300" />
+            <span>Live Storefront</span>
+          </span>
+          <span class="text-[10px] font-mono text-paper/40">↗</span>
+        </NuxtLink>
+
+        <button
+          type="button"
+          class="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-300 hover:text-white hover:bg-red-900/40 rounded-xl transition-colors cursor-pointer"
+          title="Sign out of portal"
+          @click="logout"
+        >
+          <LogOut :size="14" />
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- 4. MAIN CONTENT CANVAS -->
+    <main class="flex-1 min-w-0 lg:pl-64 flex flex-col">
+      <div class="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1">
+        <slot />
+      </div>
+    </main>
+
+    <!-- Global Admin Toast Container -->
+    <ToastContainer />
+  </div>
+</template>
 </file>
 
 <file path="components/storefront/FeaturedMonth.vue">
@@ -11662,6 +10916,886 @@ async function handleDeleteFormat(formatId: string): Promise<void> {
 </template>
 </file>
 
+<file path="pages/admin/books/new.vue">
+<!-- pages/admin/books/new.vue -->
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import {
+  ArrowLeft,
+  Trash2,
+  Upload,
+  BookOpen,
+  AlertCircle,
+  Sparkles,
+  Link as LinkIcon,
+  RefreshCw,
+  ShieldCheck,
+  CheckCircle2,
+  FolderPlus,
+  X,
+  LogIn,
+} from 'lucide-vue-next';
+import AdminLayout from '~/components/admin/AdminLayout.vue';
+import AddCategoryModal from '~/components/admin/AddCategoryModal.vue';
+import { useToast } from '~/composables/useToast';
+import { useAdminAuth } from '~/composables/useAdminAuth';
+import type { BookFormatType } from '~/types';
+
+definePageMeta({
+  middleware: 'admin-auth',
+});
+
+const router = useRouter();
+const { push: pushToast } = useToast();
+const { sessionCookie } = useAdminAuth();
+
+const { data: categories } = await useFetch<Array<{ id: string; name: string }>>('/api/admin/categories');
+
+// Dynamic Inline Category State
+const showAddCategoryModal = ref(false);
+
+// Book base fields
+const name = ref('');
+const author = ref('');
+const categoryId = ref('');
+const description = ref('');
+const price = ref(699);
+const compareAtPrice = ref<number | null>(null);
+const badge = ref<'BESTSELLER' | 'FLASH_SALE' | 'NO1_PICK' | 'DEAL_OF_WEEK' | 'LIMITED_TIME' | null>(null);
+const saleEndsAt = ref<string>('');
+const status = ref<'draft' | 'published'>('published');
+
+// Cover art state
+const coverUrl = ref('');
+const coverPublicId = ref('');
+const isUploadingCover = ref(false);
+const isSearchingCover = ref(false);
+
+interface FormatDraft {
+  format: BookFormatType;
+  price: number;
+  compare_at_price: number | null;
+  stock: number | null;
+  file_url: string | null;
+  file_public_id: string | null;
+  file_size_bytes: number | null;
+  uploading: boolean;
+  uploadProgress: number;
+  fileName?: string;
+}
+
+const formats = ref<FormatDraft[]>([
+  {
+    format: 'pdf',
+    price: 699,
+    compare_at_price: null,
+    stock: null,
+    file_url: null,
+    file_public_id: null,
+    file_size_bytes: null,
+    uploading: false,
+    uploadProgress: 0,
+  },
+]);
+
+// Modal State: Cloudflare R2 Upload Confirmation Dialog
+const showR2SuccessModal = ref(false);
+const r2ConfirmedAsset = ref<{
+  fileName: string;
+  format: string;
+  fileSizeMb: string;
+  key: string;
+} | null>(null);
+
+// -----------------------------------------------------------------------------
+// Explicit State Communication Machine ('idle' | 'submitting' | 'success' | 'failed')
+// -----------------------------------------------------------------------------
+type StatusState = 'idle' | 'submitting' | 'success' | 'failed';
+const statusState = ref<StatusState>('idle');
+const formError = ref<string | null>(null);
+const isAuthError = ref(false);
+
+const isAnyUploadInProgress = computed(() => {
+  return isUploadingCover.value || formats.value.some((f) => f.uploading);
+});
+
+function handleCategoryCreated(newCat: { id: string; name: string; slug: string }): void {
+  if (categories.value) {
+    categories.value.push({ id: newCat.id, name: newCat.name });
+  }
+  categoryId.value = newCat.id;
+}
+
+function addFormatRow(type: BookFormatType): void {
+  if (formats.value.some((f) => f.format === type)) return;
+  formats.value.push({
+    format: type,
+    price: type === 'hardcopy' ? 999 : 699,
+    compare_at_price: null,
+    stock: type === 'hardcopy' ? 20 : null,
+    file_url: null,
+    file_public_id: null,
+    file_size_bytes: null,
+    uploading: false,
+    uploadProgress: 0,
+  });
+}
+
+function removeFormatRow(index: number): void {
+  formats.value.splice(index, 1);
+}
+
+function removeFormatFile(index: number): void {
+  formats.value[index].file_url = null;
+  formats.value[index].file_public_id = null;
+  formats.value[index].file_size_bytes = null;
+  formats.value[index].fileName = undefined;
+  formats.value[index].uploadProgress = 0;
+}
+
+async function handleAutoFindCover(): Promise<void> {
+  if (!name.value.trim()) {
+    pushToast({ message: 'Enter a book title first to auto-discover cover art', variant: 'error' });
+    return;
+  }
+
+  isSearchingCover.value = true;
+  try {
+    const res = await $fetch<{ coverUrl: string | null; title: string; source: string | null }>(
+      '/api/admin/books/find-cover',
+      {
+        query: {
+          title: name.value.trim(),
+          author: author.value.trim() || undefined,
+        },
+      }
+    );
+
+    if (res?.coverUrl) {
+      coverUrl.value = res.coverUrl;
+      coverPublicId.value = `auto_${res.source || 'web'}`;
+      pushToast({
+        message: `Discovered cover art from ${res.source === 'applebooks' ? 'Apple Books' : 'Publisher Archive'}!`,
+        variant: 'success',
+      });
+    } else {
+      pushToast({ message: 'No online cover found. You can upload an image or paste a link.', variant: 'info' });
+    }
+  } catch {
+    pushToast({ message: 'Auto-discovery timed out. You can upload an image directly.', variant: 'error' });
+  } finally {
+    isSearchingCover.value = false;
+  }
+}
+
+async function handleCoverUpload(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  isUploadingCover.value = true;
+  try {
+    const sig = await $fetch<{
+      signature: string;
+      timestamp: number;
+      folder: string;
+      apiKey: string;
+      cloudName: string;
+    }>('/api/admin/upload-signature', { method: 'POST' });
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('api_key', sig.apiKey);
+    formData.append('timestamp', String(sig.timestamp));
+    formData.append('signature', sig.signature);
+    formData.append('folder', sig.folder);
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+
+    if (data.secure_url) {
+      coverUrl.value = data.secure_url;
+      coverPublicId.value = data.public_id;
+      pushToast({ message: 'Cover image uploaded to Cloudinary', variant: 'success' });
+    }
+  } catch {
+    pushToast({ message: 'Cloudinary upload failed', variant: 'error' });
+  } finally {
+    isUploadingCover.value = false;
+  }
+}
+
+async function handleEbookUpload(event: Event, index: number): Promise<void> {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  const currentFmt = formats.value[index];
+  currentFmt.uploading = true;
+  currentFmt.uploadProgress = 0;
+  currentFmt.fileName = file.name;
+
+  try {
+    const mimeType = file.type || (currentFmt.format === 'pdf' ? 'application/pdf' : 'application/epub+zip');
+
+    const presigned = await $fetch<{ uploadUrl: string; key: string }>('/api/admin/books/upload-url', {
+      method: 'POST',
+      body: {
+        filename: file.name,
+        format: currentFmt.format,
+        contentType: mimeType,
+      },
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', presigned.uploadUrl);
+      xhr.setRequestHeader('Content-Type', mimeType);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          currentFmt.uploadProgress = Math.round((e.loaded / e.total) * 100);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Cloudflare R2 returned HTTP ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Network error or CORS failure communicating with Cloudflare R2'));
+      };
+
+      xhr.send(file);
+    });
+
+    currentFmt.file_url = presigned.key;
+    currentFmt.file_public_id = presigned.key;
+    currentFmt.file_size_bytes = file.size;
+
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+    r2ConfirmedAsset.value = {
+      fileName: file.name,
+      format: currentFmt.format.toUpperCase(),
+      fileSizeMb: `${sizeMb} MB`,
+      key: presigned.key,
+    };
+    showR2SuccessModal.value = true;
+  } catch (err: any) {
+    pushToast({
+      message: err.message || 'eBook upload to Cloudflare R2 failed',
+      variant: 'error',
+    });
+    removeFormatFile(index);
+  } finally {
+    currentFmt.uploading = false;
+  }
+}
+
+async function handleSubmit(): Promise<void> {
+  if (!name.value.trim() || formats.value.length === 0) return;
+
+  if (isAnyUploadInProgress.value) {
+    pushToast({
+      message: 'Please wait for file uploads to complete before saving.',
+      variant: 'error',
+    });
+    return;
+  }
+
+  for (const f of formats.value) {
+    if (f.compare_at_price !== null && f.compare_at_price <= f.price) {
+      formError.value = `Strike-through price for ${f.format.toUpperCase()} must be greater than its selling price.`;
+      statusState.value = 'failed';
+      return;
+    }
+  }
+
+  // Set Adding State
+  statusState.value = 'submitting';
+  formError.value = null;
+  isAuthError.value = false;
+
+  try {
+    const parentPrice = formats.value[0]?.price || price.value;
+    const validatedCompareAt =
+      compareAtPrice.value && compareAtPrice.value > parentPrice ? compareAtPrice.value : null;
+
+    const headers: Record<string, string> = {};
+    if (sessionCookie.value) {
+      headers['Authorization'] = `Bearer ${sessionCookie.value}`;
+    }
+
+    await $fetch('/api/admin/books', {
+      method: 'POST',
+      headers,
+      body: {
+        name: name.value.trim(),
+        author: author.value.trim() || undefined,
+        category_id: categoryId.value || null,
+        description: description.value.trim() || undefined,
+        price: parentPrice,
+        compare_at_price: validatedCompareAt,
+        badge: badge.value || null,
+        sale_ends_at: saleEndsAt.value ? new Date(saleEndsAt.value).toISOString() : null,
+        cover_image_url: coverUrl.value.trim() || undefined,
+        cover_image_public_id: coverPublicId.value || undefined,
+        status: status.value,
+        formats: formats.value.map((f) => ({
+          format: f.format,
+          price: Number(f.price),
+          compare_at_price: f.compare_at_price ? Number(f.compare_at_price) : null,
+          file_url: f.file_url,
+          file_public_id: f.file_public_id,
+          file_size_bytes: f.file_size_bytes,
+          stock: f.format === 'hardcopy' ? Number(f.stock) : null,
+        })),
+      },
+    });
+
+    // Set Success State
+    statusState.value = 'success';
+    pushToast({ message: `✓ Book "${name.value}" created and published!`, variant: 'success' });
+
+    // Brief transition pause so admin sees positive confirmation before redirect
+    setTimeout(() => {
+      router.push('/admin/books');
+    }, 1200);
+  } catch (err: any) {
+    statusState.value = 'failed';
+    const statusMsg =
+      err.data?.statusMessage ||
+      err.data?.message ||
+      err.statusMessage ||
+      err.message ||
+      'Failed to save book to catalog';
+
+    formError.value = statusMsg;
+
+    if (
+      statusMsg.toLowerCase().includes('authorization') ||
+      statusMsg.toLowerCase().includes('unauthorized') ||
+      err.statusCode === 401
+    ) {
+      isAuthError.value = true;
+    }
+
+    pushToast({ message: statusMsg, variant: 'error' });
+  }
+}
+</script>
+
+<template>
+  <AdminLayout>
+    <div class="max-w-4xl mx-auto space-y-6">
+      
+      <!-- Back Link -->
+      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:text-gold-600 transition-colors">
+        <ArrowLeft :size="14" /> Back to Books Catalog
+      </NuxtLink>
+
+      <!-- Main Form Panel -->
+      < class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-8 space-y-6">
+        
+        <!-- Header -->
+        <div class="pb-4 border-b border-paper-border flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 class="font-display text-2xl font-bold text-forest-950">Add New Book</h1>
+            <p class="text-xs text-ink-muted">
+              Configure catalog metadata, formats, strike-through discounts, and verified Cloudflare R2 digital storage.
+            </p>
+          </div>
+
+          <!-- Dynamic Status Badges -->
+          <div>
+            <span v-if="statusState === 'submitting'" class="inline-flex items-center gap-1.5 bg-amber-100 text-amber-950 border border-amber-300 text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
+              <RefreshCw :size="13" class="animate-spin text-amber-700" /> Adding Book...
+            </span>
+            <span v-else-if="statusState === 'success'" class="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
+              <CheckCircle2 :size="14" class="text-emerald-700" /> Success!
+            </span>
+            <span v-else-if="statusState === 'failed'" class="inline-flex items-center gap-1.5 bg-red-100 text-red-900 border border-red-300 text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
+              <AlertCircle :size="14" class="text-red-700" /> Action Failed
+            </span>
+          </div>
+        </div>
+
+        <!-- Real-Time State Notification Banners -->
+        <div v-if="statusState === 'submitting'" class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3 text-xs text-blue-900 shadow-2xs">
+          <RefreshCw :size="16" class="animate-spin text-blue-700 flex-shrink-0" />
+          <div>
+            <strong>Adding book to catalog...</strong>
+            <p class="text-blue-800 text-[11px] mt-0.5">Encrypting session token, inserting product records, and registering formats.</p>
+          </div>
+        </div>
+
+        <div v-else-if="statusState === 'success'" class="p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-3 text-xs text-emerald-950 shadow-2xs">
+          <CheckCircle2 :size="18" class="text-emerald-700 flex-shrink-0" />
+          <div>
+            <strong class="text-emerald-900">Book successfully published!</strong>
+            <p class="text-emerald-800 text-[11px] mt-0.5">Redirecting you to the books catalog...</p>
+          </div>
+        </div>
+
+        <div v-else-if="statusState === 'failed'" class="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start justify-between gap-3 text-xs text-red-900 shadow-2xs">
+          <div class="flex items-start gap-2.5">
+            <AlertCircle :size="16" class="text-red-600 flex-shrink-0 mt-0.5" />
+            <div class="space-y-1">
+              <strong>Failed to add book:</strong>
+              <p class="text-[11px] text-red-800">{{ formError }}</p>
+              <div v-if="isAuthError" class="pt-1">
+                <NuxtLink
+                  to="/admin/login"
+                  class="inline-flex items-center gap-1 bg-red-700 hover:bg-red-800 text-white font-bold text-[11px] px-3 py-1 rounded-lg transition-colors"
+                >
+                  <LogIn :size="12" /> Log In Again
+                </NuxtLink>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="text-red-500 hover:text-red-800 cursor-pointer" @click="statusState = 'idle'">
+            <X :size="14" />
+          </button>
+        </div>
+
+        <form class="space-y-6" @submit.prevent="handleSubmit">
+          
+          <!-- 1. General Details -->
+          <div class="space-y-4">
+            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
+              Book Information
+            </h3>
+
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-forest-950">Book Title *</label>
+                <div class="flex gap-2">
+                  <input
+                    v-model="name"
+                    type="text"
+                    placeholder="e.g. Atomic Habits"
+                    class="flex-1 px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900"
+                    required
+                    :disabled="statusState === 'submitting'"
+                    @blur="() => { if (!coverUrl && name) handleAutoFindCover(); }"
+                  />
+                  <button
+                    type="button"
+                    class="px-3 py-2 bg-paper-cream border border-paper-border hover:border-forest-900 text-forest-950 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap"
+                    :disabled="isSearchingCover || !name || statusState === 'submitting'"
+                    @click="handleAutoFindCover"
+                  >
+                    <RefreshCw v-if="isSearchingCover" :size="12" class="animate-spin" />
+                    <Sparkles v-else :size="12" class="text-gold-600" />
+                    <span>{{ isSearchingCover ? 'Searching...' : '🪄 Find Cover' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-forest-950">Author Name</label>
+                <input
+                  v-model="author"
+                  type="text"
+                  placeholder="e.g. James Clear"
+                  class="w-full px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900"
+                  :disabled="statusState === 'submitting'"
+                />
+              </div>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <div class="flex justify-between items-center">
+                  <label class="text-xs font-semibold text-forest-950">Category</label>
+                  <button
+                    type="button"
+                    class="text-[11px] font-bold text-forest-900 hover:text-gold-600 flex items-center gap-1 cursor-pointer"
+                    :disabled="statusState === 'submitting'"
+                    @click="showAddCategoryModal = true"
+                  >
+                    <FolderPlus :size="12" />
+                    <span>+ New Category</span>
+                  </button>
+                </div>
+                <select
+                  v-model="categoryId"
+                  class="w-full px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900"
+                  :disabled="statusState === 'submitting'"
+                >
+                  <option value="">Select category (or leave for default)...</option>
+                  <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+                </select>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-forest-950">Publishing Status</label>
+                <select
+                  v-model="status"
+                  class="w-full px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900"
+                  :disabled="statusState === 'submitting'"
+                >
+                  <option value="published">Published &amp; Live</option>
+                  <option value="draft">Draft Mode</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Promotion & Sale -->
+            <div class="p-4 bg-paper-cream/60 rounded-xl border border-paper-border grid sm:grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-forest-950">
+                  Promotional Badge / Placement
+                </label>
+                <select
+                  v-model="badge"
+                  class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 font-semibold"
+                  :disabled="statusState === 'submitting'"
+                >
+                  <option :value="null">None (Standard Catalog)</option>
+                  <option value="BESTSELLER">ðŸ”¥ Bestseller (Monthly Section)</option>
+                  <option value="NO1_PICK">â­ #1 Pick (Featured Top Slot)</option>
+                  <option value="FLASH_SALE">âš¡ Flash Sale (High Urgency)</option>
+                  <option value="DEAL_OF_WEEK">ðŸ·ï¸ Deal of the Week</option>
+                  <option value="LIMITED_TIME">â³ Limited Time Sale</option>
+                </select>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-forest-950">Sale Expiration (Optional)</label>
+                <input
+                  v-model="saleEndsAt"
+                  type="datetime-local"
+                  class="w-full px-3 py-1.5 bg-white border border-paper-border rounded-xl text-xs font-mono outline-none focus:border-forest-900"
+                  :disabled="statusState === 'submitting'"
+                />
+                <span class="text-[10px] text-ink-muted">Auto-removes sale badge once passed.</span>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-semibold text-forest-950">Description / Synopsis</label>
+              <textarea
+                v-model="description"
+                rows="3"
+                placeholder="Overview of the book..."
+                class="w-full px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 resize-none"
+                :disabled="statusState === 'submitting'"
+              />
+            </div>
+          </div>
+
+          <!-- 2. Cover Art -->
+          <div class="space-y-3 pt-4 border-t border-paper-border">
+            <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
+              Cover Art
+            </h3>
+            <div class="flex items-start gap-4">
+              <div
+                class="w-20 h-28 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-xs relative"
+              >
+                <img
+                  v-if="coverUrl"
+                  :src="coverUrl"
+                  :alt="name ? `${name} Cover` : 'Cover'"
+                  class="w-full h-full object-cover"
+                  referrerpolicy="no-referrer"
+                  @error="coverUrl = ''"
+                />
+                <BookOpen v-else :size="24" class="text-ink-muted opacity-40" />
+              </div>
+
+              <div class="space-y-2 flex-1">
+                <div class="flex flex-wrap gap-2 items-center">
+                  <button
+                    type="button"
+                    class="bg-forest-950 text-paper hover:bg-forest-900 text-xs font-bold px-3 py-1.5 rounded-xl inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                    :disabled="isSearchingCover || !name || statusState === 'submitting'"
+                    @click="handleAutoFindCover"
+                  >
+                    <Sparkles :size="13" class="text-gold-300" /> Auto-Find HD Cover
+                  </button>
+
+                  <label
+                    class="cursor-pointer bg-white border border-paper-border text-forest-950 text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-paper-cream transition-colors inline-flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Upload :size="13" /> {{ isUploadingCover ? 'Uploading...' : 'Upload File' }}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      class="hidden"
+                      :disabled="isUploadingCover || statusState === 'submitting'"
+                      @change="handleCoverUpload"
+                    />
+                  </label>
+                </div>
+
+                <div class="space-y-1 pt-1">
+                  <label class="text-[11px] text-ink-muted flex items-center gap-1">
+                    <LinkIcon :size="12" /> Direct Cover Image URL:
+                  </label>
+                  <input
+                    v-model="coverUrl"
+                    type="url"
+                    placeholder="https://..."
+                    class="w-full px-3 py-1.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900"
+                    :disabled="statusState === 'submitting'"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+		  <!-- 3. Formats & Verified Cloudflare R2 Uploads -->
+          <div class="space-y-4 pt-4 border-t border-paper-border">
+            <div class="flex justify-between items-center">
+              <div>
+                <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
+                  Reading Formats &amp; Digital Assets
+                </h3>
+                <p class="text-[11px] text-ink-muted">
+                  Digital files are verified and stored securely in Cloudflare R2 buckets.
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-emerald-50 text-emerald-900 border border-emerald-200 rounded-lg hover:bg-emerald-100 cursor-pointer"
+                  :disabled="statusState === 'submitting'"
+                  @click="addFormatRow('pdf')"
+                >
+                  + PDF
+                </button>
+                <button
+                  type="button"
+                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-blue-50 text-blue-900 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer"
+                  :disabled="statusState === 'submitting'"
+                  @click="addFormatRow('epub')"
+                >
+                  + EPUB
+                </button>
+                <button
+                  type="button"
+                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-lg hover:bg-amber-100 cursor-pointer"
+                  :disabled="statusState === 'submitting'"
+                  @click="addFormatRow('hardcopy')"
+                >
+                  + Hardcopy
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              <div
+                v-for="(fmt, idx) in formats"
+                :key="fmt.format"
+                class="p-4 bg-paper-canvas/60 border border-paper-border rounded-xl grid sm:grid-cols-12 gap-3 items-center"
+              >
+                <div class="sm:col-span-2">
+                  <span class="text-xs font-bold uppercase text-forest-950 font-mono">{{ fmt.format }}</span>
+                </div>
+
+                <div class="sm:col-span-2 space-y-1">
+                  <label class="text-[10px] text-ink-muted font-semibold">Sale (KSh) *</label>
+                  <input
+                    v-model.number="fmt.price"
+                    type="number"
+                    min="1"
+                    class="w-full px-2.5 py-1.5 bg-white border border-paper-border rounded-lg text-xs font-mono font-bold"
+                    :disabled="statusState === 'submitting'"
+                  />
+                </div>
+
+                <div class="sm:col-span-3 space-y-1">
+                  <label class="text-[10px] text-ink-muted font-semibold">Strike-through (KSh)</label>
+                  <input
+                    v-model.number="fmt.compare_at_price"
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 999"
+                    class="w-full px-2.5 py-1.5 bg-white border border-paper-border rounded-lg text-xs font-mono"
+                    :disabled="statusState === 'submitting'"
+                  />
+                </div>
+
+                <div v-if="fmt.format === 'hardcopy'" class="sm:col-span-4 space-y-1">
+                  <label class="text-[10px] text-ink-muted font-semibold">Physical Stock</label>
+                  <input
+                    v-model.number="fmt.stock"
+                    type="number"
+                    min="0"
+                    class="w-full px-2.5 py-1.5 bg-white border border-paper-border rounded-lg text-xs font-mono"
+                    :disabled="statusState === 'submitting'"
+                  />
+                </div>
+
+                <div v-else class="sm:col-span-4 space-y-1">
+                  <label class="text-[10px] text-ink-muted font-semibold">Digital File (Cloudflare R2)</label>
+
+                  <div v-if="fmt.uploading" class="space-y-1">
+                    <div class="flex justify-between text-[10px] font-mono text-forest-950 font-bold">
+                      <span>Uploading to R2...</span>
+                      <span>{{ fmt.uploadProgress }}%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                      <div
+                        class="bg-forest-950 h-full transition-all duration-150 rounded-full"
+                        :style="{ width: `${fmt.uploadProgress}%` }"
+                      />
+                    </div>
+                  </div>
+
+                  <div v-else-if="fmt.file_public_id" class="flex items-center justify-between bg-emerald-50 border border-emerald-300 px-2.5 py-1 rounded-lg text-[11px]">
+                    <span class="text-emerald-900 font-semibold truncate flex items-center gap-1">
+                      <ShieldCheck :size="13" class="text-emerald-700" /> R2 Asset Verified
+                    </span>
+                    <button
+                      type="button"
+                      class="text-ink-muted hover:text-red-700 text-[10px] font-mono underline ml-2 cursor-pointer"
+                      :disabled="statusState === 'submitting'"
+                      @click="removeFormatFile(idx)"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <label
+                    v-else
+                    class="w-full bg-white border border-paper-border text-forest-950 text-[11px] font-medium px-2 py-1.5 rounded-lg flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
+                  >
+                    <span class="truncate">Upload {{ fmt.format.toUpperCase() }} to R2</span>
+                    <input
+                      type="file"
+                      :accept="fmt.format === 'pdf' ? '.pdf' : '.epub'"
+                      class="hidden"
+                      :disabled="fmt.uploading || statusState === 'submitting'"
+                      @change="handleEbookUpload($event, idx)"
+                    />
+                  </label>
+                </div>
+
+                <div class="sm:col-span-1 text-right">
+                  <button
+                    type="button"
+                    class="text-red-500 hover:text-red-700 p-1 cursor-pointer"
+                    :disabled="statusState === 'submitting'"
+                    @click="removeFormatRow(idx)"
+                  >
+                    <Trash2 :size="14" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Actions with Clear State Communication -->
+          <div class="pt-4 border-t border-paper-border flex flex-wrap items-center justify-between gap-3">
+            <NuxtLink
+              to="/admin/books"
+              class="px-4 py-2.5 border border-paper-border rounded-xl text-xs font-semibold hover:bg-slate-50 text-forest-950"
+            >
+              Cancel
+            </NuxtLink>
+
+            <button
+              type="submit"
+              class="text-paper text-xs font-bold uppercase tracking-wider px-6 py-3 rounded-xl shadow-medium cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
+              :class="{
+                'bg-forest-950 hover:bg-forest-900': statusState === 'idle' || statusState === 'failed',
+                'bg-blue-800': statusState === 'submitting',
+                'bg-emerald-700': statusState === 'success',
+              }"
+              :disabled="statusState === 'submitting' || isAnyUploadInProgress"
+            >
+              <RefreshCw v-if="statusState === 'submitting' || isAnyUploadInProgress" :size="14" class="animate-spin" />
+              <CheckCircle2 v-else-if="statusState === 'success'" :size="14" />
+              <span>
+                {{
+                  isAnyUploadInProgress
+                    ? 'Upload in Progress...'
+                    : statusState === 'submitting'
+                    ? 'Adding Book to Catalog...'
+                    : statusState === 'success'
+                    ? 'âœ“ Added!'
+                    : 'Save & Publish Book'
+                }}
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    
+	  <!-- DIALOGUE MODAL: Cloudflare R2 Upload Verification -->
+    <Teleport to="body">
+      <div
+        v-if="showR2SuccessModal"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      >
+        <div class="bg-white rounded-2xl shadow-2xl border border-paper-border max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+          <div class="flex items-start justify-between pb-2 border-b border-paper-border">
+            <div class="flex items-center gap-2 text-emerald-800 font-display font-bold text-base">
+              <CheckCircle2 :size="20" class="text-emerald-600" />
+              <span>Cloudflare R2 Asset Verified</span>
+            </div>
+            <button
+              type="button"
+              class="text-ink-muted hover:text-ink p-1 cursor-pointer"
+              @click="showR2SuccessModal = false"
+            >
+              <X :size="16" />
+            </button>
+          </div>
+
+          <div class="p-4 bg-paper-cream/60 rounded-xl border border-gold-300 space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-ink-muted">File:</span>
+              <strong class="text-forest-950 font-mono truncate max-w-[200px]">{{ r2ConfirmedAsset?.fileName }}</strong>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-ink-muted">Format:</span>
+              <span class="font-mono font-bold text-forest-950">{{ r2ConfirmedAsset?.format }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-ink-muted">Payload Size:</span>
+              <span class="font-mono font-bold text-forest-950">{{ r2ConfirmedAsset?.fileSizeMb }}</span>
+            </div>
+            <div class="pt-2 border-t border-paper-border/60">
+              <span class="text-[10px] text-ink-muted block">Storage Key:</span>
+              <code class="text-[10px] font-mono text-forest-950 break-all bg-white px-2 py-1 rounded block mt-0.5 border border-ink-border">
+                {{ r2ConfirmedAsset?.key }}
+              </code>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-2">
+            <button
+              type="button"
+              class="bg-forest-950 text-paper text-xs font-bold uppercase px-5 py-2.5 rounded-xl hover:bg-forest-900 cursor-pointer transition-colors shadow-sm"
+              @click="showR2SuccessModal = false"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- INLINE MODAL: Create New Category on the fly -->
+    <AddCategoryModal
+      :open="showAddCategoryModal"
+      @close="showAddCategoryModal = false"
+      @created="handleCategoryCreated"
+    />
+  </AdminLayout>
+</template>
+</file>
+
 <file path="pages/checkout/confirm.vue">
 <!-- pages/checkout/confirm.vue -->
 <script setup lang="ts">
@@ -12321,314 +12455,6 @@ const whatsappHelpUrl = computed(() => {
 
     <ToastContainer />
   </div>
-</template>
-</file>
-
-<file path="components/storefront/HeroCarousel.vue">
-<!-- components/storefront/HeroCarousel.vue -->
-<script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import {
-  ChevronLeft,
-  ChevronRight,
-  ArrowRight,
-  Sparkles,
-} from 'lucide-vue-next';
-import type { PublicBanner } from '~/server/api/banners/index.get';
-
-// 1. Remote Promotional Banners
-const { data: remoteBanners } = await useFetch<PublicBanner[]>('/api/banners');
-const bannersList = computed(() => remoteBanners.value || []);
-const totalSlides = computed(() => bannersList.value.length);
-
-// 2. Carousel State Machine
-const activeIndex = ref(0);
-const isPaused = ref(false);
-let autoplayTimer: ReturnType<typeof setInterval> | undefined;
-
-// 3. Touch Gesture Support
-const touchStartX = ref(0);
-const currentTouchX = ref(0);
-const isSwiping = ref(false);
-const dragOffset = ref(0);
-
-function startAutoplay(): void {
-  stopAutoplay();
-  if (totalSlides.value > 1 && !isPaused.value) {
-    autoplayTimer = setInterval(() => {
-      nextSlide();
-    }, 6000);
-  }
-}
-
-function stopAutoplay(): void {
-  if (autoplayTimer) {
-    clearInterval(autoplayTimer);
-    autoplayTimer = undefined;
-  }
-}
-
-// Resets and resumes rotation after manual interaction
-function resumeAutoplay(): void {
-  stopAutoplay();
-  if (totalSlides.value > 1 && !isPaused.value) {
-    startAutoplay();
-  }
-}
-
-function nextSlide(): void {
-  if (totalSlides.value <= 1) return;
-  activeIndex.value = (activeIndex.value + 1) % totalSlides.value;
-  resumeAutoplay();
-}
-
-function prevSlide(): void {
-  if (totalSlides.value <= 1) return;
-  activeIndex.value = (activeIndex.value - 1 + totalSlides.value) % totalSlides.value;
-  resumeAutoplay();
-}
-
-function goToSlide(index: number): void {
-  if (index === activeIndex.value || totalSlides.value <= 1) return;
-  activeIndex.value = index;
-  resumeAutoplay();
-}
-
-function handleMouseEnter(): void {
-  isPaused.value = true;
-  stopAutoplay();
-}
-
-function handleMouseLeave(): void {
-  isPaused.value = false;
-  startAutoplay();
-}
-
-function handleTouchStart(e: TouchEvent): void {
-  if (totalSlides.value <= 1) return;
-  touchStartX.value = e.touches[0].clientX;
-  currentTouchX.value = e.touches[0].clientX;
-  isSwiping.value = true;
-  dragOffset.value = 0;
-  stopAutoplay();
-}
-
-function handleTouchMove(e: TouchEvent): void {
-  if (!isSwiping.value) return;
-  currentTouchX.value = e.touches[0].clientX;
-  const diff = currentTouchX.value - touchStartX.value;
-  if ((activeIndex.value === 0 && diff > 0) || (activeIndex.value === totalSlides.value - 1 && diff < 0)) {
-    dragOffset.value = diff * 0.35;
-  } else {
-    dragOffset.value = diff;
-  }
-}
-
-function handleTouchEnd(): void {
-  if (!isSwiping.value) return;
-  isSwiping.value = false;
-  const threshold = 50;
-  if (dragOffset.value < -threshold) {
-    nextSlide();
-  } else if (dragOffset.value > threshold) {
-    prevSlide();
-  }
-  dragOffset.value = 0;
-  // Always safely resume autoplay after touch interaction completes
-  resumeAutoplay();
-}
-
-const trackTransformStyle = computed(() => {
-  if (isSwiping.value) {
-    return {
-      transform: `translate3d(calc(-${activeIndex.value * 100}% + ${dragOffset.value}px), 0, 0)`,
-      transition: 'none',
-    };
-  }
-  return {
-    transform: `translate3d(-${activeIndex.value * 100}%, 0, 0)`,
-    transition: 'transform 600ms cubic-bezier(0.22, 1, 0.36, 1)',
-  };
-});
-
-async function handleBannerClick(banner: PublicBanner): Promise<void> {
-  if (!banner.cta_link) return;
-  $fetch(`/api/banners/${banner.id}/click`, { method: 'POST' }).catch(() => {});
-
-  if (banner.cta_link.startsWith('http')) {
-    window.open(banner.cta_link, '_blank', 'noopener,noreferrer');
-  } else if (banner.cta_link.startsWith('#')) {
-    const el = document.querySelector(banner.cta_link);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  } else {
-    navigateTo(banner.cta_link);
-  }
-}
-
-onMounted(() => {
-  if (process.client && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    startAutoplay();
-  }
-});
-
-onUnmounted(() => {
-  stopAutoplay();
-});
-</script>
-
-<template>
-  <section
-    class="relative select-none bg-[#052219] text-white overflow-hidden"
-    aria-roledescription="carousel"
-    aria-label="Bookstore Highlights & Promotions"
-    @mouseenter="handleMouseEnter"
-    @mouseleave="handleMouseLeave"
-  >
-    <!-- Viewport with Responsive Aspect Ratios: ~1.65:1 on Mobile, ~4:1 on Desktop -->
-    <div
-      class="relative w-full overflow-hidden h-[225px] sm:h-[270px] lg:h-[315px]"
-      @touchstart.passive="handleTouchStart"
-      @touchmove.passive="handleTouchMove"
-      @touchend="handleTouchEnd"
-    >
-      <!-- Fallback when no custom banners are configured yet -->
-      <div
-        v-if="totalSlides === 0"
-        class="w-full h-full relative flex items-center justify-center bg-[#052219]"
-      >
-        <img
-          src="/images/hero-cover.jpg"
-          alt="The Sunrise Bookstore"
-          class="w-full h-full object-cover brightness-75"
-        />
-        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6 sm:p-10">
-          <div class="space-y-1">
-            <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#2EE59D]">
-              Welcome to The Sunrise Bookstore
-            </span>
-            <h2 class="font-display text-xl sm:text-2xl font-bold text-white">
-              Books that change the way you think.
-            </h2>
-          </div>
-        </div>
-      </div>
-
-      <!-- Continuous Sliding Track (ONLY set banners rotate) -->
-      <div
-        v-else
-        class="flex w-full h-full will-change-transform"
-        :style="trackTransformStyle"
-      >
-        <div
-          v-for="(banner, index) in bannersList"
-          :key="banner.id"
-          class="w-full flex-shrink-0 relative h-full flex items-center overflow-hidden"
-          :class="{ 'cursor-pointer': Boolean(banner.cta_link) }"
-          :style="{ backgroundColor: banner.bg_color || '#052219' }"
-          role="group"
-          aria-roledescription="slide"
-          :aria-label="`${index + 1} of ${totalSlides}`"
-          @click="handleBannerClick(banner)"
-        >
-          <picture class="absolute inset-0 w-full h-full">
-            <source
-              v-if="banner.mobile_image_url"
-              :srcset="banner.mobile_image_url"
-              media="(max-width: 640px)"
-            />
-            <img
-              :src="banner.image_url"
-              :alt="banner.title || 'Promotional Banner'"
-              class="w-full h-full object-cover object-center scale-100"
-              loading="lazy"
-              referrerpolicy="no-referrer"
-            />
-          </picture>
-
-          <!-- Optional Typography Overlay -->
-          <div
-            v-if="banner.title || banner.subtitle || banner.badge || banner.cta_label"
-            class="absolute inset-0 z-10 flex items-center pointer-events-none px-6 sm:px-12"
-          >
-            <div class="max-w-xl space-y-2 pointer-events-auto">
-              <div
-                v-if="banner.badge"
-                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#052219]/90 border border-gold-400 text-[10px] font-mono font-bold text-gold-300 shadow-xs"
-              >
-                <Sparkles :size="10" class="text-gold-400" />
-                <span>{{ banner.badge }}</span>
-              </div>
-
-              <h2
-                v-if="banner.title"
-                class="font-display text-xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
-              >
-                {{ banner.title }}
-              </h2>
-
-              <p
-                v-if="banner.subtitle"
-                class="text-[11px] sm:text-xs text-white/90 font-medium line-clamp-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]"
-              >
-                {{ banner.subtitle }}
-              </p>
-
-              <div v-if="banner.cta_label" class="pt-1">
-                <button
-                  type="button"
-                  class="bg-[#F05A36] hover:bg-[#D94827] text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full transition-all flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
-                  @click.stop="handleBannerClick(banner)"
-                >
-                  <span>{{ banner.cta_label }}</span>
-                  <ArrowRight :size="12" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Navigation Arrows (Only shown when multiple custom banners exist) -->
-      <div
-        v-if="totalSlides > 1"
-        class="absolute inset-y-0 inset-x-2 sm:inset-x-4 z-20 flex items-center justify-between pointer-events-none"
-      >
-        <button
-          type="button"
-          class="w-8 h-8 rounded-full bg-[#052219]/70 hover:bg-[#052219] text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-xs active:scale-90 cursor-pointer border border-white/10"
-          aria-label="Previous slide"
-          @click="prevSlide"
-        >
-          <ChevronLeft :size="16" />
-        </button>
-
-        <button
-          type="button"
-          class="w-8 h-8 rounded-full bg-[#052219]/70 hover:bg-[#052219] text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-xs active:scale-90 cursor-pointer border border-white/10"
-          aria-label="Next slide"
-          @click="nextSlide"
-        >
-          <ChevronRight :size="16" />
-        </button>
-      </div>
-
-      <!-- Pagination Dots (Only shown when multiple custom banners exist) -->
-      <div
-        v-if="totalSlides > 1"
-        class="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5"
-      >
-        <button
-          v-for="(_, idx) in totalSlides"
-          :key="idx"
-          type="button"
-          class="h-1.5 rounded-full cursor-pointer transition-all duration-300"
-          :class="idx === activeIndex ? 'w-6 bg-[#2EE59D]' : 'w-2 bg-white/40 hover:bg-white/70'"
-          :aria-label="`Navigate to slide ${idx + 1}`"
-          @click="goToSlide(idx)"
-        />
-      </div>
-    </div>
-  </section>
 </template>
 </file>
 
@@ -13466,345 +13292,6 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
 </template>
 </file>
 
-<file path="components/storefront/BentoCategories.vue">
-<!-- components/storefront/BentoCategories.vue -->
-<script setup lang="ts">
-import { computed } from 'vue';
-import { ArrowUpRight, TrendingUp, Sparkles, Flame, Heart, BookOpen } from 'lucide-vue-next';
-import type { Book } from '~/types';
-
-const emit = defineEmits<{
-  select: [category: string];
-}>();
-
-// Fetch real catalog books to calculate live inventory counts
-const { data: catalogBooks } = await useFetch<Book[]>('/api/products');
-
-// High-Energy Flashy Neon & Duotone Palettes matching the Hero Banner Tone
-// 5 Eye-Catching Flagship Categories
-const FLAGSHIP_BENTO = [
-  {
-    key: 'finance',
-    name: 'Finance & Wealth',
-    subtitle: 'Money, Power, Investing & Freedom',
-    tag: 'Trending 📈',
-    icon: TrendingUp,
-    gradient: 'linear-gradient(135deg, #052A1D 0%, #0A4A33 50%, #10704D 100%)',
-    borderColor: 'border-emerald-400/30',
-    accentColor: '#2EE59D',
-    textColor: 'text-[#2EE59D]',
-    cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80',
-    categoryQuery: 'Finance',
-  },
-  {
-    key: 'self-help',
-    name: 'Self-Help & Mindset',
-    subtitle: 'Habits, Psychology, Mastery & Focus',
-    tag: 'Essential ⚡',
-    icon: Sparkles,
-    gradient: 'linear-gradient(135deg, #7C2405 0%, #B83C0C 50%, #E8590C 100%)',
-    borderColor: 'border-orange-400/40',
-    accentColor: '#FFB300',
-    textColor: 'text-[#FFB300]',
-    cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&auto=format&fit=crop&q=80',
-    categoryQuery: 'Self-Help',
-  },
-  {
-    key: 'fiction',
-    name: 'Fiction & Literature',
-    subtitle: 'Sci-Fi, Dystopian, Classics & Thrillers',
-    tag: 'Bestselling 📖',
-    icon: BookOpen,
-    gradient: 'linear-gradient(135deg, #08203D 0%, #0E3E73 50%, #1664A6 100%)',
-    borderColor: 'border-cyan-400/30',
-    accentColor: '#2CD4BF',
-    textColor: 'text-[#2CD4BF]',
-    cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&auto=format&fit=crop&q=80',
-    categoryQuery: 'Fiction',
-  },
-  {
-    key: 'adult',
-    name: 'Adult & Erotics',
-    subtitle: 'Passionate, Spicy, Taboo & Uncensored',
-    tag: '18+ Uncensored 🔥',
-    icon: Flame,
-    gradient: 'linear-gradient(135deg, #420A14 0%, #701020 50%, #A3182E 100%)',
-    borderColor: 'border-rose-400/40',
-    accentColor: '#FF2E54',
-    textColor: 'text-[#FF2E54]',
-    cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400&auto=format&fit=crop&q=80',
-    categoryQuery: 'Adult & Erotics',
-  },
-  {
-    key: 'romance',
-    name: 'Romance & Drama',
-    subtitle: 'Enemies to Lovers, Heartbreak & Soulmates',
-    tag: 'Hot Tropes 💕',
-    icon: Heart,
-    gradient: 'linear-gradient(135deg, #350B47 0%, #581673 50%, #8522AD 100%)',
-    borderColor: 'border-purple-400/30',
-    accentColor: '#F472B6',
-    textColor: 'text-[#F472B6]',
-    cover: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&auto=format&fit=crop&q=80',
-    categoryQuery: 'Romance & Drama',
-  },
-];
-
-// Compute count per category dynamically
-const countMap = computed(() => {
-  const map = new Map<string, number>();
-  if (catalogBooks.value) {
-    for (const b of catalogBooks.value) {
-      const cat = (b.category_name || 'General').toLowerCase();
-      map.set(cat, (map.get(cat) || 0) + 1);
-    }
-  }
-  return map;
-});
-
-function getCategoryCount(query: string): number {
-  const q = query.toLowerCase();
-  let total = 0;
-  for (const [cat, count] of countMap.value.entries()) {
-    if (cat.includes(q) || q.includes(cat)) {
-      total += count;
-    }
-  }
-  return total;
-}
-
-function handleCategoryClick(catQuery: string): void {
-  emit('select', catQuery);
-  if (process.client) {
-    const el = document.getElementById('catalog-results');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  }
-}
-</script>
-
-<template>
-  <section id="categories-bento" class="py-12 sm:py-16 px-4 max-w-6xl mx-auto space-y-8 select-none overflow-hidden">
-    <!-- Header: Flashy Hero Vibe -->
-    <div class="text-center space-y-2">
-      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#052219] text-[#2EE59D] text-[10px] font-mono font-bold uppercase tracking-widest border border-[#2EE59D]/30 shadow-xs">
-        <Sparkles :size="12" class="text-[#2EE59D]" />
-        <span>CURATED COLLECTIONS</span>
-      </div>
-      <h2 class="font-poster text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#141E1A] tracking-wide uppercase leading-none">
-        WHAT ARE YOU CRAVING TO READ TODAY?
-      </h2>
-      <p class="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto font-sans font-medium">
-        Explore our 5 most demanded collections. Tap any genre to filter the full collection immediately.
-      </p>
-    </div>
-
-    <!-- 5-Card High-Energy Bento Grid -->
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4 auto-rows-[170px] sm:auto-rows-[195px]">
-      
-      <!-- 1. Finance & Wealth (Wide Anchor Card) -->
-      <div
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border"
-        :class="FLAGSHIP_BENTO[0].borderColor"
-        :style="{ background: FLAGSHIP_BENTO[0].gradient }"
-        @click="handleCategoryClick(FLAGSHIP_BENTO[0].categoryQuery)"
-      >
-        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/40 pointer-events-none z-0" />
-
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-[11px] font-mono font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs flex items-center gap-1" :style="{ color: FLAGSHIP_BENTO[0].accentColor }">
-            <component :is="FLAGSHIP_BENTO[0].icon" :size="12" />
-            <span>{{ FLAGSHIP_BENTO[0].tag }}</span>
-            <span v-if="getCategoryCount(FLAGSHIP_BENTO[0].categoryQuery) > 0" class="text-[9px] opacity-75 font-normal">
-              • {{ getCategoryCount(FLAGSHIP_BENTO[0].categoryQuery) }}
-            </span>
-          </span>
-          <div class="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-
-        <div class="z-10 max-w-[70%] space-y-0.5">
-          <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide leading-tight drop-shadow-xs">
-            {{ FLAGSHIP_BENTO[0].name }}
-          </h3>
-          <p class="text-[10px] sm:text-[11px] text-white/80 font-medium font-sans truncate">
-            {{ FLAGSHIP_BENTO[0].subtitle }}
-          </p>
-        </div>
-
-        <!-- 3D Book Cover Overlay -->
-        <div class="absolute -right-2 -bottom-3 w-[36%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[10deg] group-hover:rotate-6 group-hover:scale-105 transition-transform duration-300 z-1 pointer-events-none border border-white/20 book-cover-3d">
-          <img :src="FLAGSHIP_BENTO[0].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        </div>
-      </div>
-
-      <!-- 2. Self-Help & Mindset (Center Feature Column) -->
-      <div
-        class="col-span-2 md:col-span-1 md:row-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl order-last md:order-none min-h-[220px] md:min-h-0 border"
-        :class="FLAGSHIP_BENTO[1].borderColor"
-        :style="{ background: FLAGSHIP_BENTO[1].gradient }"
-        @click="handleCategoryClick(FLAGSHIP_BENTO[1].categoryQuery)"
-      >
-        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/40 pointer-events-none z-0" />
-
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-[11px] font-mono font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs flex items-center gap-1" :style="{ color: FLAGSHIP_BENTO[1].accentColor }">
-            <component :is="FLAGSHIP_BENTO[1].icon" :size="12" />
-            <span>{{ FLAGSHIP_BENTO[1].tag }}</span>
-            <span v-if="getCategoryCount(FLAGSHIP_BENTO[1].categoryQuery) > 0" class="text-[9px] opacity-75 font-normal">
-              • {{ getCategoryCount(FLAGSHIP_BENTO[1].categoryQuery) }}
-            </span>
-          </span>
-          <div class="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-
-        <!-- Fanned Book Cluster -->
-        <div class="relative w-full h-36 sm:h-48 md:h-56 flex items-center justify-center my-auto pointer-events-none z-1">
-          <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[1/1.45] rounded-md overflow-hidden shadow-xl -translate-x-[40%] rotate-[-14deg] border border-white/20 book-cover-3d">
-            <img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
-            <div class="absolute inset-0 bg-black/30" />
-          </div>
-          <div class="absolute w-[32%] max-w-[105px] min-w-[60px] aspect-[1/1.45] rounded-md overflow-hidden shadow-xl translate-x-[40%] rotate-[14deg] border border-white/20 book-cover-3d">
-            <img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&auto=format&fit=crop&q=80" alt="" class="w-full h-full object-cover" />
-            <div class="absolute inset-0 bg-black/30" />
-          </div>
-          <div class="absolute w-[36%] max-w-[115px] min-w-[68px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl z-10 scale-105 group-hover:scale-110 transition-transform duration-300 border border-white/30 book-cover-3d">
-            <img :src="FLAGSHIP_BENTO[1].cover" alt="" class="w-full h-full object-cover" />
-            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-          </div>
-        </div>
-
-        <div class="z-10 space-y-0.5">
-          <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide leading-tight drop-shadow-xs">
-            {{ FLAGSHIP_BENTO[1].name }}
-          </h3>
-          <p class="text-[11px] text-white/85 font-medium font-sans">
-            {{ FLAGSHIP_BENTO[1].subtitle }}
-          </p>
-        </div>
-      </div>
-
-      <!-- 3. Fiction & Literature -->
-      <div
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border"
-        :class="FLAGSHIP_BENTO[2].borderColor"
-        :style="{ background: FLAGSHIP_BENTO[2].gradient }"
-        @click="handleCategoryClick(FLAGSHIP_BENTO[2].categoryQuery)"
-      >
-        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/40 pointer-events-none z-0" />
-
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-[11px] font-mono font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs flex items-center gap-1" :style="{ color: FLAGSHIP_BENTO[2].accentColor }">
-            <component :is="FLAGSHIP_BENTO[2].icon" :size="12" />
-            <span>{{ FLAGSHIP_BENTO[2].tag }}</span>
-            <span v-if="getCategoryCount(FLAGSHIP_BENTO[2].categoryQuery) > 0" class="text-[9px] opacity-75 font-normal">
-              • {{ getCategoryCount(FLAGSHIP_BENTO[2].categoryQuery) }}
-            </span>
-          </span>
-          <div class="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-
-        <div class="z-10 max-w-[75%] space-y-0.5">
-          <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide drop-shadow-xs leading-tight">
-            {{ FLAGSHIP_BENTO[2].name }}
-          </h3>
-          <p class="text-[10px] sm:text-[11px] text-white/80 font-medium font-sans truncate">
-            {{ FLAGSHIP_BENTO[2].subtitle }}
-          </p>
-        </div>
-
-        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[-8deg] group-hover:rotate-0 group-hover:scale-105 transition-transform duration-300 z-1 pointer-events-none border border-white/20 book-cover-3d">
-          <img :src="FLAGSHIP_BENTO[2].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        </div>
-      </div>
-
-      <!-- 4. Adult & Erotics (Hot Crimson) -->
-      <div
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border"
-        :class="FLAGSHIP_BENTO[3].borderColor"
-        :style="{ background: FLAGSHIP_BENTO[3].gradient }"
-        @click="handleCategoryClick(FLAGSHIP_BENTO[3].categoryQuery)"
-      >
-        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/40 pointer-events-none z-0" />
-
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-[11px] font-mono font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs flex items-center gap-1" :style="{ color: FLAGSHIP_BENTO[3].accentColor }">
-            <component :is="FLAGSHIP_BENTO[3].icon" :size="12" />
-            <span>{{ FLAGSHIP_BENTO[3].tag }}</span>
-            <span v-if="getCategoryCount(FLAGSHIP_BENTO[3].categoryQuery) > 0" class="text-[9px] opacity-75 font-normal">
-              • {{ getCategoryCount(FLAGSHIP_BENTO[3].categoryQuery) }}
-            </span>
-          </span>
-          <div class="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-
-        <div class="z-10 max-w-[75%] space-y-0.5">
-          <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide drop-shadow-xs leading-tight">
-            {{ FLAGSHIP_BENTO[3].name }}
-          </h3>
-          <p class="text-[10px] sm:text-[11px] text-white/80 font-medium font-sans truncate">
-            {{ FLAGSHIP_BENTO[3].subtitle }}
-          </p>
-        </div>
-
-        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[6deg] group-hover:rotate-0 group-hover:scale-105 transition-transform duration-300 z-1 pointer-events-none border border-white/20 book-cover-3d">
-          <img :src="FLAGSHIP_BENTO[3].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        </div>
-      </div>
-
-      <!-- 5. Romance & Drama (Royal Amethyst Orchid) -->
-      <div
-        class="rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden flex flex-col justify-between cursor-pointer group shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border"
-        :class="FLAGSHIP_BENTO[4].borderColor"
-        :style="{ background: FLAGSHIP_BENTO[4].gradient }"
-        @click="handleCategoryClick(FLAGSHIP_BENTO[4].categoryQuery)"
-      >
-        <div class="absolute inset-0 bg-radial-at-tl from-white/20 via-transparent to-black/40 pointer-events-none z-0" />
-
-        <div class="flex justify-between items-start z-10">
-          <span class="text-[10px] sm:text-[11px] font-mono font-extrabold tracking-wider px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs flex items-center gap-1" :style="{ color: FLAGSHIP_BENTO[4].accentColor }">
-            <component :is="FLAGSHIP_BENTO[4].icon" :size="12" />
-            <span>{{ FLAGSHIP_BENTO[4].tag }}</span>
-            <span v-if="getCategoryCount(FLAGSHIP_BENTO[4].categoryQuery) > 0" class="text-[9px] opacity-75 font-normal">
-              • {{ getCategoryCount(FLAGSHIP_BENTO[4].categoryQuery) }}
-            </span>
-          </span>
-          <div class="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center group-hover:bg-white group-hover:text-[#052219] transition-colors shadow-xs">
-            <ArrowUpRight :size="14" />
-          </div>
-        </div>
-
-        <div class="z-10 max-w-[75%] space-y-0.5">
-          <h3 class="font-poster text-2xl sm:text-3xl font-extrabold uppercase tracking-wide drop-shadow-xs leading-tight">
-            {{ FLAGSHIP_BENTO[4].name }}
-          </h3>
-          <p class="text-[10px] sm:text-[11px] text-white/80 font-medium font-sans truncate">
-            {{ FLAGSHIP_BENTO[4].subtitle }}
-          </p>
-        </div>
-
-        <div class="absolute -right-2 -bottom-3 w-[38%] max-w-[115px] min-w-[65px] aspect-[1/1.45] rounded-md overflow-hidden shadow-2xl rotate-[-6deg] group-hover:rotate-0 group-hover:scale-105 transition-transform duration-300 z-1 pointer-events-none border border-white/20 book-cover-3d">
-          <img :src="FLAGSHIP_BENTO[4].cover" alt="" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        </div>
-      </div>
-
-    </div>
-  </section>
-</template>
-</file>
-
 <file path="components/storefront/BestsellersSection.vue">
 <!-- components/storefront/BestsellersSection.vue -->
 <script setup lang="ts">
@@ -14030,6 +13517,383 @@ function scrollRight(): void {
         </div>
       </div>
 
+    </div>
+  </section>
+</template>
+</file>
+
+<file path="components/storefront/HeroCarousel.vue">
+<!-- components/storefront/HeroCarousel.vue -->
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-vue-next';
+import type { PublicBanner } from '~/server/api/banners/index.get';
+
+export interface CarouselSlide {
+  id: string;
+  badge?: string;
+  headlinePrefix?: string;
+  headlineAccent?: string;
+  subheadline: string;
+  ctaLabel?: string;
+  ctaLink?: string;
+  coverImage: string;
+  priceTag?: string;
+  originalPrice?: string;
+  discountBadge?: string;
+  isRemote?: boolean;
+}
+
+// -----------------------------------------------------------------------------
+// 1. Remote Banners + Built-in Flagship Default Slides
+// -----------------------------------------------------------------------------
+const { data: remoteBanners } = await useFetch<PublicBanner[]>('/api/banners');
+
+// Curated default slides matching the reference visual guide
+const defaultSlides: CarouselSlide[] = [
+  {
+    id: 'default-slide-1',
+    badge: 'READ ANYTIME, ANYWHERE',
+    headlinePrefix: 'Discover Your Next ',
+    headlineAccent: 'Great Book',
+    subheadline: 'Thousands of ebooks. Endless possibilities. Read, learn, and grow — all in one place.',
+    ctaLabel: 'Browse Ebooks',
+    ctaLink: '#catalog-results',
+    coverImage: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=600&auto=format&fit=crop&q=80',
+    priceTag: 'KSh 499',
+    originalPrice: 'KSh 999',
+    discountBadge: '50% OFF',
+    isRemote: false,
+  },
+  {
+    id: 'default-slide-2',
+    badge: 'WEEKEND BESTSELLER',
+    headlinePrefix: 'Build Habits That ',
+    headlineAccent: 'Actually Stick',
+    subheadline: 'Master the tiny changes that yield remarkable results. Instant PDF download directly to your device.',
+    ctaLabel: 'Get Atomic Habits',
+    ctaLink: '#catalog-results',
+    coverImage: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg',
+    priceTag: 'KSh 699',
+    originalPrice: 'KSh 1,250',
+    discountBadge: '44% OFF',
+    isRemote: false,
+  },
+  {
+    id: 'default-slide-3',
+    badge: 'INSTANT CLOUDFLARE R2 ACCESS',
+    headlinePrefix: 'Timeless Wisdom on ',
+    headlineAccent: 'Money & Wealth',
+    subheadline: 'Doing well with money isn’t necessarily about what you know. It’s about how you behave.',
+    ctaLabel: 'Explore Finance',
+    ctaLink: '#catalog-results',
+    coverImage: 'https://covers.openlibrary.org/b/isbn/9780857197689-L.jpg',
+    priceTag: 'KSh 649',
+    originalPrice: 'KSh 1,150',
+    discountBadge: 'HOT DEAL',
+    isRemote: false,
+  },
+];
+
+// If tenant uploaded custom banners in admin, use them; otherwise rotate curated defaults
+const activeSlides = computed<CarouselSlide[]>(() => {
+  if (remoteBanners.value && remoteBanners.value.length > 0) {
+    return remoteBanners.value.map((b) => ({
+      id: b.id,
+      badge: b.badge || undefined,
+      headlinePrefix: b.title || 'Discover Your Next ',
+      headlineAccent: '',
+      subheadline: b.subtitle || 'Instant digital downloads via Cloudflare R2.',
+      ctaLabel: b.cta_label || 'Shop Now',
+      ctaLink: b.cta_link || '#catalog-results',
+      coverImage: b.image_url,
+      isRemote: true,
+    }));
+  }
+  return defaultSlides;
+});
+
+const totalSlides = computed(() => activeSlides.value.length);
+
+// -----------------------------------------------------------------------------
+// 2. Carousel State Machine & Looping Engine (PRESERVED 100%)
+// -----------------------------------------------------------------------------
+const activeIndex = ref(0);
+const isPaused = ref(false);
+let autoplayTimer: ReturnType<typeof setInterval> | undefined;
+
+const touchStartX = ref(0);
+const currentTouchX = ref(0);
+const isSwiping = ref(false);
+const dragOffset = ref(0);
+
+function startAutoplay(): void {
+  stopAutoplay();
+  if (totalSlides.value > 1 && !isPaused.value) {
+    autoplayTimer = setInterval(() => {
+      nextSlide();
+    }, 3000);
+  }
+}
+
+function stopAutoplay(): void {
+  if (autoplayTimer) {
+    clearInterval(autoplayTimer);
+    autoplayTimer = undefined;
+  }
+}
+
+function resumeAutoplay(): void {
+  stopAutoplay();
+  if (totalSlides.value > 1 && !isPaused.value) {
+    startAutoplay();
+  }
+}
+
+function nextSlide(): void {
+  if (totalSlides.value <= 1) return;
+  activeIndex.value = (activeIndex.value + 1) % totalSlides.value;
+  resumeAutoplay();
+}
+
+function prevSlide(): void {
+  if (totalSlides.value <= 1) return;
+  activeIndex.value = (activeIndex.value - 1 + totalSlides.value) % totalSlides.value;
+  resumeAutoplay();
+}
+
+function goToSlide(index: number): void {
+  if (index === activeIndex.value || totalSlides.value <= 1) return;
+  activeIndex.value = index;
+  resumeAutoplay();
+}
+
+function handleMouseEnter(): void {
+  isPaused.value = true;
+  stopAutoplay();
+}
+
+function handleMouseLeave(): void {
+  isPaused.value = false;
+  startAutoplay();
+}
+
+function handleTouchStart(e: TouchEvent): void {
+  if (totalSlides.value <= 1) return;
+  touchStartX.value = e.touches[0].clientX;
+  currentTouchX.value = e.touches[0].clientX;
+  isSwiping.value = true;
+  dragOffset.value = 0;
+  stopAutoplay();
+}
+
+function handleTouchMove(e: TouchEvent): void {
+  if (!isSwiping.value) return;
+  currentTouchX.value = e.touches[0].clientX;
+  const diff = currentTouchX.value - touchStartX.value;
+  if ((activeIndex.value === 0 && diff > 0) || (activeIndex.value === totalSlides.value - 1 && diff < 0)) {
+    dragOffset.value = diff * 0.35;
+  } else {
+    dragOffset.value = diff;
+  }
+}
+
+function handleTouchEnd(): void {
+  if (!isSwiping.value) return;
+  isSwiping.value = false;
+  const threshold = 50;
+  if (dragOffset.value < -threshold) {
+    nextSlide();
+  } else if (dragOffset.value > threshold) {
+    prevSlide();
+  }
+  dragOffset.value = 0;
+  resumeAutoplay();
+}
+
+const trackTransformStyle = computed(() => {
+  if (isSwiping.value) {
+    return {
+      transform: `translate3d(calc(-${activeIndex.value * 100}% + ${dragOffset.value}px), 0, 0)`,
+      transition: 'none',
+    };
+  }
+  return {
+    transform: `translate3d(-${activeIndex.value * 100}%, 0, 0)`,
+    transition: 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1)',
+  };
+});
+
+function handleSlideCtaClick(slide: CarouselSlide): void {
+  if (!slide.ctaLink) return;
+  if (slide.isRemote && remoteBanners.value) {
+    $fetch(`/api/banners/${slide.id}/click`, { method: 'POST' }).catch(() => {});
+  }
+
+  if (slide.ctaLink.startsWith('http')) {
+    window.open(slide.ctaLink, '_blank', 'noopener,noreferrer');
+  } else if (slide.ctaLink.startsWith('#')) {
+    const el = document.querySelector(slide.ctaLink);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    navigateTo(slide.ctaLink);
+  }
+}
+
+onMounted(() => {
+  if (process.client && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    startAutoplay();
+  }
+});
+
+onUnmounted(() => {
+  stopAutoplay();
+});
+</script>
+
+<template>
+  <section
+    class="relative select-none bg-theme-dark text-white overflow-hidden"
+    aria-roledescription="carousel"
+    aria-label="Ebook Highlights & Promotions"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
+  >
+    <!-- Viewport Container with Fixed Explicit Responsive Height to Prevent Layout Collapse -->
+    <div
+      class="relative w-full overflow-hidden h-[440px] sm:h-[480px] lg:h-[500px]"
+      @touchstart.passive="handleTouchStart"
+      @touchmove.passive="handleTouchMove"
+      @touchend="handleTouchEnd"
+    >
+      <!-- Continuous Sliding Track (Guaranteed to have slides) -->
+      <div
+        class="flex w-full h-full will-change-transform"
+        :style="trackTransformStyle"
+      >
+        <div
+          v-for="(slide, index) in activeSlides"
+          :key="slide.id"
+          class="w-full flex-shrink-0 relative h-full flex items-center px-6 sm:px-12 lg:px-16"
+          role="group"
+          aria-roledescription="slide"
+          :aria-label="`${index + 1} of ${totalSlides}`"
+        >
+          <!-- Remote Banner Background Image (if custom banner) -->
+          <div v-if="slide.isRemote" class="absolute inset-0 z-0">
+            <img
+              :src="slide.coverImage"
+              alt="Promotional Banner"
+              class="w-full h-full object-cover object-center"
+              loading="lazy"
+            />
+            <div class="absolute inset-0 bg-gradient-to-r from-theme-dark via-theme-dark/80 to-transparent" />
+          </div>
+
+          <!-- Slide Content Grid matching Visual Guide -->
+          <div class="max-w-7xl mx-auto w-full grid md:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
+            
+            <!-- Left Typography Column (7 cols) -->
+            <div class="md:col-span-7 space-y-4 sm:space-y-6 text-left">
+              <span
+                v-if="slide.badge"
+                class="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-widest text-theme-accent uppercase"
+              >
+                <Sparkles :size="12" />
+                <span>{{ slide.badge }}</span>
+              </span>
+
+              <h2 class="font-sans font-extrabold text-4xl sm:text-5xl lg:text-6xl text-white leading-[1.08] tracking-tight">
+                {{ slide.headlinePrefix }}
+                <span class="text-theme-accent">{{ slide.headlineAccent }}</span>
+              </h2>
+
+              <p class="text-sm sm:text-base text-theme-dark-muted font-normal max-w-lg leading-relaxed">
+                {{ slide.subheadline }}
+              </p>
+
+              <div class="pt-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 bg-theme-accent hover:bg-theme-accent-hover active:bg-theme-accent-active text-white text-xs sm:text-sm font-bold uppercase tracking-wider px-6 py-3.5 rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                  @click="handleSlideCtaClick(slide)"
+                >
+                  <span>{{ slide.ctaLabel || 'Browse Ebooks' }}</span>
+                  <ArrowRight :size="15" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Visual Column (5 cols) -->
+            <div class="md:col-span-5 flex justify-center items-center relative">
+              <!-- 3D Book Jacket Display -->
+              <div class="relative w-48 sm:w-56 aspect-[1/1.45] rounded-md overflow-hidden book-cover-3d shadow-2xl z-10 border border-white/10">
+                <img
+                  :src="slide.coverImage"
+                  alt="Featured Ebook Cover"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+
+              <!-- Red Circular Price Badge (Visual Reference) -->
+              <div
+                v-if="slide.priceTag"
+                class="absolute -top-3 right-4 sm:right-8 z-20 w-20 h-20 sm:w-22 sm:h-22 rounded-full bg-theme-accent text-white flex flex-col items-center justify-center shadow-lg transform rotate-6 border-2 border-white select-none"
+              >
+                <span class="font-mono text-xs sm:text-sm font-black leading-tight">{{ slide.priceTag }}</span>
+                <span v-if="slide.originalPrice" class="font-mono text-[9px] line-through text-white/75">{{ slide.originalPrice }}</span>
+                <span v-if="slide.discountBadge" class="text-[8px] font-mono font-black uppercase bg-black/25 px-1 rounded mt-0.5">{{ slide.discountBadge }}</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Arrows (Active on all viewports) -->
+      <div
+        v-if="totalSlides > 1"
+        class="absolute inset-y-0 inset-x-3 sm:inset-x-5 z-20 flex items-center justify-between pointer-events-none"
+      >
+        <button
+          type="button"
+          class="w-10 h-10 rounded-full bg-theme-dark/80 hover:bg-theme-dark text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-xs active:scale-90 cursor-pointer border border-white/10"
+          aria-label="Previous slide"
+          @click="prevSlide"
+        >
+          <ChevronLeft :size="18" />
+        </button>
+
+        <button
+          type="button"
+          class="w-10 h-10 rounded-full bg-theme-dark/80 hover:bg-theme-dark text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-xs active:scale-90 cursor-pointer border border-white/10"
+          aria-label="Next slide"
+          @click="nextSlide"
+        >
+          <ChevronRight :size="18" />
+        </button>
+      </div>
+
+      <!-- Pagination Dots -->
+      <div
+        v-if="totalSlides > 1"
+        class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2"
+      >
+        <button
+          v-for="(_, idx) in totalSlides"
+          :key="idx"
+          type="button"
+          class="h-1.5 rounded-full cursor-pointer transition-all duration-300"
+          :class="idx === activeIndex ? 'w-6 bg-theme-accent' : 'w-2 bg-white/40 hover:bg-white/70'"
+          :aria-label="`Navigate to slide ${idx + 1}`"
+          @click="goToSlide(idx)"
+        />
+      </div>
     </div>
   </section>
 </template>
@@ -14786,6 +14650,149 @@ export default defineEventHandler(async (event) => {
 });
 </file>
 
+<file path="components/storefront/BentoCategories.vue">
+<!-- components/storefront/BentoCategories.vue -->
+<script setup lang="ts">
+import { computed } from 'vue';
+import {
+  BookOpen,
+  GraduationCap,
+  Heart,
+  Briefcase,
+  Laptop,
+  Star,
+  ArrowRight,
+} from 'lucide-vue-next';
+import type { Book } from '~/types';
+
+const emit = defineEmits<{
+  select: [category: string];
+}>();
+
+// Fetch live catalog books to dynamically calculate inventory counts
+const { data: catalogBooks } = await useFetch<Book[]>('/api/products');
+
+const CATEGORIES = [
+  {
+    name: 'Fiction',
+    icon: BookOpen,
+    fallbackCount: '2,450+',
+    query: 'Fiction',
+  },
+  {
+    name: 'Non-Fiction',
+    icon: GraduationCap,
+    fallbackCount: '1,630+',
+    query: 'Non-Fiction',
+  },
+  {
+    name: 'Self Help',
+    icon: Heart,
+    fallbackCount: '980+',
+    query: 'Self-Help',
+  },
+  {
+    name: 'Business',
+    icon: Briefcase,
+    fallbackCount: '760+',
+    query: 'Business',
+  },
+  {
+    name: 'Technology',
+    icon: Laptop,
+    fallbackCount: '540+',
+    query: 'Technology',
+  },
+  {
+    name: 'Classic',
+    icon: Star,
+    fallbackCount: '320+',
+    query: 'Classic',
+  },
+];
+
+const countMap = computed(() => {
+  const map = new Map<string, number>();
+  if (catalogBooks.value) {
+    for (const b of catalogBooks.value) {
+      const cat = (b.category_name || 'General').toLowerCase();
+      map.set(cat, (map.get(cat) || 0) + 1);
+    }
+  }
+  return map;
+});
+
+function getDisplayCount(query: string, fallback: string): string {
+  const q = query.toLowerCase();
+  let total = 0;
+  for (const [cat, count] of countMap.value.entries()) {
+    if (cat.includes(q) || q.includes(cat)) {
+      total += count;
+    }
+  }
+  return total > 0 ? `${total} titles` : `${fallback} titles`;
+}
+
+function handleCategoryClick(catQuery: string): void {
+  emit('select', catQuery);
+  if (process.client) {
+    const el = document.getElementById('catalog-results');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+}
+</script>
+
+<template>
+  <section id="categories-grid" class="py-8 sm:py-12 md:py-14 px-4 max-w-7xl mx-auto w-full space-y-4 sm:space-y-6 select-none">
+    <!-- Header with 'View all ->' Link -->
+    <div class="flex items-end justify-between border-b border-theme-border pb-3">
+      <div>
+        <h2 class="font-sans font-extrabold text-xl sm:text-2xl md:text-3xl text-theme-ink tracking-tight">
+          Shop by Category
+        </h2>
+      </div>
+
+      <button
+        type="button"
+        class="text-xs sm:text-sm font-bold text-theme-accent hover:text-theme-accent-hover flex items-center gap-1 transition-colors cursor-pointer"
+        @click="handleCategoryClick('General')"
+      >
+        <span>View all</span>
+        <ArrowRight :size="14" />
+      </button>
+    </div>
+
+    <!-- Category Grid: 3 Icons per Row on Mobile (<768px), 6 Items per Row on Tablet & Desktop (>=768px) -->
+    <div class="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+      <button
+        v-for="cat in CATEGORIES"
+        :key="cat.name"
+        type="button"
+        class="bg-theme-surface hover:bg-theme-surface-subtle border border-theme-border hover:border-theme-accent rounded-xl p-2.5 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center gap-1.5 sm:gap-2.5 transition-all duration-200 group cursor-pointer shadow-2xs hover:shadow-xs hover:-translate-y-0.5 min-h-[92px] sm:min-h-[110px]"
+        @click="handleCategoryClick(cat.query)"
+      >
+        <!-- Category Line Icon -->
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-theme-surface-subtle group-hover:bg-theme-accent-soft text-theme-ink group-hover:text-theme-accent flex items-center justify-center transition-colors flex-shrink-0">
+          <component :is="cat.icon" :size="18" class="sm:w-5 sm:h-5 stroke-[1.75]" />
+        </div>
+
+        <!-- Category Title and Count -->
+        <div class="space-y-0.5 w-full min-w-0">
+          <h3 class="font-sans font-bold text-[11px] sm:text-xs md:text-sm text-theme-ink group-hover:text-theme-accent transition-colors leading-tight truncate">
+            {{ cat.name }}
+          </h3>
+          <p class="text-[9px] sm:text-[10px] md:text-[11px] text-theme-ink-muted font-medium truncate">
+            {{ getDisplayCount(cat.query, cat.fallbackCount) }}
+          </p>
+        </div>
+      </button>
+    </div>
+  </section>
+</template>
+</file>
+
 <file path="data/seeds.ts">
 // data/seeds.ts
 // =============================================================================
@@ -15517,7 +15524,7 @@ onUnmounted(() => {
 <!-- components/storefront/FlashSaleStrip.vue -->
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, ShoppingCart, Zap, Clock } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat, BookFormatType } from '~/types';
@@ -15680,16 +15687,12 @@ function getBookPricing(book: Book) {
   };
 }
 
-function formatBadge(badgeStr?: string | null): string {
-  if (!badgeStr) return '⚡ FLASH';
-  switch (badgeStr) {
-    case 'LIMITED_TIME':
-      return '⏳ LIMITED';
-    case 'FLASH_SALE':
-      return '⚡ FLASH';
-    default:
-      return badgeStr.replace(/_/g, ' ');
-  }
+// Badge is always "flash" or the passed-in label here — icon instead of emoji
+function getBadgeLabel(badgeStr?: string | null): string {
+  if (!badgeStr) return 'FLASH';
+  if (badgeStr === 'LIMITED_TIME') return 'LIMITED';
+  if (badgeStr === 'FLASH_SALE') return 'FLASH';
+  return badgeStr.replace(/_/g, ' ');
 }
 
 function selectBookFormat(bookId: string, formatId: string, event: Event): void {
@@ -15733,9 +15736,21 @@ function handleQuickAdd(book: Book, event: Event): void {
 </script>
 
 <template>
+  <!--
+    Redesign notes (matches BookCard fixes):
+    - Strip background moved from raw #f50000 to theme-coral-hover — same
+      urgency red-orange, now sourced from the token system.
+    - Cards: type scale collapsed to the same 3 tiers as BookCard (10px
+      label / xs title / sm price), width widened 148/156px -> 160/168px.
+    - Discount + badge use coral/forest+turquoise the same way BookCard
+      does, so a card here and a card on the homepage grid read as the
+      same component, not two different systems.
+    - Strikethrough price moved off red onto slate for the same reason:
+      the discount badge already signals "on sale".
+  -->
   <section
     v-if="books.length > 0"
-    class="bg-[#f50000] text-white py-3 px-4 sm:px-6 relative overflow-hidden select-none rounded-2xl max-w-6xl mx-auto shadow-md"
+    class="bg-theme-coral-hover text-white py-3 px-4 sm:px-6 relative overflow-hidden select-none rounded-2xl max-w-6xl mx-auto shadow-md"
   >
     <!-- Background Texture -->
     <svg class="absolute -left-16 -bottom-16 w-80 h-80 text-white/10 pointer-events-none" viewBox="0 0 200 200" fill="none">
@@ -15746,11 +15761,12 @@ function handleQuickAdd(book: Book, event: Event): void {
 
     <!-- Controls on the Left, Shelf on the Right -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 sm:gap-8 relative z-10">
-      
+
       <!-- CONTROLS CONTAINER -->
       <div class="w-full sm:w-72 sm:flex-shrink-0 space-y-2.5 text-left py-1">
         <div class="space-y-1">
-          <span class="inline-block text-[9px] sm:text-[10px] font-mono font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-[#052219] text-[#2EE59D] shadow-2xs">
+          <span class="inline-flex items-center gap-1 text-[10px] font-mono font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-theme-dark text-theme-turquoise shadow-2xs">
+            <Zap :size="10" />
             {{ badgeLabel }}
           </span>
           <h2 class="font-poster text-3xl sm:text-4xl font-extrabold uppercase tracking-wide leading-none text-white drop-shadow-xs">
@@ -15765,16 +15781,17 @@ function handleQuickAdd(book: Book, event: Event): void {
         <!-- Live Countdown Timer -->
         <ClientOnly>
           <div class="flex items-center gap-2 pt-0.5">
-            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
+            <div class="bg-white text-theme-ink rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
               <span class="font-mono text-sm font-bold block">{{ hours }}H</span>
             </div>
             <span class="font-bold text-white">:</span>
-            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
+            <div class="bg-white text-theme-ink rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
               <span class="font-mono text-sm font-bold block">{{ minutes }}M</span>
             </div>
             <span class="font-bold text-white">:</span>
-            <div class="bg-white text-[#141E1A] rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
-              <span class="font-mono text-sm font-bold text-[#F05A36] block">{{ seconds }}S</span>
+            <div class="bg-white text-theme-ink rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px] flex items-center justify-center gap-1">
+              <Clock :size="10" class="text-theme-coral" />
+              <span class="font-mono text-sm font-bold text-theme-coral block">{{ seconds }}S</span>
             </div>
           </div>
         </ClientOnly>
@@ -15783,7 +15800,7 @@ function handleQuickAdd(book: Book, event: Event): void {
         <div class="hidden sm:flex items-center gap-2.5 pt-1">
           <button
             type="button"
-            class="w-8 h-8 rounded-full bg-[#052219]/30 hover:bg-[#052219] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 border border-white/20"
+            class="w-8 h-8 rounded-full bg-theme-dark/30 hover:bg-theme-dark text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 border border-white/20"
             aria-label="Previous deal"
             @click="scrollLeft"
           >
@@ -15791,7 +15808,7 @@ function handleQuickAdd(book: Book, event: Event): void {
           </button>
           <button
             type="button"
-            class="w-8 h-8 rounded-full bg-[#052219] text-[#2EE59D] hover:bg-[#073023] flex items-center justify-center cursor-pointer shadow-xs active:scale-95 transition-all border border-[#2EE59D]/30"
+            class="w-8 h-8 rounded-full bg-theme-dark text-theme-turquoise hover:bg-theme-forest flex items-center justify-center cursor-pointer shadow-xs active:scale-95 transition-all border border-theme-turquoise/30"
             aria-label="Next deal"
             @click="scrollRight"
           >
@@ -15809,7 +15826,7 @@ function handleQuickAdd(book: Book, event: Event): void {
           <div
             v-for="book in books"
             :key="book.id"
-            class="w-[148px] sm:w-[156px] flex-shrink-0 bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all snap-start flex flex-col justify-between group select-none text-left border border-slate-100"
+            class="w-[160px] sm:w-[168px] flex-shrink-0 bg-white text-theme-ink rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-medium transition-all snap-start flex flex-col justify-between group select-none text-left border border-theme-border"
           >
             <div>
               <!-- Book Cover -->
@@ -15827,29 +15844,30 @@ function handleQuickAdd(book: Book, event: Event): void {
 
                 <span
                   v-if="getBookPricing(book).discountPercentage > 0"
-                  class="absolute top-1.5 right-1.5 bg-red-600 text-white font-mono font-extrabold text-[8.5px] px-1.5 py-0.5 rounded shadow-xs z-10"
+                  class="absolute top-1.5 right-1.5 bg-theme-coral text-white font-mono font-extrabold text-[10px] px-1.5 py-0.5 rounded shadow-xs z-10"
                 >
                   -{{ getBookPricing(book).discountPercentage }}%
                 </span>
 
                 <span
-                  class="absolute top-1.5 left-1.5 bg-[#052219] text-[#2EE59D] font-mono font-bold text-[7.5px] px-1.5 py-0.5 rounded uppercase z-10"
+                  class="absolute top-1.5 left-1.5 bg-theme-forest text-theme-turquoise font-mono font-bold text-[10px] px-1.5 py-0.5 rounded uppercase z-10 flex items-center gap-1"
                 >
-                  {{ formatBadge(book.badge) }}
+                  <Zap :size="9" />
+                  {{ getBadgeLabel(book.badge) }}
                 </span>
               </NuxtLink>
 
               <!-- Book Title -->
               <NuxtLink :to="`/book/${book.slug}`" class="block">
-                <h3 class="font-display text-[11px] font-bold text-slate-900 group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug">
+                <h3 class="font-display text-xs font-bold text-theme-ink group-hover:text-theme-coral transition-colors line-clamp-1 leading-snug">
                   {{ book.name }}
                 </h3>
               </NuxtLink>
-              <p class="text-[9.5px] text-slate-500 italic truncate mt-0.5">
+              <p class="text-[10px] text-theme-muted italic truncate mt-0.5">
                 {{ book.author ? (book.author.startsWith('By ') ? book.author : `By ${book.author}`) : 'Original Edition' }}
               </p>
 
-              <!-- Stacked Format Selector with Brand Orange & Prices -->
+              <!-- Stacked Format Selector -->
               <div class="mt-2 space-y-1">
                 <template v-if="getBookDisplayFormats(book).length > 1">
                   <button
@@ -15859,46 +15877,46 @@ function handleQuickAdd(book: Book, event: Event): void {
                     class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans transition-all cursor-pointer select-none leading-none border"
                     :class="
                       getSelectedFormat(book)?.id === fmt.id
-                        ? 'bg-[#FFF7ED] border-[#E8750D] text-[#C25E00] font-extrabold shadow-2xs'
+                        ? 'bg-theme-coral/10 border-theme-coral text-theme-coral-hover font-extrabold shadow-2xs'
                         : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold'
                     "
                     @click="selectBookFormat(book.id, fmt.id, $event)"
                   >
                     <span class="truncate pr-1">{{ getFormatDisplayLabel(fmt) }}</span>
-                    <span class="font-mono font-bold text-[9px] flex-shrink-0" :class="getSelectedFormat(book)?.id === fmt.id ? 'text-[#C25E00]' : 'text-slate-600'">
+                    <span class="font-mono font-bold text-[10px] flex-shrink-0" :class="getSelectedFormat(book)?.id === fmt.id ? 'text-theme-coral-hover' : 'text-slate-600'">
                       {{ formatCurrency(fmt.price) }}
                     </span>
                   </button>
                 </template>
                 <div
                   v-else
-                  class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans font-bold bg-[#FFF7ED] border border-[#E8750D]/60 text-[#C25E00]"
+                  class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans font-bold bg-theme-coral/10 border border-theme-coral/60 text-theme-coral-hover"
                 >
                   <span class="truncate pr-1">{{ getFormatDisplayLabel(getSelectedFormat(book)) }}</span>
-                  <span class="font-mono font-bold text-[9px] flex-shrink-0">
+                  <span class="font-mono font-bold text-[10px] flex-shrink-0">
                     {{ formatCurrency(getSelectedFormat(book).price) }}
                   </span>
                 </div>
               </div>
             </div>
 
-            <!-- Bottom Bar: Price Box + Supermarket Cart Button -->
-            <div class="pt-2 mt-2 border-t border-slate-100 flex items-end justify-between gap-1.5">
+            <!-- Bottom Bar: Price + Cart Button -->
+            <div class="pt-2 mt-2 border-t border-theme-border flex items-end justify-between gap-1.5">
               <div class="min-w-0 flex flex-col justify-center">
                 <span
                   v-if="getBookPricing(book).originalPrice && getBookPricing(book).originalPrice! > getBookPricing(book).currentPrice"
-                  class="text-[9.5px] text-red-600 line-through decoration-red-500 decoration-1 font-mono font-bold block leading-none mb-0.5"
+                  class="text-[10px] text-slate-400 line-through decoration-slate-400 decoration-1 font-mono font-bold block leading-none mb-0.5"
                 >
                   {{ formatCurrency(getBookPricing(book).originalPrice!) }}
                 </span>
-                <span class="text-xs sm:text-[13px] font-black font-mono leading-tight text-black tracking-tight">
+                <span class="text-sm font-black font-mono leading-tight text-theme-ink tracking-tight">
                   {{ formatCurrency(getBookPricing(book).currentPrice) }}
                 </span>
               </div>
 
               <button
                 type="button"
-                class="w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg bg-[#052219] hover:bg-[#E8750D] text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95 shadow-xs flex-shrink-0"
+                class="w-8 h-8 rounded-lg bg-theme-forest hover:bg-theme-coral text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95 shadow-xs flex-shrink-0"
                 :title="getSelectedFormat(book)?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart'"
                 :aria-label="getSelectedFormat(book)?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart'"
                 @click="handleQuickAdd(book, $event)"
@@ -15919,7 +15937,7 @@ function handleQuickAdd(book: Book, event: Event): void {
 <!-- components/storefront/BookCard.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { ShoppingCart } from 'lucide-vue-next';
+import { ShoppingCart, Zap, Flame, Star, Tag, Clock } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat, BookFormatType } from '~/types';
@@ -16085,23 +16103,30 @@ const displayAuthor = computed(() => {
   return props.book.author.startsWith('By ') ? props.book.author : `By ${props.book.author}`;
 });
 
-function formatBadge(badgeStr?: string | null): string {
-  if (!badgeStr) return '';
+// Badge → { icon, label } instead of an emoji-prefixed string. Same five
+// badge types, same meaning — rendered with lucide icons so they look
+// consistent across platforms and match the ShoppingCart icon language.
+type BadgeInfo = { icon: typeof Zap; label: string } | null;
+
+function getBadgeInfo(badgeStr?: string | null): BadgeInfo {
+  if (!badgeStr) return null;
   switch (badgeStr) {
     case 'FLASH_SALE':
-      return '⚡ FLASH';
+      return { icon: Zap, label: 'FLASH' };
     case 'BESTSELLER':
-      return '🔥 BESTSELLER';
+      return { icon: Flame, label: 'BESTSELLER' };
     case 'NO1_PICK':
-      return '⭐ #1 PICK';
+      return { icon: Star, label: '#1 PICK' };
     case 'DEAL_OF_WEEK':
-      return '🏷️ DEAL';
+      return { icon: Tag, label: 'DEAL' };
     case 'LIMITED_TIME':
-      return '⏳ LIMITED';
+      return { icon: Clock, label: 'LIMITED' };
     default:
-      return badgeStr.replace(/_/g, ' ');
+      return { icon: Tag, label: badgeStr.replace(/_/g, ' ') };
   }
 }
+
+const badgeInfo = computed(() => getBadgeInfo(props.book.badge));
 
 function handleImageError(): void {
   imageFailed.value = true;
@@ -16163,7 +16188,17 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <div class="w-full max-w-none sm:max-w-[160px] bg-white text-[#141E1A] rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-high transition-all flex flex-col justify-between group select-none text-left border border-slate-100 hover:border-slate-200">
+  <!--
+    Redesign notes:
+    - Card widened from 160px -> 176px so text isn't starved into micro-sizes.
+    - Type scale collapsed to 3 tiers: label (10px), body (xs), price (sm).
+    - Raw hex swapped for theme.* tokens already defined in tailwind.config.js.
+    - Color now has one job each: coral = action (discount, active format,
+      cart button), forest/turquoise = brand identity (promo badge only),
+      ink/slate = everything neutral. Strikethrough price moved off red
+      onto slate, since the discount badge already signals "on sale".
+  -->
+  <div class="w-full max-w-none sm:max-w-[176px] bg-white text-theme-ink rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-medium transition-all flex flex-col justify-between group select-none text-left border border-theme-border hover:border-theme-border-strong">
     <div>
       <!-- Book Cover -->
       <NuxtLink
@@ -16173,17 +16208,17 @@ function handleAddToCart(event: Event): void {
       >
         <div
           v-if="imageFailed || !coverImage"
-          class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none"
+          class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-theme-dark to-theme-forest text-white text-left select-none"
         >
           <div class="space-y-0.5">
-            <span class="text-[8px] font-mono uppercase tracking-widest text-[#2EE59D] font-bold block truncate">
+            <span class="text-[10px] font-mono uppercase tracking-widest text-theme-turquoise font-bold block truncate">
               {{ book.category_name || 'Book' }}
             </span>
-            <h4 class="font-display font-bold text-[11px] leading-tight line-clamp-3 text-white">
+            <h4 class="font-display font-bold text-xs leading-tight line-clamp-3 text-white">
               {{ book.name }}
             </h4>
           </div>
-          <span class="text-[8px] font-mono text-white/70 truncate block pt-0.5 border-t border-white/10">
+          <span class="text-[10px] font-mono text-white/70 truncate block pt-0.5 border-t border-white/10">
             {{ book.author || 'Edition' }}
           </span>
         </div>
@@ -16194,92 +16229,94 @@ function handleAddToCart(event: Event): void {
           :alt="book.name"
           class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
-          width="132"
-          height="170"
+          width="144"
+          height="188"
           referrerpolicy="no-referrer"
           @error="handleImageError"
         />
 
+        <!-- Discount badge: coral is the ONLY "act now" color on this card -->
         <span
           v-if="discountPercentage > 0"
-          class="absolute top-1.5 right-1.5 bg-red-600 text-white font-mono font-extrabold text-[9px] px-1.5 py-0.5 rounded shadow-xs z-10"
+          class="absolute top-1.5 right-1.5 bg-theme-coral text-white font-mono font-extrabold text-[10px] px-1.5 py-0.5 rounded shadow-xs z-10"
         >
           -{{ discountPercentage }}%
         </span>
 
+        <!-- Identity badge: forest + turquoise, icon instead of emoji -->
         <span
-          v-if="book.badge"
-          class="absolute top-1.5 left-1.5 bg-[#052219] text-[#2EE59D] font-mono font-bold text-[8px] px-1.5 py-0.5 rounded uppercase z-10"
+          v-if="badgeInfo"
+          class="absolute top-1.5 left-1.5 bg-theme-forest text-theme-turquoise font-mono font-bold text-[10px] px-1.5 py-0.5 rounded uppercase z-10 flex items-center gap-1"
         >
-          {{ formatBadge(book.badge) }}
+          <component :is="badgeInfo.icon" :size="10" />
+          {{ badgeInfo.label }}
         </span>
       </NuxtLink>
 
       <!-- Book Title -->
       <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
-        <h3 class="font-display text-[11px] sm:text-xs font-bold text-slate-900 group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug">
+        <h3 class="font-display text-xs font-bold text-theme-ink group-hover:text-theme-coral transition-colors line-clamp-1 leading-snug">
           {{ book.name }}
         </h3>
       </NuxtLink>
 
       <!-- Author -->
-      <p class="text-[10px] text-slate-500 italic truncate mt-0.5">
+      <p class="text-[10px] text-theme-muted italic truncate mt-0.5">
         {{ displayAuthor }}
       </p>
 
-      <!-- Stacked Format Selector with Brand Orange & Prices -->
+      <!-- Stacked Format Selector -->
       <div class="mt-2 space-y-1">
         <template v-if="availableFormats.length > 1">
           <button
             v-for="fmt in availableFormats"
             :key="fmt.id"
             type="button"
-            class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] sm:text-[10.5px] font-sans transition-all cursor-pointer select-none leading-none border"
+            class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans transition-all cursor-pointer select-none leading-none border"
             :class="
               activeFormat?.id === fmt.id
-                ? 'bg-[#FFF7ED] border-[#E8750D] text-[#C25E00] font-extrabold shadow-2xs'
+                ? 'bg-theme-coral/10 border-theme-coral text-theme-coral-hover font-extrabold shadow-2xs'
                 : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold'
             "
             @click="selectFormat(fmt.id, $event)"
           >
             <span class="truncate pr-1">{{ getFormatDisplayLabel(fmt) }}</span>
-            <span class="font-mono font-bold tracking-tight text-[9.5px] flex-shrink-0" :class="activeFormat?.id === fmt.id ? 'text-[#C25E00]' : 'text-slate-600'">
+            <span class="font-mono font-bold text-[10px] flex-shrink-0" :class="activeFormat?.id === fmt.id ? 'text-theme-coral-hover' : 'text-slate-600'">
               {{ formatCurrency(fmt.price) }}
             </span>
           </button>
         </template>
         <div
           v-else-if="activeFormat"
-          class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans font-bold bg-[#FFF7ED] border border-[#E8750D]/60 text-[#C25E00]"
+          class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans font-bold bg-theme-coral/10 border border-theme-coral/60 text-theme-coral-hover"
         >
           <span class="truncate pr-1">{{ getFormatDisplayLabel(activeFormat) }}</span>
-          <span class="font-mono font-bold text-[9.5px] flex-shrink-0">
+          <span class="font-mono font-bold text-[10px] flex-shrink-0">
             {{ formatCurrency(activeFormat.price) }}
           </span>
         </div>
       </div>
     </div>
 
-    <!-- Bottom Bar: Prices + Supermarket Shopping Cart Button -->
-    <div class="pt-2 mt-2.5 border-t border-slate-100 flex items-end justify-between gap-1.5">
+    <!-- Bottom Bar: Price + Cart Button -->
+    <div class="pt-2 mt-2.5 border-t border-theme-border flex items-end justify-between gap-1.5">
       <div class="min-w-0 flex flex-col justify-center">
-        <!-- Red Strike-Through Price -->
+        <!-- Strikethrough moved off red -> slate. The discount badge already
+             says "on sale"; this doesn't need to shout too. -->
         <span
           v-if="originalPrice && originalPrice > currentPrice"
-          class="text-[10px] sm:text-[10.5px] text-red-600 line-through decoration-red-500 decoration-1 font-mono font-bold block leading-none mb-0.5"
+          class="text-[10px] text-slate-400 line-through decoration-slate-400 decoration-1 font-mono font-bold block leading-none mb-0.5"
         >
           {{ formatCurrency(originalPrice) }}
         </span>
-        <!-- Bigger, Bolder, Solid Black Price -->
-        <span class="text-xs sm:text-sm font-black font-mono leading-tight text-black tracking-tight">
+        <span class="text-sm font-black font-mono leading-tight text-theme-ink tracking-tight">
           {{ formatCurrency(currentPrice) }}
         </span>
       </div>
 
-      <!-- Supermarket Shopping Cart Action Button -->
       <button
         type="button"
-        class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#052219] hover:bg-[#E8750D] text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-sm hover:shadow flex-shrink-0"
+        class="w-8 h-8 rounded-lg bg-theme-forest hover:bg-theme-coral text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-sm hover:shadow flex-shrink-0"
         :title="book.isSeed ? 'Request Book' : (activeFormat?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart')"
         :aria-label="book.isSeed ? 'Request Book' : (activeFormat?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart')"
         @click="handleAddToCart"
