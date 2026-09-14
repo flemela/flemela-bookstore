@@ -10,11 +10,13 @@ import {
   Images,
   MapPin,
   Zap,
+  Mail,
   ExternalLink,
   LogOut,
   Menu,
   X,
 } from 'lucide-vue-next';
+import ToastContainer from '~/components/ui/ToastContainer.vue';
 import { useAdminAuth } from '~/composables/useAdminAuth';
 
 const { logout } = useAdminAuth();
@@ -26,7 +28,6 @@ function closeMobileDrawer(): void {
   isMobileDrawerOpen.value = false;
 }
 
-// Auto-close mobile drawer on route navigation
 watch(
   () => route.fullPath,
   () => {
@@ -127,6 +128,12 @@ const navSections: NavSection[] = [
         icon: Zap,
         activeMatch: (p) => p.includes('/admin/mpesa'),
       },
+      {
+        label: 'Email (SMTP)',
+        to: '/admin/smtp',
+        icon: Mail,
+        activeMatch: (p) => p.includes('/admin/smtp'),
+      },
     ],
   },
 ];
@@ -135,9 +142,7 @@ const navSections: NavSection[] = [
 <template>
   <div class="min-h-screen bg-paper-canvas text-ink flex flex-col lg:flex-row antialiased">
     
-    <!-- ===================================================================== -->
-    <!-- 1. MOBILE TOP BAR (< lg)                                              -->
-    <!-- ===================================================================== -->
+    <!-- 1. MOBILE TOP BAR (< lg) -->
     <header class="lg:hidden bg-forest-950 text-paper h-14 px-4 sticky top-0 z-40 border-b border-forest-900/80 flex items-center justify-between shadow-sm">
       <div class="flex items-center gap-3">
         <button
@@ -152,7 +157,7 @@ const navSections: NavSection[] = [
         <NuxtLink to="/admin" class="flex items-center gap-2">
           <img
             src="/images/logo.png"
-            alt="Flemela Logo"
+            alt="Logo"
             class="h-7 w-auto object-contain brightness-0 invert"
           />
           <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold pl-2 border-l border-white/15">
@@ -183,9 +188,7 @@ const navSections: NavSection[] = [
       </div>
     </header>
 
-    <!-- ===================================================================== -->
-    <!-- 2. MOBILE SLIDE-OVER DRAWER (< lg)                                    -->
-    <!-- ===================================================================== -->
+    <!-- 2. MOBILE SLIDE-OVER DRAWER (< lg) -->
     <Teleport to="body">
       <div
         v-if="isMobileDrawerOpen"
@@ -193,22 +196,19 @@ const navSections: NavSection[] = [
         role="dialog"
         aria-modal="true"
       >
-        <!-- Backdrop -->
         <div
           class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
           @click="closeMobileDrawer"
         />
 
-        <!-- Slide-Over Panel -->
         <aside
           class="relative w-72 max-w-[85vw] bg-forest-950 text-paper h-full shadow-2xl flex flex-col z-10 border-r border-forest-900/80 animate-in slide-in-from-left duration-200"
         >
-          <!-- Drawer Header -->
           <div class="h-14 px-4 flex items-center justify-between border-b border-forest-900/80">
             <NuxtLink to="/admin" class="flex items-center gap-2" @click="closeMobileDrawer">
               <img
                 src="/images/logo.png"
-                alt="Flemela Logo"
+                alt="Logo"
                 class="h-7 w-auto object-contain brightness-0 invert"
               />
               <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold pl-2 border-l border-white/15">
@@ -226,7 +226,6 @@ const navSections: NavSection[] = [
             </button>
           </div>
 
-          <!-- Drawer Navigation Links -->
           <div class="flex-1 overflow-y-auto p-4 space-y-6">
             <div v-for="section in navSections" :key="section.title" class="space-y-1.5">
               <span class="text-[9px] font-mono font-bold uppercase tracking-wider text-paper/40 px-3 block">
@@ -253,7 +252,6 @@ const navSections: NavSection[] = [
             </div>
           </div>
 
-          <!-- Drawer Bottom Actions -->
           <div class="p-4 border-t border-forest-900/80 space-y-2">
             <NuxtLink
               to="/"
@@ -280,19 +278,16 @@ const navSections: NavSection[] = [
       </div>
     </Teleport>
 
-    <!-- ===================================================================== -->
-    <!-- 3. DESKTOP VERTICAL SIDEBAR (lg: $\ge$ 1024px)                        -->
-    <!-- ===================================================================== -->
+    <!-- 3. DESKTOP VERTICAL SIDEBAR (lg: >= 1024px) -->
     <aside
       class="hidden lg:flex flex-col w-64 fixed inset-y-0 left-0 bg-forest-950 text-paper z-30 border-r border-forest-900/80 shadow-medium"
       aria-label="Admin Sidebar Navigation"
     >
-      <!-- Brand Header -->
       <div class="h-16 px-6 flex items-center border-b border-forest-900/80">
         <NuxtLink to="/admin" class="flex items-center gap-2.5 group">
           <img
             src="/images/logo.png"
-            alt="Flemela Logo"
+            alt="Logo"
             class="h-8 w-auto object-contain brightness-0 invert transition-transform group-hover:scale-105"
           />
           <span class="text-[9px] uppercase tracking-widest text-gold-300 font-mono font-bold pl-2.5 border-l border-white/15">
@@ -301,7 +296,6 @@ const navSections: NavSection[] = [
         </NuxtLink>
       </div>
 
-      <!-- Navigation Links Sections -->
       <div class="flex-1 overflow-y-auto px-4 py-6 space-y-6">
         <div v-for="section in navSections" :key="section.title" class="space-y-1.5">
           <span class="text-[9px] font-mono font-bold uppercase tracking-wider text-paper/40 px-3 block">
@@ -331,7 +325,6 @@ const navSections: NavSection[] = [
         </div>
       </div>
 
-      <!-- Footer Actions -->
       <div class="p-4 border-t border-forest-900/80 space-y-1.5">
         <NuxtLink
           to="/"
@@ -357,13 +350,14 @@ const navSections: NavSection[] = [
       </div>
     </aside>
 
-    <!-- ===================================================================== -->
-    <!-- 4. MAIN CONTENT CANVAS                                                -->
-    <!-- ===================================================================== -->
+    <!-- 4. MAIN CONTENT CANVAS -->
     <main class="flex-1 min-w-0 lg:pl-64 flex flex-col">
       <div class="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1">
         <slot />
       </div>
     </main>
+
+    <!-- Global Admin Toast Container -->
+    <ToastContainer />
   </div>
 </template>

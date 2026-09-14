@@ -14,10 +14,12 @@ import {
   CheckCircle2,
   FolderPlus,
   X,
+  LogIn,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import AddCategoryModal from '~/components/admin/AddCategoryModal.vue';
 import { useToast } from '~/composables/useToast';
+import { useAdminAuth } from '~/composables/useAdminAuth';
 import type { BookFormatType } from '~/types';
 
 definePageMeta({
@@ -26,6 +28,7 @@ definePageMeta({
 
 const router = useRouter();
 const { push: pushToast } = useToast();
+const { sessionCookie } = useAdminAuth();
 
 const { data: categories } = await useFetch<Array<{ id: string; name: string }>>('/api/admin/categories');
 
@@ -37,7 +40,7 @@ const name = ref('');
 const author = ref('');
 const categoryId = ref('');
 const description = ref('');
-const price = ref(999);
+const price = ref(699);
 const compareAtPrice = ref<number | null>(null);
 const badge = ref<'BESTSELLER' | 'FLASH_SALE' | 'NO1_PICK' | 'DEAL_OF_WEEK' | 'LIMITED_TIME' | null>(null);
 const saleEndsAt = ref<string>('');
@@ -64,19 +67,8 @@ interface FormatDraft {
 
 const formats = ref<FormatDraft[]>([
   {
-    format: 'hardcopy',
-    price: 999,
-    compare_at_price: null,
-    stock: 25,
-    file_url: null,
-    file_public_id: null,
-    file_size_bytes: null,
-    uploading: false,
-    uploadProgress: 0,
-  },
-  {
     format: 'pdf',
-    price: 149,
+    price: 699,
     compare_at_price: null,
     stock: null,
     file_url: null,
@@ -96,8 +88,13 @@ const r2ConfirmedAsset = ref<{
   key: string;
 } | null>(null);
 
-const isSubmitting = ref(false);
+// -----------------------------------------------------------------------------
+// Explicit State Communication Machine ('idle' | 'submitting' | 'success' | 'failed')
+// -----------------------------------------------------------------------------
+type StatusState = 'idle' | 'submitting' | 'success' | 'failed';
+const statusState = ref<StatusState>('idle');
 const formError = ref<string | null>(null);
+const isAuthError = ref(false);
 
 const isAnyUploadInProgress = computed(() => {
   return isUploadingCover.value || formats.value.some((f) => f.uploading);
@@ -114,7 +111,7 @@ function addFormatRow(type: BookFormatType): void {
   if (formats.value.some((f) => f.format === type)) return;
   formats.value.push({
     format: type,
-    price: type === 'hardcopy' ? 999 : 149,
+    price: type === 'hardcopy' ? 999 : 699,
     compare_at_price: null,
     stock: type === 'hardcopy' ? 20 : null,
     file_url: null,
@@ -159,11 +156,11 @@ async function handleAutoFindCover(): Promise<void> {
       coverUrl.value = res.coverUrl;
       coverPublicId.value = `auto_${res.source || 'web'}`;
       pushToast({
-        message: `Discovered cover art from ${res.source === 'googlebooks' ? 'Google Books' : 'Open Library'}!`,
+        message: `Discovered cover art from ${res.source === 'applebooks' ? 'Apple Books' : 'Publisher Archive'}!`,
         variant: 'success',
       });
     } else {
-      pushToast({ message: 'No online cover found. You can upload or paste an image link.', variant: 'info' });
+      pushToast({ message: 'No online cover found. You can upload an image or paste a link.', variant: 'info' });
     }
   } catch {
     pushToast({ message: 'Auto-discovery timed out. You can upload an image directly.', variant: 'error' });
@@ -265,7 +262,6 @@ async function handleEbookUpload(event: Event, index: number): Promise<void> {
     currentFmt.file_size_bytes = file.size;
 
     const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
-
     r2ConfirmedAsset.value = {
       fileName: file.name,
       format: currentFmt.format.toUpperCase(),
@@ -298,23 +294,36 @@ async function handleSubmit(): Promise<void> {
   for (const f of formats.value) {
     if (f.compare_at_price !== null && f.compare_at_price <= f.price) {
       formError.value = `Strike-through price for ${f.format.toUpperCase()} must be greater than its selling price.`;
+      statusState.value = 'failed';
       return;
     }
   }
 
-  isSubmitting.value = true;
+  // Set Adding State
+  statusState.value = 'submitting';
   formError.value = null;
+  isAuthError.value = false;
 
   try {
+    const parentPrice = formats.value[0]?.price || price.value;
+    const validatedCompareAt =
+      compareAtPrice.value && compareAtPrice.value > parentPrice ? compareAtPrice.value : null;
+
+    const headers: Record<string, string> = {};
+    if (sessionCookie.value) {
+      headers['Authorization'] = `Bearer ${sessionCookie.value}`;
+    }
+
     await $fetch('/api/admin/books', {
       method: 'POST',
+      headers,
       body: {
         name: name.value.trim(),
         author: author.value.trim() || undefined,
         category_id: categoryId.value || null,
         description: description.value.trim() || undefined,
-        price: formats.value[0]?.price || price.value,
-        compare_at_price: compareAtPrice.value || null,
+        price: parentPrice,
+        compare_at_price: validatedCompareAt,
         badge: badge.value || null,
         sale_ends_at: saleEndsAt.value ? new Date(saleEndsAt.value).toISOString() : null,
         cover_image_url: coverUrl.value.trim() || undefined,
@@ -332,12 +341,34 @@ async function handleSubmit(): Promise<void> {
       },
     });
 
-    pushToast({ message: `Book "${name.value}" created and published!`, variant: 'success' });
-    router.push('/admin/books');
+    // Set Success State
+    statusState.value = 'success';
+    pushToast({ message: `✓ Book "${name.value}" created and published!`, variant: 'success' });
+
+    // Brief transition pause so admin sees positive confirmation before redirect
+    setTimeout(() => {
+      router.push('/admin/books');
+    }, 1200);
   } catch (err: any) {
-    formError.value = err.data?.message || err.data?.statusMessage || err.statusMessage || 'Failed to save book';
-  } finally {
-    isSubmitting.value = false;
+    statusState.value = 'failed';
+    const statusMsg =
+      err.data?.statusMessage ||
+      err.data?.message ||
+      err.statusMessage ||
+      err.message ||
+      'Failed to save book to catalog';
+
+    formError.value = statusMsg;
+
+    if (
+      statusMsg.toLowerCase().includes('authorization') ||
+      statusMsg.toLowerCase().includes('unauthorized') ||
+      err.statusCode === 401
+    ) {
+      isAuthError.value = true;
+    }
+
+    pushToast({ message: statusMsg, variant: 'error' });
   }
 }
 </script>
@@ -345,19 +376,78 @@ async function handleSubmit(): Promise<void> {
 <template>
   <AdminLayout>
     <div class="max-w-4xl mx-auto space-y-6">
-      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:underline">
-        <ArrowLeft :size="14" /> Back to Books
+      
+      <!-- Back Link -->
+      <NuxtLink to="/admin/books" class="inline-flex items-center gap-1.5 text-xs font-bold text-forest-900 hover:text-gold-600 transition-colors">
+        <ArrowLeft :size="14" /> Back to Books Catalog
       </NuxtLink>
 
-      <div class="bg-white rounded-xl shadow-subtle border border-ink-border p-6 sm:p-8 space-y-6">
-        <div class="pb-4 border-b border-ink-border">
-          <h1 class="font-display text-2xl font-bold text-forest-950">Add New Book</h1>
-          <p class="text-xs text-ink-muted">
-            Configure catalog details, custom categories, strike-through discounts, and verified Cloudflare R2 digital storage.
-          </p>
+      <!-- Main Form Panel -->
+      < class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-8 space-y-6">
+        
+        <!-- Header -->
+        <div class="pb-4 border-b border-paper-border flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 class="font-display text-2xl font-bold text-forest-950">Add New Book</h1>
+            <p class="text-xs text-ink-muted">
+              Configure catalog metadata, formats, strike-through discounts, and verified Cloudflare R2 digital storage.
+            </p>
+          </div>
+
+          <!-- Dynamic Status Badges -->
+          <div>
+            <span v-if="statusState === 'submitting'" class="inline-flex items-center gap-1.5 bg-amber-100 text-amber-950 border border-amber-300 text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
+              <RefreshCw :size="13" class="animate-spin text-amber-700" /> Adding Book...
+            </span>
+            <span v-else-if="statusState === 'success'" class="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
+              <CheckCircle2 :size="14" class="text-emerald-700" /> Success!
+            </span>
+            <span v-else-if="statusState === 'failed'" class="inline-flex items-center gap-1.5 bg-red-100 text-red-900 border border-red-300 text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
+              <AlertCircle :size="14" class="text-red-700" /> Action Failed
+            </span>
+          </div>
+        </div>
+
+        <!-- Real-Time State Notification Banners -->
+        <div v-if="statusState === 'submitting'" class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3 text-xs text-blue-900 shadow-2xs">
+          <RefreshCw :size="16" class="animate-spin text-blue-700 flex-shrink-0" />
+          <div>
+            <strong>Adding book to catalog...</strong>
+            <p class="text-blue-800 text-[11px] mt-0.5">Encrypting session token, inserting product records, and registering formats.</p>
+          </div>
+        </div>
+
+        <div v-else-if="statusState === 'success'" class="p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-3 text-xs text-emerald-950 shadow-2xs">
+          <CheckCircle2 :size="18" class="text-emerald-700 flex-shrink-0" />
+          <div>
+            <strong class="text-emerald-900">Book successfully published!</strong>
+            <p class="text-emerald-800 text-[11px] mt-0.5">Redirecting you to the books catalog...</p>
+          </div>
+        </div>
+
+        <div v-else-if="statusState === 'failed'" class="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start justify-between gap-3 text-xs text-red-900 shadow-2xs">
+          <div class="flex items-start gap-2.5">
+            <AlertCircle :size="16" class="text-red-600 flex-shrink-0 mt-0.5" />
+            <div class="space-y-1">
+              <strong>Failed to add book:</strong>
+              <p class="text-[11px] text-red-800">{{ formError }}</p>
+              <div v-if="isAuthError" class="pt-1">
+                <NuxtLink
+                  to="/admin/login"
+                  class="inline-flex items-center gap-1 bg-red-700 hover:bg-red-800 text-white font-bold text-[11px] px-3 py-1 rounded-lg transition-colors"
+                >
+                  <LogIn :size="12" /> Log In Again
+                </NuxtLink>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="text-red-500 hover:text-red-800 cursor-pointer" @click="statusState = 'idle'">
+            <X :size="14" />
+          </button>
         </div>
 
         <form class="space-y-6" @submit.prevent="handleSubmit">
+          
           <!-- 1. General Details -->
           <div class="space-y-4">
             <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
@@ -372,18 +462,15 @@ async function handleSubmit(): Promise<void> {
                     v-model="name"
                     type="text"
                     placeholder="e.g. Atomic Habits"
-                    class="flex-1 px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
+                    class="flex-1 px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900"
                     required
-                    @blur="
-                      () => {
-                        if (!coverUrl && name) handleAutoFindCover();
-                      }
-                    "
+                    :disabled="statusState === 'submitting'"
+                    @blur="() => { if (!coverUrl && name) handleAutoFindCover(); }"
                   />
                   <button
                     type="button"
-                    class="px-3 py-2 bg-paper-cream border border-ink-border hover:border-forest-900 text-forest-950 rounded text-xs font-bold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap"
-                    :disabled="isSearchingCover || !name"
+                    class="px-3 py-2 bg-paper-cream border border-paper-border hover:border-forest-900 text-forest-950 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap"
+                    :disabled="isSearchingCover || !name || statusState === 'submitting'"
                     @click="handleAutoFindCover"
                   >
                     <RefreshCw v-if="isSearchingCover" :size="12" class="animate-spin" />
@@ -399,19 +486,20 @@ async function handleSubmit(): Promise<void> {
                   v-model="author"
                   type="text"
                   placeholder="e.g. James Clear"
-                  class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
+                  class="w-full px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900"
+                  :disabled="statusState === 'submitting'"
                 />
               </div>
             </div>
 
             <div class="grid sm:grid-cols-2 gap-4">
-              <!-- Category Selector with Inline + New Category Trigger -->
               <div class="space-y-1">
                 <div class="flex justify-between items-center">
                   <label class="text-xs font-semibold text-forest-950">Category</label>
                   <button
                     type="button"
                     class="text-[11px] font-bold text-forest-900 hover:text-gold-600 flex items-center gap-1 cursor-pointer"
+                    :disabled="statusState === 'submitting'"
                     @click="showAddCategoryModal = true"
                   >
                     <FolderPlus :size="12" />
@@ -420,7 +508,8 @@ async function handleSubmit(): Promise<void> {
                 </div>
                 <select
                   v-model="categoryId"
-                  class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 bg-white"
+                  class="w-full px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900"
+                  :disabled="statusState === 'submitting'"
                 >
                   <option value="">Select category (or leave for default)...</option>
                   <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
@@ -431,7 +520,8 @@ async function handleSubmit(): Promise<void> {
                 <label class="text-xs font-semibold text-forest-950">Publishing Status</label>
                 <select
                   v-model="status"
-                  class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 bg-white"
+                  class="w-full px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900"
+                  :disabled="statusState === 'submitting'"
                 >
                   <option value="published">Published &amp; Live</option>
                   <option value="draft">Draft Mode</option>
@@ -439,22 +529,23 @@ async function handleSubmit(): Promise<void> {
               </div>
             </div>
 
-            <!-- Merchandising & Compare-at Price -->
-            <div class="p-4 bg-paper-cream/60 rounded-xl border border-ink-border grid sm:grid-cols-2 gap-4">
+            <!-- Promotion & Sale -->
+            <div class="p-4 bg-paper-cream/60 rounded-xl border border-paper-border grid sm:grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-xs font-semibold text-forest-950">
                   Promotional Badge / Placement
                 </label>
                 <select
                   v-model="badge"
-                  class="w-full px-3 py-2 bg-white border border-ink-border rounded text-xs outline-none focus:border-forest-900 font-semibold"
+                  class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 font-semibold"
+                  :disabled="statusState === 'submitting'"
                 >
                   <option :value="null">None (Standard Catalog)</option>
-                  <option value="BESTSELLER">🔥 Bestseller (Monthly Section)</option>
-                  <option value="NO1_PICK">⭐ #1 Pick (Featured Top Slot)</option>
-                  <option value="FLASH_SALE">⚡ Flash Sale (High Urgency)</option>
-                  <option value="DEAL_OF_WEEK">🏷️ Deal of the Week</option>
-                  <option value="LIMITED_TIME">⏳ Limited Time Sale</option>
+                  <option value="BESTSELLER">ðŸ”¥ Bestseller (Monthly Section)</option>
+                  <option value="NO1_PICK">â­ #1 Pick (Featured Top Slot)</option>
+                  <option value="FLASH_SALE">âš¡ Flash Sale (High Urgency)</option>
+                  <option value="DEAL_OF_WEEK">ðŸ·ï¸ Deal of the Week</option>
+                  <option value="LIMITED_TIME">â³ Limited Time Sale</option>
                 </select>
               </div>
 
@@ -463,11 +554,10 @@ async function handleSubmit(): Promise<void> {
                 <input
                   v-model="saleEndsAt"
                   type="datetime-local"
-                  class="w-full px-3 py-1.5 bg-white border border-ink-border rounded text-xs font-mono outline-none focus:border-forest-900"
+                  class="w-full px-3 py-1.5 bg-white border border-paper-border rounded-xl text-xs font-mono outline-none focus:border-forest-900"
+                  :disabled="statusState === 'submitting'"
                 />
-                <span class="text-[10px] text-ink-muted">
-                  Auto-removes flash sale badge once passed.
-                </span>
+                <span class="text-[10px] text-ink-muted">Auto-removes sale badge once passed.</span>
               </div>
             </div>
 
@@ -477,49 +567,52 @@ async function handleSubmit(): Promise<void> {
                 v-model="description"
                 rows="3"
                 placeholder="Overview of the book..."
-                class="w-full px-3 py-2 border border-ink-border rounded text-xs outline-none focus:border-forest-900 resize-none"
+                class="w-full px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 resize-none"
+                :disabled="statusState === 'submitting'"
               />
             </div>
           </div>
 
           <!-- 2. Cover Art -->
-          <div class="space-y-3 pt-4 border-t border-ink-border">
+          <div class="space-y-3 pt-4 border-t border-paper-border">
             <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
               Cover Art
             </h3>
             <div class="flex items-start gap-4">
               <div
-                class="w-20 h-28 bg-paper-cream rounded border border-ink-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm relative"
+                class="w-20 h-28 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex items-center justify-center flex-shrink-0 shadow-xs relative"
               >
                 <img
                   v-if="coverUrl"
                   :src="coverUrl"
                   :alt="name ? `${name} Cover` : 'Cover'"
                   class="w-full h-full object-cover"
+                  referrerpolicy="no-referrer"
                   @error="coverUrl = ''"
                 />
                 <BookOpen v-else :size="24" class="text-ink-muted opacity-40" />
               </div>
+
               <div class="space-y-2 flex-1">
                 <div class="flex flex-wrap gap-2 items-center">
                   <button
                     type="button"
-                    class="bg-forest-950 text-white hover:bg-forest-800 text-xs font-bold px-3 py-1.5 rounded inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
-                    :disabled="isSearchingCover || !name"
+                    class="bg-forest-950 text-paper hover:bg-forest-900 text-xs font-bold px-3 py-1.5 rounded-xl inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                    :disabled="isSearchingCover || !name || statusState === 'submitting'"
                     @click="handleAutoFindCover"
                   >
                     <Sparkles :size="13" class="text-gold-300" /> Auto-Find HD Cover
                   </button>
 
                   <label
-                    class="cursor-pointer bg-white border border-ink-border text-forest-950 text-xs font-bold px-3 py-1.5 rounded hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 shadow-xs"
+                    class="cursor-pointer bg-white border border-paper-border text-forest-950 text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-paper-cream transition-colors inline-flex items-center gap-1.5 shadow-2xs"
                   >
                     <Upload :size="13" /> {{ isUploadingCover ? 'Uploading...' : 'Upload File' }}
                     <input
                       type="file"
                       accept="image/*"
                       class="hidden"
-                      :disabled="isUploadingCover"
+                      :disabled="isUploadingCover || statusState === 'submitting'"
                       @change="handleCoverUpload"
                     />
                   </label>
@@ -533,45 +626,48 @@ async function handleSubmit(): Promise<void> {
                     v-model="coverUrl"
                     type="url"
                     placeholder="https://..."
-                    class="w-full px-3 py-1.5 border border-ink-border rounded text-xs outline-none focus:border-forest-900"
+                    class="w-full px-3 py-1.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900"
+                    :disabled="statusState === 'submitting'"
                   />
                 </div>
               </div>
             </div>
           </div>
-
-          <!-- 3. Formats & Verified Cloudflare R2 Uploads -->
-        	<div class="space-y-4 pt-4 border-t border-ink-border">
+		  <!-- 3. Formats & Verified Cloudflare R2 Uploads -->
+          <div class="space-y-4 pt-4 border-t border-paper-border">
             <div class="flex justify-between items-center">
               <div>
                 <h3 class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono">
                   Reading Formats &amp; Digital Assets
                 </h3>
                 <p class="text-[11px] text-ink-muted">
-                  Stream files directly into private Cloudflare R2 storage buckets.
+                  Digital files are verified and stored securely in Cloudflare R2 buckets.
                 </p>
               </div>
               <div class="flex gap-2">
                 <button
                   type="button"
-                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded hover:bg-amber-100 cursor-pointer"
-                  @click="addFormatRow('hardcopy')"
-                >
-                  + Hardcopy
-                </button>
-                <button
-                  type="button"
-                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-emerald-50 text-emerald-900 border border-emerald-200 rounded hover:bg-emerald-100 cursor-pointer"
+                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-emerald-50 text-emerald-900 border border-emerald-200 rounded-lg hover:bg-emerald-100 cursor-pointer"
+                  :disabled="statusState === 'submitting'"
                   @click="addFormatRow('pdf')"
                 >
                   + PDF
                 </button>
                 <button
                   type="button"
-                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-blue-50 text-blue-900 border border-blue-200 rounded hover:bg-blue-100 cursor-pointer"
+                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-blue-50 text-blue-900 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer"
+                  :disabled="statusState === 'submitting'"
                   @click="addFormatRow('epub')"
                 >
                   + EPUB
+                </button>
+                <button
+                  type="button"
+                  class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-lg hover:bg-amber-100 cursor-pointer"
+                  :disabled="statusState === 'submitting'"
+                  @click="addFormatRow('hardcopy')"
+                >
+                  + Hardcopy
                 </button>
               </div>
             </div>
@@ -580,7 +676,7 @@ async function handleSubmit(): Promise<void> {
               <div
                 v-for="(fmt, idx) in formats"
                 :key="fmt.format"
-                class="p-4 bg-slate-50 border border-ink-border rounded-xl grid sm:grid-cols-12 gap-3 items-center"
+                class="p-4 bg-paper-canvas/60 border border-paper-border rounded-xl grid sm:grid-cols-12 gap-3 items-center"
               >
                 <div class="sm:col-span-2">
                   <span class="text-xs font-bold uppercase text-forest-950 font-mono">{{ fmt.format }}</span>
@@ -592,7 +688,8 @@ async function handleSubmit(): Promise<void> {
                     v-model.number="fmt.price"
                     type="number"
                     min="1"
-                    class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono font-bold"
+                    class="w-full px-2.5 py-1.5 bg-white border border-paper-border rounded-lg text-xs font-mono font-bold"
+                    :disabled="statusState === 'submitting'"
                   />
                 </div>
 
@@ -602,8 +699,9 @@ async function handleSubmit(): Promise<void> {
                     v-model.number="fmt.compare_at_price"
                     type="number"
                     min="1"
-                    placeholder="e.g. 1200"
-                    class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono"
+                    placeholder="e.g. 999"
+                    class="w-full px-2.5 py-1.5 bg-white border border-paper-border rounded-lg text-xs font-mono"
+                    :disabled="statusState === 'submitting'"
                   />
                 </div>
 
@@ -613,14 +711,14 @@ async function handleSubmit(): Promise<void> {
                     v-model.number="fmt.stock"
                     type="number"
                     min="0"
-                    class="w-full px-2.5 py-1.5 bg-white border border-ink-border rounded text-xs font-mono"
+                    class="w-full px-2.5 py-1.5 bg-white border border-paper-border rounded-lg text-xs font-mono"
+                    :disabled="statusState === 'submitting'"
                   />
                 </div>
 
-                <!-- Digital Format File Picker with Real-Time Progress -->
                 <div v-else class="sm:col-span-4 space-y-1">
                   <label class="text-[10px] text-ink-muted font-semibold">Digital File (Cloudflare R2)</label>
-                  
+
                   <div v-if="fmt.uploading" class="space-y-1">
                     <div class="flex justify-between text-[10px] font-mono text-forest-950 font-bold">
                       <span>Uploading to R2...</span>
@@ -640,7 +738,8 @@ async function handleSubmit(): Promise<void> {
                     </span>
                     <button
                       type="button"
-                      class="text-ink-muted hover:text-red-700 text-[10px] font-mono underline ml-2"
+                      class="text-ink-muted hover:text-red-700 text-[10px] font-mono underline ml-2 cursor-pointer"
+                      :disabled="statusState === 'submitting'"
                       @click="removeFormatFile(idx)"
                     >
                       Remove
@@ -649,14 +748,14 @@ async function handleSubmit(): Promise<void> {
 
                   <label
                     v-else
-                    class="w-full bg-white border border-ink-border text-forest-950 text-[11px] font-medium px-2 py-1.5 rounded flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
+                    class="w-full bg-white border border-paper-border text-forest-950 text-[11px] font-medium px-2 py-1.5 rounded-lg flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
                   >
                     <span class="truncate">Upload {{ fmt.format.toUpperCase() }} to R2</span>
                     <input
                       type="file"
                       :accept="fmt.format === 'pdf' ? '.pdf' : '.epub'"
                       class="hidden"
-                      :disabled="fmt.uploading"
+                      :disabled="fmt.uploading || statusState === 'submitting'"
                       @change="handleEbookUpload($event, idx)"
                     />
                   </label>
@@ -666,6 +765,7 @@ async function handleSubmit(): Promise<void> {
                   <button
                     type="button"
                     class="text-red-500 hover:text-red-700 p-1 cursor-pointer"
+                    :disabled="statusState === 'submitting'"
                     @click="removeFormatRow(idx)"
                   >
                     <Trash2 :size="14" />
@@ -675,35 +775,44 @@ async function handleSubmit(): Promise<void> {
             </div>
           </div>
 
-          <div
-            v-if="formError"
-            class="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-center gap-2"
-          >
-            <AlertCircle :size="14" class="flex-shrink-0" />
-            <span>{{ formError }}</span>
-          </div>
-
-          <div class="pt-4 border-t border-ink-border flex justify-end gap-3">
+          <!-- Bottom Actions with Clear State Communication -->
+          <div class="pt-4 border-t border-paper-border flex flex-wrap items-center justify-between gap-3">
             <NuxtLink
               to="/admin/books"
-              class="px-4 py-2.5 border border-ink-border rounded text-xs font-semibold hover:bg-slate-50"
+              class="px-4 py-2.5 border border-paper-border rounded-xl text-xs font-semibold hover:bg-slate-50 text-forest-950"
             >
               Cancel
             </NuxtLink>
+
             <button
               type="submit"
-              class="bg-forest-900 text-white text-xs font-bold uppercase px-6 py-2.5 rounded hover:bg-forest-800 transition-colors shadow cursor-pointer disabled:opacity-50 flex items-center gap-2"
-              :disabled="isSubmitting || isAnyUploadInProgress"
+              class="text-paper text-xs font-bold uppercase tracking-wider px-6 py-3 rounded-xl shadow-medium cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
+              :class="{
+                'bg-forest-950 hover:bg-forest-900': statusState === 'idle' || statusState === 'failed',
+                'bg-blue-800': statusState === 'submitting',
+                'bg-emerald-700': statusState === 'success',
+              }"
+              :disabled="statusState === 'submitting' || isAnyUploadInProgress"
             >
-              <RefreshCw v-if="isSubmitting || isAnyUploadInProgress" :size="14" class="animate-spin" />
-              <span>{{ isAnyUploadInProgress ? 'Upload in Progress...' : (isSubmitting ? 'Saving Book...' : 'Save & Publish Book') }}</span>
+              <RefreshCw v-if="statusState === 'submitting' || isAnyUploadInProgress" :size="14" class="animate-spin" />
+              <CheckCircle2 v-else-if="statusState === 'success'" :size="14" />
+              <span>
+                {{
+                  isAnyUploadInProgress
+                    ? 'Upload in Progress...'
+                    : statusState === 'submitting'
+                    ? 'Adding Book to Catalog...'
+                    : statusState === 'success'
+                    ? 'âœ“ Added!'
+                    : 'Save & Publish Book'
+                }}
+              </span>
             </button>
           </div>
         </form>
       </div>
     </div>
-
-    <!-- DIALOGUE MODAL: Cloudflare R2 Upload Verification -->
+	  <!-- DIALOGUE MODAL: Cloudflare R2 Upload Verification -->
     <Teleport to="body">
       <div
         v-if="showR2SuccessModal"
@@ -744,10 +853,6 @@ async function handleSubmit(): Promise<void> {
               </code>
             </div>
           </div>
-
-          <p class="text-[11px] text-ink-muted leading-relaxed">
-            This digital file is now stored in your private R2 bucket. Customers who purchase this edition will receive verified, expiring signed tokens.
-          </p>
 
           <div class="flex justify-end pt-2">
             <button

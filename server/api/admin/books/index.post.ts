@@ -18,23 +18,22 @@ const CreateBookSchema = z.object({
     .or(z.literal(''))
     .transform((v) => (v === '' ? null : v)),
   description: z.string().max(3000).nullable().optional(),
-  price: z.number().nonnegative(),
+  price: z.number().nonnegative('Price must be greater than or equal to zero'),
   compare_at_price: z.number().nonnegative().nullable().optional(),
   badge: z.enum(['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME']).nullable().optional(),
   sale_ends_at: z.string().datetime().nullable().optional(),
   cover_image_url: z
     .string()
-    .url()
     .nullable()
     .optional()
     .or(z.literal(''))
-    .transform((v) => (v === '' ? null : v)),
+    .transform((v) => (v && v.trim() ? v.trim() : null)),
   cover_image_public_id: z
     .string()
     .nullable()
     .optional()
     .or(z.literal(''))
-    .transform((v) => (v === '' ? null : v)),
+    .transform((v) => (v && v.trim() ? v.trim() : null)),
   status: z.enum(['draft', 'published', 'archived']).default('published'),
   formats: z
     .array(
@@ -52,6 +51,19 @@ const CreateBookSchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
+  // 1. Resolve and verify admin bearer session token
+  const token =
+    getCookie(event, 'flemela_admin_session') ||
+    event.context.authToken ||
+    getHeader(event, 'authorization')?.replace(/^Bearer\s+/i, '');
+
+  if (!token) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized admin session. Please log in again.',
+    });
+  }
+
   const rawBody = await readBody(event);
   const parsed = CreateBookSchema.safeParse(rawBody);
 
@@ -64,7 +76,20 @@ export default defineEventHandler(async (event) => {
 
   const { formats, cover_image_url, cover_image_public_id, ...bookData } = parsed.data;
 
-  // 1. Create canonical product
+  // 2. Format author into description (so both storefront and admin extract author properly)
+  const author = bookData.author?.trim();
+  const desc = bookData.description?.trim();
+  const formattedDescription = author
+    ? (desc ? `By ${author}\n\n${desc}` : `By ${author}`)
+    : desc || null;
+
+  // 3. Prevent compare_at_price <= price database constraint violation
+  const validatedCompareAt =
+    bookData.compare_at_price && bookData.compare_at_price > bookData.price
+      ? bookData.compare_at_price
+      : null;
+
+  // 4. Create canonical product via Soko backend (forwarding token and event context)
   const createdProducts = await sokoClient<Book[]>('/products/bulk', {
     method: 'POST',
     body: {
@@ -73,11 +98,11 @@ export default defineEventHandler(async (event) => {
           name: bookData.name,
           category_id: bookData.category_id || null,
           price: bookData.price,
-          compare_at_price: bookData.compare_at_price || null,
+          compare_at_price: validatedCompareAt,
           badge: bookData.badge || null,
           sale_ends_at: bookData.sale_ends_at || null,
           stock: formats.find((f) => f.format === 'hardcopy')?.stock || 0,
-          description: bookData.description,
+          description: formattedDescription,
           publish: bookData.status === 'published',
           images: cover_image_url
             ? [{ image_url: cover_image_url, image_public_id: cover_image_public_id || 'cover_img' }]
@@ -85,6 +110,8 @@ export default defineEventHandler(async (event) => {
         },
       ],
     },
+    token,
+    event,
   });
 
   const product = createdProducts[0];
@@ -92,11 +119,19 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Failed to create book product' });
   }
 
-  // 2. Attach formats with format-specific compare-at prices
+  // 5. Attach formats (forwarding token and event context)
   for (const fmt of formats) {
+    const validatedFmtCompareAt =
+      fmt.compare_at_price && fmt.compare_at_price > fmt.price ? fmt.compare_at_price : null;
+
     await sokoClient(`/products/${product.id}/formats`, {
       method: 'POST',
-      body: fmt,
+      body: {
+        ...fmt,
+        compare_at_price: validatedFmtCompareAt,
+      },
+      token,
+      event,
     });
   }
 

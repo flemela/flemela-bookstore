@@ -9,17 +9,99 @@ import {
 } from 'lucide-vue-next';
 import type { PublicBanner } from '~/server/api/banners/index.get';
 
-// 1. Remote Promotional Banners
-const { data: remoteBanners } = await useFetch<PublicBanner[]>('/api/banners');
-const bannersList = computed(() => remoteBanners.value || []);
-const totalSlides = computed(() => bannersList.value.length);
+export interface CarouselSlide {
+  id: string;
+  badge?: string;
+  headlinePrefix?: string;
+  headlineAccent?: string;
+  subheadline: string;
+  ctaLabel?: string;
+  ctaLink?: string;
+  coverImage: string;
+  priceTag?: string;
+  originalPrice?: string;
+  discountBadge?: string;
+  isRemote?: boolean;
+}
 
-// 2. Carousel State Machine
+// -----------------------------------------------------------------------------
+// 1. Remote Banners + Built-in Flagship Default Slides
+// -----------------------------------------------------------------------------
+const { data: remoteBanners } = await useFetch<PublicBanner[]>('/api/banners');
+
+// Curated default slides matching the reference visual guide
+const defaultSlides: CarouselSlide[] = [
+  {
+    id: 'default-slide-1',
+    badge: 'READ ANYTIME, ANYWHERE',
+    headlinePrefix: 'Discover Your Next ',
+    headlineAccent: 'Great Book',
+    subheadline: 'Thousands of ebooks. Endless possibilities. Read, learn, and grow — all in one place.',
+    ctaLabel: 'Browse Ebooks',
+    ctaLink: '#catalog-results',
+    coverImage: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=600&auto=format&fit=crop&q=80',
+    priceTag: 'KSh 499',
+    originalPrice: 'KSh 999',
+    discountBadge: '50% OFF',
+    isRemote: false,
+  },
+  {
+    id: 'default-slide-2',
+    badge: 'WEEKEND BESTSELLER',
+    headlinePrefix: 'Build Habits That ',
+    headlineAccent: 'Actually Stick',
+    subheadline: 'Master the tiny changes that yield remarkable results. Instant PDF download directly to your device.',
+    ctaLabel: 'Get Atomic Habits',
+    ctaLink: '#catalog-results',
+    coverImage: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg',
+    priceTag: 'KSh 699',
+    originalPrice: 'KSh 1,250',
+    discountBadge: '44% OFF',
+    isRemote: false,
+  },
+  {
+    id: 'default-slide-3',
+    badge: 'INSTANT CLOUDFLARE R2 ACCESS',
+    headlinePrefix: 'Timeless Wisdom on ',
+    headlineAccent: 'Money & Wealth',
+    subheadline: 'Doing well with money isn’t necessarily about what you know. It’s about how you behave.',
+    ctaLabel: 'Explore Finance',
+    ctaLink: '#catalog-results',
+    coverImage: 'https://covers.openlibrary.org/b/isbn/9780857197689-L.jpg',
+    priceTag: 'KSh 649',
+    originalPrice: 'KSh 1,150',
+    discountBadge: 'HOT DEAL',
+    isRemote: false,
+  },
+];
+
+// If tenant uploaded custom banners in admin, use them; otherwise rotate curated defaults
+const activeSlides = computed<CarouselSlide[]>(() => {
+  if (remoteBanners.value && remoteBanners.value.length > 0) {
+    return remoteBanners.value.map((b) => ({
+      id: b.id,
+      badge: b.badge || undefined,
+      headlinePrefix: b.title || 'Discover Your Next ',
+      headlineAccent: '',
+      subheadline: b.subtitle || 'Instant digital downloads via Cloudflare R2.',
+      ctaLabel: b.cta_label || 'Shop Now',
+      ctaLink: b.cta_link || '#catalog-results',
+      coverImage: b.image_url,
+      isRemote: true,
+    }));
+  }
+  return defaultSlides;
+});
+
+const totalSlides = computed(() => activeSlides.value.length);
+
+// -----------------------------------------------------------------------------
+// 2. Carousel State Machine & Looping Engine (PRESERVED 100%)
+// -----------------------------------------------------------------------------
 const activeIndex = ref(0);
 const isPaused = ref(false);
 let autoplayTimer: ReturnType<typeof setInterval> | undefined;
 
-// 3. Touch Gesture Support
 const touchStartX = ref(0);
 const currentTouchX = ref(0);
 const isSwiping = ref(false);
@@ -30,7 +112,7 @@ function startAutoplay(): void {
   if (totalSlides.value > 1 && !isPaused.value) {
     autoplayTimer = setInterval(() => {
       nextSlide();
-    }, 6000);
+    }, 3000);
   }
 }
 
@@ -41,7 +123,6 @@ function stopAutoplay(): void {
   }
 }
 
-// Resets and resumes rotation after manual interaction
 function resumeAutoplay(): void {
   stopAutoplay();
   if (totalSlides.value > 1 && !isPaused.value) {
@@ -107,7 +188,6 @@ function handleTouchEnd(): void {
     prevSlide();
   }
   dragOffset.value = 0;
-  // Always safely resume autoplay after touch interaction completes
   resumeAutoplay();
 }
 
@@ -120,21 +200,23 @@ const trackTransformStyle = computed(() => {
   }
   return {
     transform: `translate3d(-${activeIndex.value * 100}%, 0, 0)`,
-    transition: 'transform 600ms cubic-bezier(0.22, 1, 0.36, 1)',
+    transition: 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1)',
   };
 });
 
-async function handleBannerClick(banner: PublicBanner): Promise<void> {
-  if (!banner.cta_link) return;
-  $fetch(`/api/banners/${banner.id}/click`, { method: 'POST' }).catch(() => {});
+function handleSlideCtaClick(slide: CarouselSlide): void {
+  if (!slide.ctaLink) return;
+  if (slide.isRemote && remoteBanners.value) {
+    $fetch(`/api/banners/${slide.id}/click`, { method: 'POST' }).catch(() => {});
+  }
 
-  if (banner.cta_link.startsWith('http')) {
-    window.open(banner.cta_link, '_blank', 'noopener,noreferrer');
-  } else if (banner.cta_link.startsWith('#')) {
-    const el = document.querySelector(banner.cta_link);
+  if (slide.ctaLink.startsWith('http')) {
+    window.open(slide.ctaLink, '_blank', 'noopener,noreferrer');
+  } else if (slide.ctaLink.startsWith('#')) {
+    const el = document.querySelector(slide.ctaLink);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   } else {
-    navigateTo(banner.cta_link);
+    navigateTo(slide.ctaLink);
   }
 }
 
@@ -151,151 +233,138 @@ onUnmounted(() => {
 
 <template>
   <section
-    class="relative select-none bg-[#052219] text-white overflow-hidden"
+    class="relative select-none bg-theme-dark text-white overflow-hidden"
     aria-roledescription="carousel"
-    aria-label="Bookstore Highlights & Promotions"
+    aria-label="Ebook Highlights & Promotions"
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
   >
-    <!-- Viewport with Responsive Aspect Ratios: ~1.65:1 on Mobile, ~4:1 on Desktop -->
+    <!-- Viewport Container with Fixed Explicit Responsive Height to Prevent Layout Collapse -->
     <div
-      class="relative w-full overflow-hidden h-[225px] sm:h-[270px] lg:h-[315px]"
+      class="relative w-full overflow-hidden h-[440px] sm:h-[480px] lg:h-[500px]"
       @touchstart.passive="handleTouchStart"
       @touchmove.passive="handleTouchMove"
       @touchend="handleTouchEnd"
     >
-      <!-- Fallback when no custom banners are configured yet -->
+      <!-- Continuous Sliding Track (Guaranteed to have slides) -->
       <div
-        v-if="totalSlides === 0"
-        class="w-full h-full relative flex items-center justify-center bg-[#052219]"
-      >
-        <img
-          src="/images/hero-cover.jpg"
-          alt="The Sunrise Bookstore"
-          class="w-full h-full object-cover brightness-75"
-        />
-        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6 sm:p-10">
-          <div class="space-y-1">
-            <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#2EE59D]">
-              Welcome to The Sunrise Bookstore
-            </span>
-            <h2 class="font-display text-xl sm:text-2xl font-bold text-white">
-              Books that change the way you think.
-            </h2>
-          </div>
-        </div>
-      </div>
-
-      <!-- Continuous Sliding Track (ONLY set banners rotate) -->
-      <div
-        v-else
         class="flex w-full h-full will-change-transform"
         :style="trackTransformStyle"
       >
         <div
-          v-for="(banner, index) in bannersList"
-          :key="banner.id"
-          class="w-full flex-shrink-0 relative h-full flex items-center overflow-hidden"
-          :class="{ 'cursor-pointer': Boolean(banner.cta_link) }"
-          :style="{ backgroundColor: banner.bg_color || '#052219' }"
+          v-for="(slide, index) in activeSlides"
+          :key="slide.id"
+          class="w-full flex-shrink-0 relative h-full flex items-center px-6 sm:px-12 lg:px-16"
           role="group"
           aria-roledescription="slide"
           :aria-label="`${index + 1} of ${totalSlides}`"
-          @click="handleBannerClick(banner)"
         >
-          <picture class="absolute inset-0 w-full h-full">
-            <source
-              v-if="banner.mobile_image_url"
-              :srcset="banner.mobile_image_url"
-              media="(max-width: 640px)"
-            />
+          <!-- Remote Banner Background Image (if custom banner) -->
+          <div v-if="slide.isRemote" class="absolute inset-0 z-0">
             <img
-              :src="banner.image_url"
-              :alt="banner.title || 'Promotional Banner'"
-              class="w-full h-full object-cover object-center scale-100"
+              :src="slide.coverImage"
+              alt="Promotional Banner"
+              class="w-full h-full object-cover object-center"
               loading="lazy"
-              referrerpolicy="no-referrer"
             />
-          </picture>
+            <div class="absolute inset-0 bg-gradient-to-r from-theme-dark via-theme-dark/80 to-transparent" />
+          </div>
 
-          <!-- Optional Typography Overlay -->
-          <div
-            v-if="banner.title || banner.subtitle || banner.badge || banner.cta_label"
-            class="absolute inset-0 z-10 flex items-center pointer-events-none px-6 sm:px-12"
-          >
-            <div class="max-w-xl space-y-2 pointer-events-auto">
-              <div
-                v-if="banner.badge"
-                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#052219]/90 border border-gold-400 text-[10px] font-mono font-bold text-gold-300 shadow-xs"
+          <!-- Slide Content Grid matching Visual Guide -->
+          <div class="max-w-7xl mx-auto w-full grid md:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
+            
+            <!-- Left Typography Column (7 cols) -->
+            <div class="md:col-span-7 space-y-4 sm:space-y-6 text-left">
+              <span
+                v-if="slide.badge"
+                class="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-widest text-theme-accent uppercase"
               >
-                <Sparkles :size="10" class="text-gold-400" />
-                <span>{{ banner.badge }}</span>
-              </div>
+                <Sparkles :size="12" />
+                <span>{{ slide.badge }}</span>
+              </span>
 
-              <h2
-                v-if="banner.title"
-                class="font-display text-xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
-              >
-                {{ banner.title }}
+              <h2 class="font-sans font-extrabold text-4xl sm:text-5xl lg:text-6xl text-white leading-[1.08] tracking-tight">
+                {{ slide.headlinePrefix }}
+                <span class="text-theme-accent">{{ slide.headlineAccent }}</span>
               </h2>
 
-              <p
-                v-if="banner.subtitle"
-                class="text-[11px] sm:text-xs text-white/90 font-medium line-clamp-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]"
-              >
-                {{ banner.subtitle }}
+              <p class="text-sm sm:text-base text-theme-dark-muted font-normal max-w-lg leading-relaxed">
+                {{ slide.subheadline }}
               </p>
 
-              <div v-if="banner.cta_label" class="pt-1">
+              <div class="pt-2">
                 <button
                   type="button"
-                  class="bg-[#F05A36] hover:bg-[#D94827] text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full transition-all flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
-                  @click.stop="handleBannerClick(banner)"
+                  class="inline-flex items-center gap-2 bg-theme-accent hover:bg-theme-accent-hover active:bg-theme-accent-active text-white text-xs sm:text-sm font-bold uppercase tracking-wider px-6 py-3.5 rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                  @click="handleSlideCtaClick(slide)"
                 >
-                  <span>{{ banner.cta_label }}</span>
-                  <ArrowRight :size="12" />
+                  <span>{{ slide.ctaLabel || 'Browse Ebooks' }}</span>
+                  <ArrowRight :size="15" />
                 </button>
               </div>
             </div>
+
+            <!-- Right Visual Column (5 cols) -->
+            <div class="md:col-span-5 flex justify-center items-center relative">
+              <!-- 3D Book Jacket Display -->
+              <div class="relative w-48 sm:w-56 aspect-[1/1.45] rounded-md overflow-hidden book-cover-3d shadow-2xl z-10 border border-white/10">
+                <img
+                  :src="slide.coverImage"
+                  alt="Featured Ebook Cover"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+
+              <!-- Red Circular Price Badge (Visual Reference) -->
+              <div
+                v-if="slide.priceTag"
+                class="absolute -top-3 right-4 sm:right-8 z-20 w-20 h-20 sm:w-22 sm:h-22 rounded-full bg-theme-accent text-white flex flex-col items-center justify-center shadow-lg transform rotate-6 border-2 border-white select-none"
+              >
+                <span class="font-mono text-xs sm:text-sm font-black leading-tight">{{ slide.priceTag }}</span>
+                <span v-if="slide.originalPrice" class="font-mono text-[9px] line-through text-white/75">{{ slide.originalPrice }}</span>
+                <span v-if="slide.discountBadge" class="text-[8px] font-mono font-black uppercase bg-black/25 px-1 rounded mt-0.5">{{ slide.discountBadge }}</span>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
 
-      <!-- Navigation Arrows (Only shown when multiple custom banners exist) -->
+      <!-- Navigation Arrows (Active on all viewports) -->
       <div
         v-if="totalSlides > 1"
-        class="absolute inset-y-0 inset-x-2 sm:inset-x-4 z-20 flex items-center justify-between pointer-events-none"
+        class="absolute inset-y-0 inset-x-3 sm:inset-x-5 z-20 flex items-center justify-between pointer-events-none"
       >
         <button
           type="button"
-          class="w-8 h-8 rounded-full bg-[#052219]/70 hover:bg-[#052219] text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-xs active:scale-90 cursor-pointer border border-white/10"
+          class="w-10 h-10 rounded-full bg-theme-dark/80 hover:bg-theme-dark text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-xs active:scale-90 cursor-pointer border border-white/10"
           aria-label="Previous slide"
           @click="prevSlide"
         >
-          <ChevronLeft :size="16" />
+          <ChevronLeft :size="18" />
         </button>
 
         <button
           type="button"
-          class="w-8 h-8 rounded-full bg-[#052219]/70 hover:bg-[#052219] text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-xs active:scale-90 cursor-pointer border border-white/10"
+          class="w-10 h-10 rounded-full bg-theme-dark/80 hover:bg-theme-dark text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-xs active:scale-90 cursor-pointer border border-white/10"
           aria-label="Next slide"
           @click="nextSlide"
         >
-          <ChevronRight :size="16" />
+          <ChevronRight :size="18" />
         </button>
       </div>
 
-      <!-- Pagination Dots (Only shown when multiple custom banners exist) -->
+      <!-- Pagination Dots -->
       <div
         v-if="totalSlides > 1"
-        class="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5"
+        class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2"
       >
         <button
           v-for="(_, idx) in totalSlides"
           :key="idx"
           type="button"
           class="h-1.5 rounded-full cursor-pointer transition-all duration-300"
-          :class="idx === activeIndex ? 'w-6 bg-[#2EE59D]' : 'w-2 bg-white/40 hover:bg-white/70'"
+          :class="idx === activeIndex ? 'w-6 bg-theme-accent' : 'w-2 bg-white/40 hover:bg-white/70'"
           :aria-label="`Navigate to slide ${idx + 1}`"
           @click="goToSlide(idx)"
         />
