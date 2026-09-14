@@ -811,7 +811,7 @@ async function handleSubmit(): Promise<void> {
           </div>
         </form>
       </div>
-    </div>
+    
 	  <!-- DIALOGUE MODAL: Cloudflare R2 Upload Verification -->
     <Teleport to="body">
       <div
