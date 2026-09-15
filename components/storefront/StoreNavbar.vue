@@ -21,17 +21,19 @@ const isCategoryDropdownOpen = ref(false);
 let closeTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Dynamic categories extraction from live catalog products
-const { data: catalogBooks } = await useFetch<Book[]>('/api/products');
+const { data: catalogResponse } = await useFetch<any>('/api/products');
 
 const categories = computed<string[]>(() => {
   const set = new Set<string>();
-  if (catalogBooks.value) {
-    for (const book of catalogBooks.value) {
-      if (book.category_name && book.category_name.trim()) {
-        const name = book.category_name.trim();
-        if (name.toLowerCase() !== 'general') {
-          set.add(name);
-        }
+  const list: Book[] = Array.isArray(catalogResponse.value)
+    ? catalogResponse.value
+    : catalogResponse.value?.products || [];
+
+  for (const book of list) {
+    if (book?.category_name && book.category_name.trim()) {
+      const name = book.category_name.trim();
+      if (name.toLowerCase() !== 'general') {
+        set.add(name);
       }
     }
   }

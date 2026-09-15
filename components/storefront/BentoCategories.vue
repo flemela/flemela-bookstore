@@ -17,7 +17,7 @@ const emit = defineEmits<{
 }>();
 
 // Fetch live catalog books to dynamically calculate inventory counts
-const { data: catalogBooks } = await useFetch<Book[]>('/api/products');
+const { data: catalogResponse } = await useFetch<any>('/api/products');
 
 const CATEGORIES = [
   {
@@ -60,11 +60,13 @@ const CATEGORIES = [
 
 const countMap = computed(() => {
   const map = new Map<string, number>();
-  if (catalogBooks.value) {
-    for (const b of catalogBooks.value) {
-      const cat = (b.category_name || 'General').toLowerCase();
-      map.set(cat, (map.get(cat) || 0) + 1);
-    }
+  const list: Book[] = Array.isArray(catalogResponse.value)
+    ? catalogResponse.value
+    : catalogResponse.value?.products || [];
+
+  for (const b of list) {
+    const cat = (b?.category_name || 'General').toLowerCase();
+    map.set(cat, (map.get(cat) || 0) + 1);
   }
   return map;
 });

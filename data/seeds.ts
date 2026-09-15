@@ -242,11 +242,17 @@ export function mergeWithSeeds(
     return real;
   }
 
-  const realSlugs = new Set(real.map((b) => b.slug.toLowerCase()));
-  const realNames = new Set(real.map((b) => b.name.toLowerCase()));
+  const realSlugs = new Set(
+    real.map((b) => (b?.slug ? b.slug.toLowerCase() : ''))
+  );
+  const realNames = new Set(
+    real.map((b) => (b?.name ? b.name.toLowerCase() : ''))
+  );
 
   const eligibleSeeds = seedCollection.filter(
-    (s) => !realSlugs.has(s.slug.toLowerCase()) && !realNames.has(s.name.toLowerCase())
+    (s) =>
+      !realSlugs.has((s.slug || '').toLowerCase()) &&
+      !realNames.has((s.name || '').toLowerCase())
   );
 
   const needed = targetCount - real.length;

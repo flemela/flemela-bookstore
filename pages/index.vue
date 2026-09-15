@@ -26,7 +26,7 @@ const searchQuery = ref<string>('');
 const debouncedSearch = ref<string>('');
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Reactive Catalogue Query — Automatically refetches from the PostgreSQL database
+// Reactive Catalogue Query with clean computed query unwrapping for SSR
 const { data: catalogData, status: booksStatus } = await useFetch<{
   products: Book[];
   total: number;
@@ -34,12 +34,12 @@ const { data: catalogData, status: booksStatus } = await useFetch<{
   limit: number;
   totalPages: number;
 }>('/api/products', {
-  query: {
-    page: currentPage,
-    limit: itemsPerPage,
-    category: computed(() => (activeCategoryFilter.value === 'General' ? undefined : activeCategoryFilter.value)),
-    q: computed(() => (debouncedSearch.value.trim() ? debouncedSearch.value.trim() : undefined)),
-  },
+  query: computed(() => ({
+    page: currentPage.value,
+    limit: itemsPerPage.value,
+    category: activeCategoryFilter.value === 'General' ? undefined : activeCategoryFilter.value,
+    q: debouncedSearch.value.trim() ? debouncedSearch.value.trim() : undefined,
+  })),
   watch: [currentPage, activeCategoryFilter, debouncedSearch],
 });
 
@@ -111,7 +111,9 @@ const isFilterActive = computed(() => {
 
 // Flash Sale & Bestsellers Shelves
 const flashSaleBooks = computed<Book[]>(() => {
-  const list: Book[] = showcaseBooks.value?.products || showcaseBooks.value || [];
+  const list: Book[] = Array.isArray(showcaseBooks.value)
+    ? showcaseBooks.value
+    : showcaseBooks.value?.products || [];
   return list.filter((b) => {
     if (b.badge === 'FLASH_SALE' || b.badge === 'LIMITED_TIME') return true;
     if (!b.badge && b.compare_at_price && b.compare_at_price > b.price) return true;
@@ -120,7 +122,9 @@ const flashSaleBooks = computed<Book[]>(() => {
 });
 
 const bestsellersOfWeek = computed<Book[]>(() => {
-  const list: Book[] = showcaseBooks.value?.products || showcaseBooks.value || [];
+  const list: Book[] = Array.isArray(showcaseBooks.value)
+    ? showcaseBooks.value
+    : showcaseBooks.value?.products || [];
   const tagged = list.filter((b) => b.badge === 'BESTSELLER');
   const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
   return mergeWithSeeds(tagged, combinedSeeds, 4);
@@ -129,9 +133,11 @@ const bestsellersOfWeek = computed<Book[]>(() => {
 // Dynamic Categories Dropdown list
 const catalogueCategories = computed<string[]>(() => {
   const set = new Set<string>();
-  const allList: Book[] = showcaseBooks.value?.products || showcaseBooks.value || [];
+  const allList: Book[] = Array.isArray(showcaseBooks.value)
+    ? showcaseBooks.value
+    : showcaseBooks.value?.products || [];
   for (const b of allList) {
-    if (b.category_name && b.category_name.trim() && b.category_name.toLowerCase() !== 'general') {
+    if (b?.category_name && b.category_name.trim() && b.category_name.toLowerCase() !== 'general') {
       set.add(b.category_name.trim());
     }
   }
@@ -413,7 +419,7 @@ onUnmounted(() => {
         />
       </div>
 
-      <!-- TRUE EMPTY STATE: Displayed only when search/category yields zero database results -->
+      <!-- TRUE EMPTY STATE -->
       <div
         v-else
         class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm animate-in fade-in duration-200"
@@ -434,7 +440,7 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- NUMBERED PAGINATION CONTROLS (Previous, Nth Page Buttons, Next) -->
+      <!-- NUMBERED PAGINATION CONTROLS -->
       <Pagination
         :page="currentPage"
         :total-pages="totalPages"
