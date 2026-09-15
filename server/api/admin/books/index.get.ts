@@ -1,10 +1,18 @@
 // =============================================================================
 // server/api/admin/books/index.get.ts
-// Proxies books catalog query with authenticated session token.
+// Proxies books catalog query with search, category filtering & pagination.
 // =============================================================================
 
 import { sokoClient } from '../../../utils/sokoClient';
 import type { Book } from '~/types';
+
+export interface PaginatedAdminBooks {
+  products: Book[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
 export default defineEventHandler(async (event) => {
   const token =
@@ -15,7 +23,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event);
 
   try {
-    const response = await sokoClient<Book[]>('/products', {
+    const res = await sokoClient<any>('/products', {
       token,
       query: {
         page: query.page || 1,
@@ -25,7 +33,23 @@ export default defineEventHandler(async (event) => {
       },
     });
 
-    return response || [];
+    if (Array.isArray(res)) {
+      return {
+        products: res,
+        total: res.length,
+        page: Number(query.page || 1),
+        limit: Number(query.limit || 50),
+        totalPages: 1,
+      };
+    }
+
+    return {
+      products: res?.products || [],
+      total: Number(res?.total ?? 0),
+      page: Number(res?.page || query.page || 1),
+      limit: Number(res?.limit || query.limit || 50),
+      totalPages: Number(res?.totalPages || 1),
+    };
   } catch (err: any) {
     throw createError({
       statusCode: err.statusCode || 500,

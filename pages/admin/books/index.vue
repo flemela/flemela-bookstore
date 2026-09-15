@@ -1,6 +1,6 @@
 <!-- pages/admin/books/index.vue -->
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed,onMounted } from 'vue';
 import {
   Plus,
   Search,
@@ -11,8 +11,11 @@ import {
   Truck,
   ExternalLink,
   Loader2,
+  X,
+  RotateCcw,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
+import Pagination from '~/components/ui/Pagination.vue';
 import { useToast } from '~/composables/useToast';
 import type { Book } from '~/types';
 
@@ -21,39 +24,98 @@ definePageMeta({
 });
 
 const { push: pushToast } = useToast();
-const { data: books, refresh, status: fetchStatus } = await useFetch<Book[]>('/api/admin/books');
 
-const searchQuery = ref('');
+// Pagination & Search Reactive State
+const currentPage = ref(1);
+const itemsPerPage = ref(50);
+const searchInput = ref('');
+const debouncedSearch = ref('');
 const selectedCategory = ref('');
+const categories = ref<Array<{ id: string; name: string }>>([]);
+
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+function onSearchInput(): void {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    debouncedSearch.value = searchInput.value.trim();
+    currentPage.value = 1; // Reset to page 1 on new search
+  }, 350);
+}
+
+// Reactive useFetch: Automatically queries PostgreSQL on search, category, or page change
+const { data: booksData, refresh, status: fetchStatus } = await useFetch<{
+  products: Book[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}>('/api/admin/books', {
+  query: {
+    page: currentPage,
+    limit: itemsPerPage,
+    q: computed(() => (debouncedSearch.value ? debouncedSearch.value : undefined)),
+    category_id: computed(() => (selectedCategory.value ? selectedCategory.value : undefined)),
+  },
+  watch: [currentPage, debouncedSearch, selectedCategory],
+});
+
+// Load category options for the filter dropdown
+onMounted(async () => {
+  try {
+    const res = await $fetch<any>('/api/admin/categories');
+    categories.value = Array.isArray(res) ? res : res?.data || [];
+  } catch {
+    categories.value = [];
+  }
+});
+
+const books = computed<Book[]>(() => booksData.value?.products || []);
+const totalBooks = computed(() => booksData.value?.total ?? 0);
+const totalPages = computed(() => booksData.value?.totalPages ?? 1);
+
+// Summary Text: "Showing 1–50 of 240 books"
+const rangeText = computed(() => {
+  const total = totalBooks.value;
+  if (total === 0) return '0 books';
+  const start = (currentPage.value - 1) * itemsPerPage.value + 1;
+  const end = Math.min(currentPage.value * itemsPerPage.value, total);
+  return `Showing ${start}–${end} of ${total.toLocaleString('en-KE')} books`;
+});
+
+const isFilterActive = computed(() => {
+  return debouncedSearch.value.length > 0 || selectedCategory.value.length > 0;
+});
+
+function clearFilters(): void {
+  searchInput.value = '';
+  debouncedSearch.value = '';
+  selectedCategory.value = '';
+  currentPage.value = 1;
+}
+
+// Selection & Deletion State
 const selectedBookIds = ref<string[]>([]);
 const deletingBookId = ref<string | null>(null);
 const isDeletingBulk = ref(false);
 
-const filteredBooks = computed(() => {
-  if (!books.value) return [];
-  let list = [...books.value];
-
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase().trim();
-    list = list.filter((b) => b.name.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q));
-  }
-
-  if (selectedCategory.value) {
-    list = list.filter((b) => b.category_id === selectedCategory.value);
-  }
-
-  return list;
-});
-
 const isAllSelected = computed(() => {
-  return filteredBooks.value.length > 0 && selectedBookIds.value.length === filteredBooks.value.length;
+  return books.value.length > 0 && selectedBookIds.value.length === books.value.length;
 });
 
 function toggleSelectAll(): void {
   if (isAllSelected.value) {
     selectedBookIds.value = [];
   } else {
-    selectedBookIds.value = filteredBooks.value.map((b) => b.id);
+    selectedBookIds.value = books.value.map((b) => b.id);
+  }
+}
+
+function handlePageChange(newPage: number): void {
+  currentPage.value = newPage;
+  selectedBookIds.value = [];
+  if (process.client) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
 
@@ -64,7 +126,7 @@ function resolveCoverUrl(book: Book): string {
   return firstImg.image_url || (book as any).cover_image_url || '';
 }
 
-// Server-Confirmed Single Delete (No ghosting, no optimistic race condition)
+// Server-Confirmed Single Delete
 async function handleDeleteBook(id: string, name: string): Promise<void> {
   deletingBookId.value = id;
 
@@ -74,10 +136,6 @@ async function handleDeleteBook(id: string, name: string): Promise<void> {
       { method: 'DELETE' }
     );
 
-    // Update local state ONLY after the database commits
-    if (books.value) {
-      books.value = books.value.filter((b) => b.id !== id);
-    }
     selectedBookIds.value = selectedBookIds.value.filter((bId) => bId !== id);
 
     const message = res?.action === 'soft_deleted'
@@ -85,12 +143,9 @@ async function handleDeleteBook(id: string, name: string): Promise<void> {
       : `"${name}" permanently deleted`;
 
     pushToast({ message, variant: 'success' });
+    await refresh();
   } catch (err: any) {
-    const errorMsg =
-      err.data?.message ||
-      err.data?.error?.message ||
-      err.statusMessage ||
-      'Failed to delete book';
+    const errorMsg = err.data?.message || err.statusMessage || 'Failed to delete book';
     pushToast({ message: errorMsg, variant: 'error' });
     await refresh();
   } finally {
@@ -117,22 +172,15 @@ async function handleBulkDelete(): Promise<void> {
       body: { productIds: idsToDelete },
     });
 
-    if (books.value) {
-      books.value = books.value.filter((b) => !idsToDelete.includes(b.id));
-    }
     selectedBookIds.value = [];
-
     const details = res?.softDeleted > 0
       ? `(${res.hardDeleted} purged, ${res.softDeleted} archived with active orders)`
       : '';
 
     pushToast({ message: `Successfully deleted ${count} book(s) ${details}`, variant: 'success' });
+    await refresh();
   } catch (err: any) {
-    const errorMsg =
-      err.data?.message ||
-      err.data?.error?.message ||
-      err.statusMessage ||
-      'Bulk deletion failed';
+    const errorMsg = err.data?.message || err.statusMessage || 'Bulk deletion failed';
     pushToast({ message: errorMsg, variant: 'error' });
     await refresh();
   } finally {
@@ -143,17 +191,16 @@ async function handleBulkDelete(): Promise<void> {
 
 <template>
   <AdminLayout>
-    <div class="space-y-6">
+    <div class="space-y-6 max-w-7xl mx-auto">
       
-      <!-- Header Bar -->
+      <!-- Top Header Bar -->
       <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-paper-border">
         <div>
           <h1 class="font-display text-2xl font-bold text-forest-950">Books &amp; eBooks Catalog</h1>
-          <p class="text-xs text-ink-muted">Manage multi-format pricing, physical stock, and digital files.</p>
+          <p class="text-xs text-ink-muted">Manage multi-format pricing, physical stock, and digital downloads.</p>
         </div>
 
         <div class="flex items-center gap-2.5">
-          <!-- Bulk Delete Action -->
           <button
             v-if="selectedBookIds.length > 0"
             type="button"
@@ -176,19 +223,55 @@ async function handleBulkDelete(): Promise<void> {
         </div>
       </div>
 
-      <!-- Search & Filters -->
-      <div class="bg-paper-surface p-4 rounded-2xl border border-paper-border shadow-soft flex flex-wrap gap-4 items-center justify-between">
-        <div class="relative flex-1 min-w-[240px]">
+      <!-- Search & Database Filter Toolbar -->
+      <div class="bg-paper-surface p-4 rounded-2xl border border-paper-border shadow-soft flex flex-wrap gap-3 items-center justify-between">
+        
+        <!-- Live Database Search Input -->
+        <div class="relative flex-1 min-w-[260px]">
           <Search :size="15" class="absolute left-3.5 top-3 text-ink-subtle pointer-events-none" />
           <input
-            v-model="searchQuery"
+            v-model="searchInput"
             type="text"
-            placeholder="Search catalog by title, author, or SKU..."
-            class="w-full pl-10 pr-3.5 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle"
+            placeholder="Search entire database by title, author, or SKU..."
+            class="w-full pl-10 pr-9 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle"
+            @input="onSearchInput"
           />
+          <button
+            v-if="searchInput"
+            type="button"
+            class="absolute right-3 top-2.5 text-ink-subtle hover:text-forest-950"
+            @click="searchInput = ''; debouncedSearch = ''; currentPage = 1;"
+          >
+            <X :size="14" />
+          </button>
         </div>
-        <div class="text-xs text-ink-muted font-mono tabular-figure">
-          Showing <strong>{{ filteredBooks.length }}</strong> books
+
+        <!-- Category Dropdown Filter -->
+        <select
+          v-model="selectedCategory"
+          class="px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs font-semibold text-forest-950 outline-none focus:bg-white focus:border-forest-900"
+          @change="currentPage = 1"
+        >
+          <option value="">All Categories</option>
+          <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+            {{ cat.name }}
+          </option>
+        </select>
+
+        <!-- Reset Button -->
+        <button
+          v-if="isFilterActive"
+          type="button"
+          class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+          @click="clearFilters"
+        >
+          <RotateCcw :size="13" />
+          <span>Reset</span>
+        </button>
+
+        <!-- Count Range Indicator -->
+        <div class="text-xs text-ink-muted font-mono font-bold bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+          {{ rangeText }}
         </div>
       </div>
 
@@ -216,23 +299,31 @@ async function handleBulkDelete(): Promise<void> {
           <tbody class="divide-y divide-paper-border/60">
             <tr v-if="fetchStatus === 'pending'">
               <td colspan="7" class="py-12 text-center text-ink-muted text-xs">
-                Loading catalog...
+                Searching database catalog...
               </td>
             </tr>
 
-            <tr v-else-if="filteredBooks.length === 0">
-              <td colspan="7" class="py-12 text-center text-ink-muted text-xs">
-                No books found in catalog. Add your first book or run an Excel import.
+            <tr v-else-if="books.length === 0">
+              <td colspan="7" class="py-12 text-center text-ink-muted text-xs space-y-2">
+                <p>No books match the current query.</p>
+                <button
+                  v-if="isFilterActive"
+                  type="button"
+                  class="text-forest-900 font-bold underline cursor-pointer text-xs"
+                  @click="clearFilters"
+                >
+                  Clear all search filters
+                </button>
               </td>
             </tr>
 
             <tr
-              v-for="book in filteredBooks"
+              v-for="book in books"
               :key="book.id"
               class="hover:bg-paper-cream/30 transition-colors"
               :class="{ 'bg-paper-cream/50': selectedBookIds.includes(book.id) }"
             >
-              <!-- Row Select -->
+              <!-- Checkbox -->
               <td class="py-3.5 px-4">
                 <input
                   type="checkbox"
@@ -242,7 +333,7 @@ async function handleBulkDelete(): Promise<void> {
                 />
               </td>
 
-              <!-- Cover Image -->
+              <!-- Cover Thumbnail -->
               <td class="py-3.5 px-4 w-16">
                 <div class="w-10 h-14 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex items-center justify-center shadow-xs">
                   <img
@@ -263,6 +354,7 @@ async function handleBulkDelete(): Promise<void> {
                   {{ book.name }}
                 </NuxtLink>
                 <p class="text-[11px] text-ink-muted truncate italic">{{ book.author || '—' }}</p>
+                <span v-if="book.sku" class="text-[10px] font-mono text-ink-subtle">SKU: {{ book.sku }}</span>
               </td>
 
               <!-- Category -->
@@ -272,7 +364,7 @@ async function handleBulkDelete(): Promise<void> {
                 </span>
               </td>
 
-              <!-- Formats Array -->
+              <!-- Formats -->
               <td class="py-3.5 px-4">
                 <div class="flex flex-wrap gap-1.5">
                   <span
@@ -292,7 +384,7 @@ async function handleBulkDelete(): Promise<void> {
                 </div>
               </td>
 
-              <!-- Status Badge -->
+              <!-- Status -->
               <td class="py-3.5 px-4">
                 <span
                   class="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border"
@@ -323,7 +415,6 @@ async function handleBulkDelete(): Promise<void> {
                     <Edit2 :size="14" />
                   </NuxtLink>
 
-                  <!-- Server-Confirmed Single Delete Button -->
                   <button
                     type="button"
                     class="p-1.5 rounded-lg hover:bg-red-50 text-ink-muted hover:text-red-700 transition-colors cursor-pointer disabled:opacity-50"
@@ -340,6 +431,14 @@ async function handleBulkDelete(): Promise<void> {
           </tbody>
         </table>
       </div>
+
+      <!-- Controls for Previous, Nth Page, and Next -->
+      <Pagination
+        :page="currentPage"
+        :total-pages="totalPages"
+        :disabled="fetchStatus === 'pending'"
+        @change="handlePageChange"
+      />
     </div>
   </AdminLayout>
 </template>

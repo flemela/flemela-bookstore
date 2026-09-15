@@ -17,6 +17,7 @@ import {
   ChevronUp,
   KeyRound,
 } from 'lucide-vue-next';
+import Pagination from '~/components/ui/Pagination.vue';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import { useToast } from '~/composables/useToast';
 
@@ -59,6 +60,14 @@ const statusFilter = ref('all');
 const paymentMethodFilter = ref('all');
 const paymentStatusFilter = ref('all');
 const page = ref(1);
+const totalPages = computed(() => ordersData.value?.meta?.totalPages ?? 1);
+
+function handlePageChange(newPage: number): void {
+  page.value = newPage;
+  if (process.client) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
 
 const { data: ordersData, refresh, status: fetchStatus } = await useFetch<{
   data: AdminOrder[];
@@ -454,7 +463,14 @@ function handleResetFilters(): void {
           </table>
         </div>
       </div>
-
+<!-- Pagination Controls for Orders Desk -->
+      <Pagination
+        :page="page"
+        :total-pages="totalPages"
+        :disabled="fetchStatus === 'pending'"
+        @change="handlePageChange"
+      />
     </div>
   </AdminLayout>
 </template>
+    

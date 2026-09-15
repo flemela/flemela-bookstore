@@ -1,6 +1,6 @@
 // =============================================================================
 // flemela/server/api/admin/orders/index.get.ts
-// Proxies administrative order queries with multi-filter parameters.
+// Proxies administrative order queries with multi-filter parameters & pagination.
 // =============================================================================
 
 import { sokoClient } from '../../../utils/sokoClient';
@@ -10,11 +10,11 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event);
 
   try {
-    const result = await sokoClient<{ orders: any[]; total: number }>('/orders', {
+    const res = await sokoClient<any>('/orders', {
       token,
       query: {
         page: query.page || 1,
-        limit: query.limit || 30,
+        limit: query.limit || 20,
         q: query.q || undefined,
         status: query.status || undefined,
         payment_status: query.payment_status || undefined,
@@ -22,12 +22,16 @@ export default defineEventHandler(async (event) => {
       },
     });
 
+    const ordersList = Array.isArray(res) ? res : res?.orders || [];
+    const totalCount = Array.isArray(res) ? res.length : Number(res?.total ?? 0);
+    const limitNum = Number(query.limit || 20);
+
     return {
-      data: result.orders || result || [],
+      data: ordersList,
       meta: {
-        totalItems: result.total || 0,
+        totalItems: totalCount,
         page: Number(query.page || 1),
-        totalPages: Math.ceil((result.total || 0) / Number(query.limit || 30)),
+        totalPages: Math.max(1, Math.ceil(totalCount / limitNum)),
       },
     };
   } catch (err: any) {

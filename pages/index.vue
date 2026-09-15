@@ -13,26 +13,50 @@ import BookCard from '~/components/storefront/BookCard.vue';
 import CartDrawer from '~/components/storefront/CartDrawer.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
 import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
+import Pagination from '~/components/ui/Pagination.vue';
 import { BookOpen, ChevronDown, Check, Sparkles, Filter, X } from 'lucide-vue-next';
 import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
 import type { Book } from '~/types';
 
-// Fetch products and store metadata with reactive status
-const { data: realBooks, status: booksStatus } = await useFetch<Book[]>('/api/products');
+// Pagination & Search Reactive State
+const currentPage = ref(1);
+const itemsPerPage = ref(50);
+const activeCategoryFilter = ref<string>('General');
+const searchQuery = ref<string>('');
+const debouncedSearch = ref<string>('');
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+// Reactive Catalogue Query — Automatically refetches from the PostgreSQL database
+const { data: catalogData, status: booksStatus } = await useFetch<{
+  products: Book[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}>('/api/products', {
+  query: {
+    page: currentPage,
+    limit: itemsPerPage,
+    category: computed(() => (activeCategoryFilter.value === 'General' ? undefined : activeCategoryFilter.value)),
+    q: computed(() => (debouncedSearch.value.trim() ? debouncedSearch.value.trim() : undefined)),
+  },
+  watch: [currentPage, activeCategoryFilter, debouncedSearch],
+});
+
+// Dedicated Showcase fetch for Flash Sale & Bestseller shelves
+const { data: showcaseBooks } = await useFetch<any>('/api/products?limit=50');
 const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
 
 useHead({
   title: 'The Sunrise Bookstore — Online Bookstore & eBooks in Nairobi, Kenya',
-  link: [
-    { rel: 'canonical', href: 'https://www.thesunrisebookstore.com' },
-  ],
+  link: [{ rel: 'canonical', href: 'https://www.thesunrisebookstore.com' }],
   meta: [
     {
       name: 'description',
       content: 'Shop bestsellers, finance, business, psychology, and African literature at The Sunrise Bookstore, Diamond Mall, Parklands, Nairobi. Fast delivery across Kenya and instant eBook downloads.',
     },
     { property: 'og:title', content: 'The Sunrise Bookstore — Online Bookstore & eBooks in Nairobi, Kenya' },
-    { property: 'og:description', content: 'Shop bestsellers, finance, business, psychology, and African literature at The Sunrise Bookstore, Diamond Mall, Parklands, Nairobi. Order online today.' },
+    { property: 'og:description', content: 'Shop bestsellers, finance, business, psychology, and African literature at The Sunrise Bookstore, Diamond Mall, Parklands, Nairobi.' },
     { property: 'og:url', content: 'https://www.thesunrisebookstore.com' },
     { property: 'og:image', content: 'https://www.thesunrisebookstore.com/images/hero-cover.jpg' },
   ],
@@ -46,7 +70,6 @@ useHead({
             '@type': 'BookStore',
             '@id': 'https://www.thesunrisebookstore.com/#bookstore',
             name: 'The Sunrise Bookstore',
-            legalName: 'The Sunrise Bookstore',
             url: 'https://www.thesunrisebookstore.com',
             logo: 'https://www.thesunrisebookstore.com/images/logo.png',
             image: 'https://www.thesunrisebookstore.com/images/hero-cover.jpg',
@@ -54,42 +77,11 @@ useHead({
             telephone: '+254143304460',
             priceRange: 'KSh 149 - KSh 4500',
             currenciesAccepted: 'KES',
-            paymentAccepted: 'Cash, M-Pesa',
             address: {
               '@type': 'PostalAddress',
               streetAddress: 'Diamond Mall / Diamond Plaza, 4th Parklands Ave',
               addressLocality: 'Nairobi',
-              addressRegion: 'Nairobi County',
-              postalCode: '00100',
               addressCountry: 'KE',
-            },
-            geo: {
-              '@type': 'GeoCoordinates',
-              latitude: -1.2612,
-              longitude: 36.8167,
-            },
-            openingHoursSpecification: [
-              {
-                '@type': 'OpeningHoursSpecification',
-                dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-                opens: '08:30',
-                closes: '19:30',
-              },
-            ],
-          },
-          {
-            '@type': 'WebSite',
-            '@id': 'https://www.thesunrisebookstore.com/#website',
-            url: 'https://www.thesunrisebookstore.com',
-            name: 'The Sunrise Bookstore',
-            description: 'Online bookstore offering original paperbacks and instant eBooks across Kenya.',
-            publisher: {
-              '@id': 'https://www.thesunrisebookstore.com/#bookstore',
-            },
-            potentialAction: {
-              '@type': 'SearchAction',
-              target: 'https://www.thesunrisebookstore.com/?q={search_term_string}#catalog-results',
-              'query-input': 'required name=search_term_string',
             },
           },
         ],
@@ -98,29 +90,49 @@ useHead({
   ],
 });
 
-const tickerItems = computed(() => {
-  return storeMetadata.value?.promo_ticker || [];
+const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
+const books = computed<Book[]>(() => catalogData.value?.products || []);
+const totalBooksCount = computed(() => catalogData.value?.total ?? 0);
+const totalPages = computed(() => catalogData.value?.totalPages ?? 1);
+
+// Range status text: e.g. "Showing 1–50 of 240 titles"
+const paginationRangeText = computed(() => {
+  const total = totalBooksCount.value;
+  if (total === 0) return '0 titles';
+  const start = (currentPage.value - 1) * itemsPerPage.value + 1;
+  const end = Math.min(currentPage.value * itemsPerPage.value, total);
+  return `Showing ${start}–${end} of ${total.toLocaleString('en-KE')} titles`;
 });
 
-const activeCategoryFilter = ref<string>('General');
-const searchQuery = ref<string>('');
+const isFilterActive = computed(() => {
+  const cat = activeCategoryFilter.value.trim().toLowerCase();
+  return (cat !== 'general' && cat !== 'all') || debouncedSearch.value.trim().length > 0;
+});
 
-const showRequestModal = ref(false);
-const modalInitialTitle = ref('');
-const modalInitialAuthor = ref('');
+// Flash Sale & Bestsellers Shelves
+const flashSaleBooks = computed<Book[]>(() => {
+  const list: Book[] = showcaseBooks.value?.products || showcaseBooks.value || [];
+  return list.filter((b) => {
+    if (b.badge === 'FLASH_SALE' || b.badge === 'LIMITED_TIME') return true;
+    if (!b.badge && b.compare_at_price && b.compare_at_price > b.price) return true;
+    return false;
+  });
+});
 
-const isCatalogueDropdownOpen = ref(false);
+const bestsellersOfWeek = computed<Book[]>(() => {
+  const list: Book[] = showcaseBooks.value?.products || showcaseBooks.value || [];
+  const tagged = list.filter((b) => b.badge === 'BESTSELLER');
+  const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
+  return mergeWithSeeds(tagged, combinedSeeds, 4);
+});
 
+// Dynamic Categories Dropdown list
 const catalogueCategories = computed<string[]>(() => {
   const set = new Set<string>();
-  if (realBooks.value) {
-    for (const book of realBooks.value) {
-      if (book.category_name && book.category_name.trim()) {
-        const name = book.category_name.trim();
-        if (name.toLowerCase() !== 'general') {
-          set.add(name);
-        }
-      }
+  const allList: Book[] = showcaseBooks.value?.products || showcaseBooks.value || [];
+  for (const b of allList) {
+    if (b.category_name && b.category_name.trim() && b.category_name.toLowerCase() !== 'general') {
+      set.add(b.category_name.trim());
     }
   }
   if (set.size > 0) {
@@ -138,56 +150,17 @@ const catalogueCategories = computed<string[]>(() => {
   ];
 });
 
-const filteredBooks = computed(() => {
-  const books = realBooks.value || [];
-  let result = [...books];
+const isCatalogueDropdownOpen = ref(false);
+const showRequestModal = ref(false);
+const modalInitialTitle = ref('');
+const modalInitialAuthor = ref('');
 
-  const currentCat = activeCategoryFilter.value.trim().toLowerCase();
+function handleSearch(queryText: string, category?: string): void {
+  searchQuery.value = queryText;
+  if (searchTimer) clearTimeout(searchTimer);
+  debouncedSearch.value = queryText.trim();
+  currentPage.value = 1;
 
-  if (currentCat !== 'general' && currentCat !== 'all' && currentCat !== 'all books') {
-    result = result.filter((b) => {
-      const bCat = (b.category_name || '').toLowerCase().trim();
-      return bCat === currentCat || bCat.includes(currentCat) || currentCat.includes(bCat);
-    });
-  }
-
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase().trim();
-    result = result.filter(
-      (b) =>
-        b.name.toLowerCase().includes(q) ||
-        (b.author && b.author.toLowerCase().includes(q)) ||
-        (b.description && b.description.toLowerCase().includes(q))
-    );
-  }
-
-  return result;
-});
-
-const isFilterActive = computed(() => {
-  const cat = activeCategoryFilter.value.trim().toLowerCase();
-  const isNotGeneral = cat !== 'general' && cat !== 'all' && cat !== 'all books';
-  return isNotGeneral || searchQuery.value.trim().length > 0;
-});
-
-const flashSaleBooks = computed<Book[]>(() => {
-  const books = realBooks.value || [];
-  return books.filter((b) => {
-    if (b.badge === 'FLASH_SALE' || b.badge === 'LIMITED_TIME') return true;
-    if (!b.badge && b.compare_at_price && b.compare_at_price > b.price) return true;
-    return false;
-  });
-});
-
-const bestsellersOfWeek = computed<Book[]>(() => {
-  const books = realBooks.value || [];
-  const tagged = books.filter((b) => b.badge === 'BESTSELLER');
-  const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
-  return mergeWithSeeds(tagged, combinedSeeds, 4);
-});
-
-function handleSearch(query: string, category?: string): void {
-  searchQuery.value = query;
   if (category && category !== 'All Categories') {
     activeCategoryFilter.value = category;
   }
@@ -196,12 +169,27 @@ function handleSearch(query: string, category?: string): void {
 
 function handleCategorySelect(category: string): void {
   activeCategoryFilter.value = category;
+  currentPage.value = 1;
   scrollToSection('catalog-results');
 }
 
 function selectCatalogueCategory(cat: string): void {
   activeCategoryFilter.value = cat;
+  currentPage.value = 1;
   isCatalogueDropdownOpen.value = false;
+  scrollToSection('catalog-results');
+}
+
+function handlePageChange(newPage: number): void {
+  currentPage.value = newPage;
+  scrollToSection('catalog-results');
+}
+
+function clearAllFilters(): void {
+  activeCategoryFilter.value = 'General';
+  searchQuery.value = '';
+  debouncedSearch.value = '';
+  currentPage.value = 1;
 }
 
 function scrollToSection(sectionId: string): void {
@@ -234,56 +222,43 @@ onUnmounted(() => {
   if (process.client) {
     window.removeEventListener('click', handleOutsideClickCatalogue);
   }
+  if (searchTimer) clearTimeout(searchTimer);
 });
 </script>
 
 <template>
   <div class="min-h-screen flex flex-col bg-white text-[#141E1A] antialiased">
-    <!-- 1. Topmost Rotating Announcement Ribbon -->
+    <!-- Top Announcement Ribbon -->
     <PromoTickerStrip :messages="tickerItems" />
 
-    <!-- 2. Sticky Navbar -->
+    <!-- Sticky Navbar -->
     <StoreNavbar
       @search="handleSearch"
       @select-category="handleCategorySelect"
       @request-book="() => handleRequestSeed()"
     />
 
-    <!-- 3. Hero Carousel with CSS Shimmer Placeholder -->
+    <!-- Hero Carousel -->
     <HeroCarousel
       @search="handleSearch"
       @select-category="handleCategorySelect"
       @navigate-flash-sale="scrollToSection('flash-sale')"
     />
 
-    <!-- 4. Flash Sale Shelf (Pre-allocated skeleton prevents layout shift) -->
+    <!-- Flash Sale Shelf -->
     <div id="flash-sale" class="mt-0">
-      <div
-        v-if="booksStatus === 'pending'"
-        class="bg-slate-50 rounded-2xl max-w-6xl mx-auto p-4 sm:p-6 border border-slate-200/80 animate-pulse flex items-center justify-between gap-6 min-h-[170px]"
-      >
-        <div class="space-y-2.5 w-60 flex-shrink-0">
-          <div class="h-3 bg-slate-200 rounded w-24" />
-          <div class="h-7 bg-slate-200 rounded w-44" />
-          <div class="h-3 bg-slate-100 rounded w-52" />
-        </div>
-        <div class="hidden sm:flex gap-3 overflow-hidden flex-1">
-          <div v-for="n in 3" :key="`flash-skel-${n}`" class="w-36 h-44 bg-slate-200 rounded-xl flex-shrink-0" />
-        </div>
-      </div>
-
       <FlashSaleStrip
-        v-else-if="flashSaleBooks.length > 0"
+        v-if="flashSaleBooks.length > 0"
         :books="flashSaleBooks"
         title="FLASH SALE DEALS"
         badge-label="LIMITED TIME"
       />
     </div>
 
-    <!-- 5. Categories Bento Grid (Pure CSS render, zero JS scroll calculation) -->
+    <!-- Categories Bento Grid -->
     <BentoCategories @select="handleCategorySelect" />
 
-    <!-- 6. Visual Bridge Banner -->
+    <!-- Visual Bridge Banner -->
     <div class="max-w-6xl mx-auto px-4 w-full">
       <div class="rounded-2xl bg-gradient-to-r from-[#052219] via-[#0C3A2B] to-[#124E38] p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 text-white shadow-md border border-[#2EE59D]/30 relative overflow-hidden">
         <div class="flex items-center gap-3 relative z-10">
@@ -314,22 +289,23 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 7. Bestsellers of the Week -->
+    <!-- Bestsellers of the Week -->
     <DealsWeek :books="bestsellersOfWeek" @request-seed="handleRequestSeed" />
 
-    <!-- 8. Complete Bookstore Catalogue Archive -->
+    <!-- Complete Bookstore Catalogue Archive -->
     <section
       id="catalog-results"
-      class="pt-12 sm:pt-16 pb-12 px-4 max-w-6xl mx-auto w-full space-y-6"
+      class="pt-12 sm:pt-16 pb-14 px-4 max-w-6xl mx-auto w-full space-y-6"
     >
+      <!-- Section Title & Dynamic Filter Row -->
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-slate-200">
         <div class="space-y-1">
           <div class="flex items-center gap-2">
             <span class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#E8750D] block">
               CATALOGUE ARCHIVE
             </span>
-            <span class="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-              {{ booksStatus === 'pending' ? '...' : `${filteredBooks.length} Titles` }}
+            <span class="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-3 py-0.5 rounded-full border border-slate-200">
+              {{ paginationRangeText }}
             </span>
           </div>
           <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
@@ -337,7 +313,7 @@ onUnmounted(() => {
           </h2>
         </div>
 
-        <!-- Dropdown Category Filter -->
+        <!-- Filter Dropdown & Search Status Indicator -->
         <div class="flex items-center gap-2.5 flex-wrap">
           <div class="relative">
             <button
@@ -352,6 +328,7 @@ onUnmounted(() => {
               <ChevronDown :size="14" class="transition-transform duration-200 text-slate-500" :class="{ 'rotate-180 text-[#E8750D]': isCatalogueDropdownOpen }" />
             </button>
 
+            <!-- Dropdown Menu -->
             <Transition name="dropdown-fade">
               <div
                 v-if="isCatalogueDropdownOpen"
@@ -360,7 +337,7 @@ onUnmounted(() => {
               >
                 <div class="px-4 py-1.5 border-b border-slate-100 flex items-center justify-between">
                   <span class="text-[10px] font-mono uppercase font-bold text-slate-400 tracking-wider">
-                    Select Filter
+                    Select Category
                   </span>
                   <span class="text-[10px] font-mono text-[#E8750D] font-bold">
                     {{ catalogueCategories.length }} Categories
@@ -384,20 +361,21 @@ onUnmounted(() => {
             </Transition>
           </div>
 
+          <!-- Reset Filter Button -->
           <button
             v-if="isFilterActive"
             type="button"
-            class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1"
-            title="Show All Books"
-            @click="activeCategoryFilter = 'General'; searchQuery = '';"
+            class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+            title="Reset Search and Category Filters"
+            @click="clearAllFilters"
           >
             <X :size="13" />
-            <span>Clear Filter</span>
+            <span>Clear Filters</span>
           </button>
         </div>
       </div>
 
-      <!-- 1. SKELETON LOADING GRID: Active while booksStatus === 'pending' -->
+      <!-- SKELETON LOADING GRID: 8 Cards shown during fetch -->
       <div
         v-if="booksStatus === 'pending'"
         class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center"
@@ -422,48 +400,56 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- 2. REAL BOOKS GRID: Rendered once API resolves -->
+      <!-- REAL BOOKS 50-PER-PAGE GRID -->
       <div
-        v-else-if="filteredBooks.length > 0"
-        class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center"
+        v-else-if="books.length > 0"
+        class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center animate-in fade-in duration-300"
       >
         <BookCard
-          v-for="book in filteredBooks"
+          v-for="book in books"
           :key="book.id"
           :book="book"
           @request-seed="handleRequestSeed"
         />
       </div>
 
-      <!-- 3. TRUE EMPTY STATE: Rendered only when real search/filter yields zero items -->
+      <!-- TRUE EMPTY STATE: Displayed only when search/category yields zero database results -->
       <div
         v-else
-        class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm"
+        class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm animate-in fade-in duration-200"
       >
         <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
         <h3 class="font-display font-bold text-base text-slate-800">
-          No books found in this category
+          No books found in the catalogue
         </h3>
         <p class="text-xs text-slate-500 max-w-xs mx-auto">
-          We can source this title for you directly via our WhatsApp team.
+          We can source any title in Kenya directly for you upon request via WhatsApp.
         </p>
         <button
           type="button"
           class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95"
-          @click="handleRequestSeed(searchQuery)"
+          @click="handleRequestSeed(debouncedSearch)"
         >
-          Submit Book Request
+          Request This Book on WhatsApp
         </button>
       </div>
+
+      <!-- NUMBERED PAGINATION CONTROLS (Previous, Nth Page Buttons, Next) -->
+      <Pagination
+        :page="currentPage"
+        :total-pages="totalPages"
+        :disabled="booksStatus === 'pending'"
+        @change="handlePageChange"
+      />
     </section>
 
-    <!-- 9. Trust & Delivery Benefits -->
+    <!-- Trust & Delivery Benefits -->
     <TrustStrip />
 
-    <!-- 10. Footer -->
+    <!-- Footer -->
     <StoreFooter />
 
-    <!-- Overlays -->
+    <!-- Book Request Modal & Cart Drawer -->
     <BookRequestModal
       :open="showRequestModal"
       :initial-title="modalInitialTitle"
