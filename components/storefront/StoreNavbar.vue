@@ -1,11 +1,25 @@
 <!-- components/storefront/StoreNavbar.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { ShoppingCart, Menu, X, Search, ChevronDown, Sparkles, LayoutGrid } from 'lucide-vue-next';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import {
+  ShoppingCart,
+  Menu,
+  X,
+  Search,
+  ChevronDown,
+  Sparkles,
+  LayoutGrid,
+  BookOpen,
+  ArrowRight,
+  Zap,
+} from 'lucide-vue-next';
 import WhatsAppIcon from '~/components/icons/WhatsAppIcon.vue';
 import { useCart } from '~/composables/useCart';
 import { buildWhatsAppLink } from '~/utils/phone';
+import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
 import type { Book } from '~/types';
+
+const router = useRouter();
 
 const emit = defineEmits<{
   search: [query: string];
@@ -18,18 +32,26 @@ const { totalItems, openDrawer } = useCart();
 const isMobileOpen = ref(false);
 const searchInput = ref('');
 const isCategoryDropdownOpen = ref(false);
+const isSearchDropdownOpen = ref(false);
+const selectedIndex = ref(-1);
+const searchContainerRef = ref<HTMLElement | null>(null);
+
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 let closeTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Dynamic categories extraction from live catalog products
+// Catalog products dataset
 const { data: catalogResponse } = await useFetch<any>('/api/products');
+
+const allBooks = computed<Book[]>(() => {
+  const remoteList: Book[] = Array.isArray(catalogResponse.value)
+    ? catalogResponse.value
+    : catalogResponse.value?.products || [];
+  return mergeWithSeeds(remoteList, [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS], 12);
+});
 
 const categories = computed<string[]>(() => {
   const set = new Set<string>();
-  const list: Book[] = Array.isArray(catalogResponse.value)
-    ? catalogResponse.value
-    : catalogResponse.value?.products || [];
-
-  for (const book of list) {
+  for (const book of allBooks.value) {
     if (book?.category_name && book.category_name.trim()) {
       const name = book.category_name.trim();
       if (name.toLowerCase() !== 'general') {
@@ -37,33 +59,95 @@ const categories = computed<string[]>(() => {
       }
     }
   }
-  if (set.size > 0) {
-    return Array.from(set).sort();
-  }
-  return [
-    'Business & Finance',
-    'Psychology & Self-Help',
-    'Self-Help',
-    'Fiction & Literature',
-    'Christian Books',
-    'Education & Textbooks',
-    'Biographies & Memoir',
-  ];
+  return set.size > 0
+    ? Array.from(set).sort()
+    : ['Business & Finance', 'Psychology & Self-Help', 'Self-Help', 'Fiction & Literature'];
 });
 
-const helpWhatsAppUrl = buildWhatsAppLink(
-  'Hello The Sunrise Bookstore Help Desk, I need assistance with an order or book inquiry.'
-);
+// Live recommendations from global search endpoint
+const searchSuggestions = ref<Book[]>([]);
+
+watch(searchInput, (val) => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  selectedIndex.value = -1;
+
+  const queryText = val.trim();
+  if (!queryText) {
+    searchSuggestions.value = [];
+    isSearchDropdownOpen.value = false;
+    return;
+  }
+
+  debounceTimer = setTimeout(async () => {
+    try {
+      const results = await $fetch<Book[]>('/api/products/search', {
+        query: { q: queryText },
+      });
+      searchSuggestions.value = results || [];
+      isSearchDropdownOpen.value = searchSuggestions.value.length > 0;
+    } catch {
+      searchSuggestions.value = [];
+    }
+  }, 120);
+});
+
+function getLowestPrice(book: Book): number {
+  if (book.formats && book.formats.length > 0) {
+    const prices = book.formats.map((f) => f.price).filter((p) => p > 0);
+    if (prices.length > 0) return Math.min(...prices);
+  }
+  return book.price || 999;
+}
+
+function selectSuggestion(book: Book): void {
+  isSearchDropdownOpen.value = false;
+  searchInput.value = book.name;
+  router.push(`/book/${book.slug}`);
+}
 
 function submitSearch(): void {
+  if (selectedIndex.value >= 0 && searchSuggestions.value[selectedIndex.value]) {
+    selectSuggestion(searchSuggestions.value[selectedIndex.value]);
+    return;
+  }
+
   if (searchInput.value.trim()) {
     emit('search', searchInput.value.trim());
+    isSearchDropdownOpen.value = false;
     isMobileOpen.value = false;
+  }
+}
+
+function handleKeydown(e: KeyboardEvent): void {
+  if (!isSearchDropdownOpen.value || searchSuggestions.value.length === 0) {
+    if (e.key === 'Enter') {
+      submitSearch();
+    }
+    return;
+  }
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    selectedIndex.value = (selectedIndex.value + 1) % searchSuggestions.value.length;
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    selectedIndex.value = (selectedIndex.value - 1 + searchSuggestions.value.length) % searchSuggestions.value.length;
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (selectedIndex.value >= 0 && searchSuggestions.value[selectedIndex.value]) {
+      selectSuggestion(searchSuggestions.value[selectedIndex.value]);
+    } else {
+      submitSearch();
+    }
+  } else if (e.key === 'Escape') {
+    isSearchDropdownOpen.value = false;
   }
 }
 
 function clearSearch(): void {
   searchInput.value = '';
+  searchSuggestions.value = [];
+  isSearchDropdownOpen.value = false;
   emit('search', '');
 }
 
@@ -74,9 +158,7 @@ function chooseCategory(cat: string): void {
 
   if (process.client) {
     const el = document.getElementById('catalog-results');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
   }
 }
 
@@ -106,7 +188,14 @@ function handleOutsideClick(event: MouseEvent): void {
   if (target && !target.closest('#nav-category-dropdown') && !target.closest('#nav-category-trigger')) {
     isCategoryDropdownOpen.value = false;
   }
+  if (searchContainerRef.value && !searchContainerRef.value.contains(target as Node)) {
+    isSearchDropdownOpen.value = false;
+  }
 }
+
+const helpWhatsAppUrl = buildWhatsAppLink(
+  'Hello The Sunrise Bookstore Help Desk, I need assistance with an order or book inquiry.'
+);
 
 onMounted(() => {
   if (process.client) {
@@ -119,6 +208,7 @@ onUnmounted(() => {
     window.removeEventListener('click', handleOutsideClick);
   }
   if (closeTimer) clearTimeout(closeTimer);
+  if (debounceTimer) clearTimeout(debounceTimer);
 });
 </script>
 
@@ -126,9 +216,8 @@ onUnmounted(() => {
   <header
     class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-[0_4px_20px_rgba(5,34,25,0.05)] select-none"
   >
-    <!-- Top Row: Logo & Main Navigation -->
+    <!-- Top Row: Brand & Navigation -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-      <!-- Left: Mobile Trigger & Authentic Logo -->
       <div class="flex items-center gap-3">
         <button
           type="button"
@@ -151,11 +240,9 @@ onUnmounted(() => {
         </NuxtLink>
       </div>
 
-      <!-- Center: Desktop Navigation Links -->
+      <!-- Center Desktop Navigation -->
       <nav aria-label="Main Navigation" class="hidden md:flex items-center gap-6 lg:gap-7 text-xs font-bold tracking-wide">
-        <a href="/" class="nav-link-item text-[#052219] py-1 cursor-pointer">
-          Home
-        </a>
+        <a href="/" class="nav-link-item text-[#052219] py-1 cursor-pointer">Home</a>
 
         <!-- Category Dropdown -->
         <div
@@ -184,8 +271,6 @@ onUnmounted(() => {
               v-if="isCategoryDropdownOpen"
               id="nav-category-dropdown"
               class="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-left"
-              @mouseenter="onCategoryMouseEnter"
-              @mouseleave="onCategoryMouseLeave"
             >
               <div class="px-4 py-1.5 border-b border-slate-100 flex items-center justify-between">
                 <span class="text-[10px] font-mono uppercase font-bold text-slate-400 tracking-wider">
@@ -224,22 +309,9 @@ onUnmounted(() => {
           </Transition>
         </div>
 
-        <a href="#flash-sale" class="nav-link-item text-[#052219] py-1 cursor-pointer">
-          Flash Sale
-        </a>
-
-        <a href="#bestsellers-week" class="nav-link-item text-[#052219] py-1 cursor-pointer">
-          Bestsellers
-        </a>
-
-        <a
-          :href="helpWhatsAppUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="nav-link-item text-[#052219] py-1 cursor-pointer"
-        >
-          Help
-        </a>
+        <a href="#flash-sale" class="nav-link-item text-[#052219] py-1 cursor-pointer">Flash Sale</a>
+        <a href="#bestsellers-week" class="nav-link-item text-[#052219] py-1 cursor-pointer">Bestsellers</a>
+        <a :href="helpWhatsAppUrl" target="_blank" rel="noopener noreferrer" class="nav-link-item text-[#052219] py-1 cursor-pointer">Help</a>
 
         <button
           type="button"
@@ -252,7 +324,7 @@ onUnmounted(() => {
         </button>
       </nav>
 
-      <!-- Right: WhatsApp & Shopping Cart -->
+      <!-- Right Action Icons -->
       <div class="flex items-center gap-3 sm:gap-4 text-[#052219]">
         <a
           :href="helpWhatsAppUrl"
@@ -260,7 +332,6 @@ onUnmounted(() => {
           rel="noopener noreferrer"
           class="p-1.5 text-[#25D366] hover:text-[#1eb855] hover:bg-emerald-50 rounded-lg transition-all cursor-pointer flex items-center justify-center"
           title="Chat with The Sunrise Bookstore on WhatsApp"
-          aria-label="Chat with The Sunrise Bookstore on WhatsApp"
         >
           <WhatsAppIcon class="w-5 h-5 transition-transform hover:scale-110" />
         </a>
@@ -282,24 +353,28 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Row 2: Search Bar Strip -->
+    <!-- Row 2: Search Bar Strip with Instant Recommendations Dropdown -->
     <div
-      class="w-full px-4 sm:px-6 py-2.5 sm:py-3 transition-all relative overflow-hidden bg-slate-50/70 border-t border-slate-100"
+      ref="searchContainerRef"
+      class="w-full px-4 sm:px-6 py-2.5 sm:py-3 transition-all relative overflow-visible bg-slate-50/70 border-t border-slate-100"
     >
       <form
-        class="max-w-3xl mx-auto flex items-center gap-2 relative z-10"
+        class="max-w-3xl mx-auto flex items-center gap-2 relative z-20"
         @submit.prevent="submitSearch"
       >
         <div
-          class="flex-1 flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white border border-slate-200 transition-all shadow-xs focus-within:border-[#E8750D] focus-within:ring-1 focus-within:ring-[#E8750D]/20"
+          class="flex-1 flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white border border-slate-200 transition-all shadow-xs focus-within:border-[#E8750D] focus-within:ring-1 focus-within:ring-[#E8750D]/20 relative"
         >
           <Search :size="16" class="text-slate-400 flex-shrink-0" />
 
           <input
             v-model="searchInput"
             type="text"
-            placeholder="Search books by title, author, or ISBN..."
+            placeholder="Search books by title, author, or keyword (typo tolerant)..."
             class="w-full bg-transparent text-xs sm:text-sm text-[#052219] placeholder:text-slate-400 outline-none font-sans font-medium"
+            autocomplete="off"
+            @focus="isSearchDropdownOpen = searchSuggestions.length > 0"
+            @keydown="handleKeydown"
           />
 
           <button
@@ -320,6 +395,82 @@ onUnmounted(() => {
           <Search :size="13" class="hidden sm:inline" />
           <span>Search</span>
         </button>
+
+        <!-- RECOMMENDATIONS DROPDOWN -->
+        <Transition name="dropdown-fade">
+          <div
+            v-if="isSearchDropdownOpen && searchSuggestions.length > 0"
+            class="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-50 text-left divide-y divide-slate-100"
+          >
+            <div class="px-4 py-2 bg-[#FFF7ED] border-b border-orange-100 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-1.5 text-[#C25E00] font-semibold text-[11px]">
+                <Zap :size="12" class="text-[#E8750D]" />
+                <span>Recommendations for "<strong>{{ searchInput }}</strong>":</span>
+              </div>
+              <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Closest Match</span>
+            </div>
+
+            <!-- List of Recommended Titles -->
+            <div class="max-h-80 overflow-y-auto py-1">
+              <button
+                v-for="(book, idx) in searchSuggestions"
+                :key="book.id"
+                type="button"
+                class="w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
+                :class="selectedIndex === idx ? 'bg-[#FFF7ED] text-[#C25E00]' : 'hover:bg-slate-50 text-slate-900'"
+                @click="selectSuggestion(book)"
+              >
+                <!-- Cover & Info -->
+                <div class="flex items-center gap-3 min-w-0 flex-1">
+                  <div class="w-9 h-12 rounded bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center shadow-2xs">
+                    <img
+                      v-if="book.images?.[0]?.image_url || (book as any).cover_image_url"
+                      :src="book.images?.[0]?.image_url || (book as any).cover_image_url"
+                      :alt="book.name"
+                      class="w-full h-full object-cover"
+                      referrerpolicy="no-referrer"
+                    />
+                    <BookOpen v-else :size="14" class="text-slate-400 opacity-40" />
+                  </div>
+
+                  <div class="min-w-0 flex-1 space-y-0.5">
+                    <h4 class="text-xs font-bold truncate leading-tight">
+                      {{ book.name }}
+                    </h4>
+                    <p class="text-[11px] text-slate-500 truncate italic">
+                      {{ book.author || book.category_name || 'Publisher Edition' }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Price and Arrow -->
+                <div class="flex items-center gap-2 flex-shrink-0 text-right font-mono">
+                  <div class="flex flex-col items-end">
+                    <span class="text-xs font-bold text-slate-900">
+                      KSh {{ getLowestPrice(book).toLocaleString('en-KE') }}
+                    </span>
+                    <span class="text-[9px] text-slate-400 uppercase">
+                      {{ book.formats?.some(f => f.format === 'pdf') ? 'eBook / Print' : 'Hardcopy' }}
+                    </span>
+                  </div>
+                  <ArrowRight :size="13" class="text-slate-400" />
+                </div>
+              </button>
+            </div>
+
+            <!-- Footer: See all filtered matches -->
+            <div class="p-2.5 bg-slate-50 text-center border-t border-slate-100">
+              <button
+                type="button"
+                class="text-xs font-bold text-[#E8750D] hover:underline cursor-pointer inline-flex items-center gap-1"
+                @click="submitSearch"
+              >
+                <span>Filter all results for "{{ searchInput }}" in catalogue</span>
+                <ArrowRight :size="12" />
+              </button>
+            </div>
+          </div>
+        </Transition>
       </form>
     </div>
 
@@ -338,15 +489,9 @@ onUnmounted(() => {
           <span>Request Book!</span>
         </button>
 
-        <a href="/" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">
-          Home
-        </a>
-        <a href="#flash-sale" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">
-          Flash Sale
-        </a>
-        <a href="#bestsellers-week" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">
-          Bestsellers
-        </a>
+        <a href="/" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">Home</a>
+        <a href="#flash-sale" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">Flash Sale</a>
+        <a href="#bestsellers-week" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">Bestsellers</a>
         <a :href="helpWhatsAppUrl" target="_blank" rel="noopener noreferrer" class="py-2 text-[#25D366] font-bold border-b border-slate-100 flex items-center gap-2" @click="isMobileOpen = false">
           <WhatsAppIcon class="w-4 h-4 text-[#25D366]" />
           <span>Help & Support</span>

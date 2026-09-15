@@ -14,8 +14,9 @@ import CartDrawer from '~/components/storefront/CartDrawer.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
 import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
 import Pagination from '~/components/ui/Pagination.vue';
-import { BookOpen, ChevronDown, Check, Sparkles, Filter, X } from 'lucide-vue-next';
+import { BookOpen, ChevronDown, Check, Sparkles, Filter, X, Zap } from 'lucide-vue-next';
 import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import { fuzzySearchBooks } from '~/utils/fuzzy';
 import type { Book } from '~/types';
 
 // Pagination & Search Reactive State
@@ -91,11 +92,55 @@ useHead({
 });
 
 const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
-const books = computed<Book[]>(() => catalogData.value?.products || []);
-const totalBooksCount = computed(() => catalogData.value?.total ?? 0);
-const totalPages = computed(() => catalogData.value?.totalPages ?? 1);
 
-// Range status text: e.g. "Showing 1–50 of 240 titles"
+// Full known catalog pool (used for fuzzy fallback when exact backend search has typos)
+const fullCatalogPool = computed<Book[]>(() => {
+  const remoteList: Book[] = Array.isArray(showcaseBooks.value)
+    ? showcaseBooks.value
+    : showcaseBooks.value?.products || [];
+  return mergeWithSeeds(remoteList, [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS], 20);
+});
+
+// Final display books: uses backend query if found; otherwise runs fuzzy ranking on typos
+const isFuzzyFallbackActive = ref(false);
+
+const displayBooks = computed<Book[]>(() => {
+  const rawQuery = debouncedSearch.value.trim();
+  const backendResults = catalogData.value?.products || [];
+
+  if (!rawQuery) {
+    isFuzzyFallbackActive.value = false;
+    return backendResults;
+  }
+
+  // If backend found exact/partial matches, use them
+  if (backendResults.length > 0) {
+    isFuzzyFallbackActive.value = false;
+    return backendResults;
+  }
+
+  // If backend returned 0 matches (e.g. "atmoic habts"), run fuzzy matching
+  const fuzzyResults = fuzzySearchBooks(fullCatalogPool.value, rawQuery, 0.35, itemsPerPage.value);
+  if (fuzzyResults.length > 0) {
+    isFuzzyFallbackActive.value = true;
+    return fuzzyResults.map((r) => r.book);
+  }
+
+  isFuzzyFallbackActive.value = false;
+  return [];
+});
+
+const totalBooksCount = computed(() => {
+  if (isFuzzyFallbackActive.value) return displayBooks.value.length;
+  return catalogData.value?.total ?? displayBooks.value.length;
+});
+
+const totalPages = computed(() => {
+  if (isFuzzyFallbackActive.value) return Math.max(1, Math.ceil(displayBooks.value.length / itemsPerPage.value));
+  return catalogData.value?.totalPages ?? 1;
+});
+
+// Range status text
 const paginationRangeText = computed(() => {
   const total = totalBooksCount.value;
   if (total === 0) return '0 titles';
@@ -381,7 +426,25 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- SKELETON LOADING GRID: 8 Cards shown during fetch -->
+      <!-- FUZZY TYPO MATCH NOTICE BANNER -->
+      <div
+        v-if="isFuzzyFallbackActive"
+        class="p-3.5 bg-[#FFF7ED] border border-orange-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-[#C25E00]"
+      >
+        <div class="flex items-center gap-2">
+          <Zap :size="16" class="text-[#E8750D] flex-shrink-0" />
+          <span>No exact title found for "<strong>{{ debouncedSearch }}</strong>". Displaying closest matching books below:</span>
+        </div>
+        <button
+          type="button"
+          class="text-xs font-bold underline hover:text-[#E8750D] cursor-pointer flex-shrink-0"
+          @click="clearAllFilters"
+        >
+          View All Books
+        </button>
+      </div>
+
+      <!-- SKELETON LOADING GRID -->
       <div
         v-if="booksStatus === 'pending'"
         class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center"
@@ -406,13 +469,13 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- REAL BOOKS 50-PER-PAGE GRID -->
+      <!-- REAL BOOKS 50-PER-PAGE / FUZZY FILTERED GRID -->
       <div
-        v-else-if="books.length > 0"
+        v-else-if="displayBooks.length > 0"
         class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center animate-in fade-in duration-300"
       >
         <BookCard
-          v-for="book in books"
+          v-for="book in displayBooks"
           :key="book.id"
           :book="book"
           @request-seed="handleRequestSeed"
@@ -426,7 +489,7 @@ onUnmounted(() => {
       >
         <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
         <h3 class="font-display font-bold text-base text-slate-800">
-          No books found in the catalogue
+          No books found matching "{{ debouncedSearch }}"
         </h3>
         <p class="text-xs text-slate-500 max-w-xs mx-auto">
           We can source any title in Kenya directly for you upon request via WhatsApp.
@@ -478,4 +541,4 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-6px);
 }
-</style>
+	</style>
