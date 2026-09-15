@@ -8,8 +8,9 @@ import { ofetch } from 'ofetch';
 function resolveApiBaseUrl(raw?: string): string {
   const base = (raw || process.env.SOKO_API_BASE_URL || 'http://localhost:3000/api/v1')
     .trim()
-    .replace(/\/+$/, '');
-  return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
+    .replace(/\/+$/, '')
+    .replace(/\/api\/v1$/, '');
+  return `${base}/api/v1`;
 }
 
 export default defineEventHandler(async (event) => {

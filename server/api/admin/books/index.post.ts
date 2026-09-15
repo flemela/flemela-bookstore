@@ -6,6 +6,14 @@
 import { defineEventHandler, readBody, getCookie, getHeader, createError } from 'h3';
 import { ofetch } from 'ofetch';
 
+function resolveApiBaseUrl(raw?: string): string {
+  const base = (raw || process.env.SOKO_API_BASE_URL || 'http://localhost:3000/api/v1')
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/api\/v1$/, '');
+  return `${base}/api/v1`;
+}
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
 
@@ -20,11 +28,11 @@ export default defineEventHandler(async (event) => {
   if (!token) throw createError({ statusCode: 401, message: 'Unauthorized' });
 
   const body = await readBody(event);
-  const sokoApiUrl = config.sokoApiBaseUrl || process.env.SOKO_API_BASE_URL || 'http://localhost:3000';
+  const baseApiUrl = resolveApiBaseUrl(config.sokoApiBaseUrl);
 
   try {
-    // Soko uses /products/bulk for creation
-    const res = await ofetch<{ success: boolean; data: any[] }>(`${sokoApiUrl}/api/v1/products/bulk`, {
+    // Soko uses /products/bulk for creation (takes an array of 1 to 10 products)
+    const res = await ofetch<{ success: boolean; data: any[] }>(`${baseApiUrl}/products/bulk`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -43,7 +51,7 @@ export default defineEventHandler(async (event) => {
     return created;
   } catch (err: any) {
     throw createError({
-      statusCode: err.statusCode || 500,
+      statusCode: err.statusCode || err.response?.status || 500,
       statusMessage: 'Creation Error',
       data: { message: err.data?.message || err.message || 'Failed to create book in catalog.' },
     });

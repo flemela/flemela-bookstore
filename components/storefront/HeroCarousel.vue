@@ -1,8 +1,7 @@
 <!-- components/storefront/HeroCarousel.vue -->
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import { useElementVisibility } from '@vueuse/core';
 import type { PublicBanner } from '~/server/api/banners/index.get';
 
 export interface CarouselSlide {
@@ -20,7 +19,6 @@ const emit = defineEmits<{
   navigateFlashSale: [];
 }>();
 
-// Capture status from useFetch
 const { data: remoteBanners, status: bannersStatus } = await useFetch<PublicBanner[]>('/api/banners');
 
 // Clean visual fallback banners
@@ -66,11 +64,6 @@ const totalSlides = computed(() => activeSlides.value.length);
 
 const activeIndex = ref(0);
 const isPaused = ref(false);
-const carouselContainer = ref<HTMLElement | null>(null);
-
-// VueUse: Detects if carousel is visible on screen
-const isVisible = useElementVisibility(carouselContainer);
-
 let autoplayTimer: ReturnType<typeof setInterval> | undefined;
 
 const touchStartX = ref(0);
@@ -80,8 +73,7 @@ const dragOffset = ref(0);
 
 function startAutoplay(): void {
   stopAutoplay();
-  // Only run autoplay when visible in viewport and not hovered
-  if (totalSlides.value > 1 && !isPaused.value && isVisible.value) {
+  if (totalSlides.value > 1 && !isPaused.value) {
     autoplayTimer = setInterval(() => {
       nextSlide();
     }, 5000);
@@ -97,19 +89,10 @@ function stopAutoplay(): void {
 
 function resumeAutoplay(): void {
   stopAutoplay();
-  if (totalSlides.value > 1 && !isPaused.value && isVisible.value) {
+  if (totalSlides.value > 1 && !isPaused.value) {
     startAutoplay();
   }
 }
-
-// Pause timer when scrolled off-screen; resume when back in view
-watch(isVisible, (visible) => {
-  if (visible) {
-    startAutoplay();
-  } else {
-    stopAutoplay();
-  }
-});
 
 function nextSlide(): void {
   if (totalSlides.value <= 1) return;
@@ -219,7 +202,6 @@ onUnmounted(() => {
 
 <template>
   <section
-    ref="carouselContainer"
     class="relative select-none bg-theme-dark text-white overflow-hidden w-full"
     aria-roledescription="carousel"
     aria-label="Promotions and Announcements"
@@ -242,12 +224,11 @@ onUnmounted(() => {
     <!-- Loaded Carousel Viewport -->
     <div
       v-else
-      class="relative w-full overflow-hidden aspect-[16/9] sm:aspect-[21/9] md:aspect-[24/9] min-h-[220px] sm:min-h-[300px] md:min-h-[360px] max-h-[460px] animate-in fade-in duration-300"
+      class="relative w-full overflow-hidden aspect-[16/9] sm:aspect-[21/9] md:aspect-[24/9] min-h-[220px] sm:min-h-[300px] md:min-h-[360px] max-h-[460px]"
       @touchstart.passive="handleTouchStart"
       @touchmove.passive="handleTouchMove"
       @touchend="handleTouchEnd"
     >
-      <!-- Continuous Sliding Track -->
       <div
         class="flex w-full h-full will-change-transform"
         :style="trackTransformStyle"
@@ -260,7 +241,6 @@ onUnmounted(() => {
           aria-roledescription="slide"
           :aria-label="`${index + 1} of ${totalSlides}`"
         >
-          <!-- Pure Visual Banner Artwork (Clickable if ctaLink exists) -->
           <component
             :is="slide.ctaLink ? 'a' : 'div'"
             :href="slide.ctaLink || undefined"

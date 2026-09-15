@@ -2,7 +2,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ShoppingCart, Menu, X, Search, ChevronDown, Sparkles, LayoutGrid } from 'lucide-vue-next';
-import { useWindowScroll } from '@vueuse/core';
 import WhatsAppIcon from '~/components/icons/WhatsAppIcon.vue';
 import { useCart } from '~/composables/useCart';
 import { buildWhatsAppLink } from '~/utils/phone';
@@ -15,10 +14,6 @@ const emit = defineEmits<{
 }>();
 
 const { totalItems, openDrawer } = useCart();
-const { y: scrollY } = useWindowScroll();
-
-// Elevated state when scrolled past top notice
-const isScrolled = computed(() => scrollY.value > 20);
 
 const isMobileOpen = ref(false);
 const searchInput = ref('');
@@ -127,16 +122,11 @@ onUnmounted(() => {
 
 <template>
   <header
-    class="bg-white/95 backdrop-blur-md sticky top-0 z-40 transition-all duration-300 select-none"
-    :class="[
-      isScrolled
-        ? 'border-b border-slate-200 shadow-[0_8px_30px_rgba(5,34,25,0.08)]'
-        : 'border-b border-slate-200/80 shadow-[0_4px_20px_rgba(5,34,25,0.04)]'
-    ]"
+    class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-[0_4px_20px_rgba(5,34,25,0.05)] select-none"
   >
-    <!-- Top Row: Real Logo & Main Navigation -->
+    <!-- Top Row: Logo & Main Navigation -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-      <!-- Left: Mobile Trigger & Authentic Real Logo -->
+      <!-- Left: Mobile Trigger & Authentic Logo -->
       <div class="flex items-center gap-3">
         <button
           type="button"
@@ -260,7 +250,7 @@ onUnmounted(() => {
         </button>
       </nav>
 
-      <!-- Right: WhatsApp Messenger & Shopping Cart -->
+      <!-- Right: WhatsApp & Shopping Cart -->
       <div class="flex items-center gap-3 sm:gap-4 text-[#052219]">
         <a
           :href="helpWhatsAppUrl"
@@ -292,28 +282,14 @@ onUnmounted(() => {
 
     <!-- Row 2: Search Bar Strip -->
     <div
-      class="w-full px-4 sm:px-6 py-2.5 sm:py-3 transition-all relative overflow-hidden"
-      style="
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.35) 100%);
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
-        border-top: 1px solid rgba(255, 255, 255, 0.7);
-        border-bottom: 1px solid rgba(5, 34, 25, 0.08);
-        box-shadow: 0 8px 32px 0 rgba(5, 34, 25, 0.04), inset 0 1px 1px 0 rgba(255, 255, 255, 0.9);
-      "
+      class="w-full px-4 sm:px-6 py-2.5 sm:py-3 transition-all relative overflow-hidden bg-slate-50/70 border-t border-slate-100"
     >
       <form
         class="max-w-3xl mx-auto flex items-center gap-2 relative z-10"
         @submit.prevent="submitSearch"
       >
         <div
-          class="flex-1 flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full transition-all duration-300 shadow-sm focus-within:shadow-md"
-          style="
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.95);
-          "
+          class="flex-1 flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white border border-slate-200 transition-all shadow-xs focus-within:border-[#E8750D] focus-within:ring-1 focus-within:ring-[#E8750D]/20"
         >
           <Search :size="16" class="text-slate-400 flex-shrink-0" />
 
@@ -348,7 +324,7 @@ onUnmounted(() => {
     <!-- Mobile Drawer Menu -->
     <div
       v-if="isMobileOpen"
-      class="md:hidden bg-white/95 backdrop-blur-xl border-t border-slate-200 px-6 py-4 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto"
+      class="md:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto"
     >
       <div class="flex flex-col gap-2.5 text-xs font-bold tracking-wide">
         <button
