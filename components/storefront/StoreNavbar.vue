@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ShoppingCart, Menu, X, Search, ChevronDown, Sparkles, LayoutGrid } from 'lucide-vue-next';
+import { useWindowScroll } from '@vueuse/core';
 import WhatsAppIcon from '~/components/icons/WhatsAppIcon.vue';
 import { useCart } from '~/composables/useCart';
 import { buildWhatsAppLink } from '~/utils/phone';
@@ -14,6 +15,10 @@ const emit = defineEmits<{
 }>();
 
 const { totalItems, openDrawer } = useCart();
+const { y: scrollY } = useWindowScroll();
+
+// Elevated state when scrolled past top notice
+const isScrolled = computed(() => scrollY.value > 20);
 
 const isMobileOpen = ref(false);
 const searchInput = ref('');
@@ -65,7 +70,6 @@ function clearSearch(): void {
   emit('search', '');
 }
 
-// Category selection: scrolls smoothly to catalogue and applies filter
 function chooseCategory(cat: string): void {
   emit('select-category', cat);
   isCategoryDropdownOpen.value = false;
@@ -85,7 +89,6 @@ function handleRequestBookClick(event: Event): void {
   isMobileOpen.value = false;
 }
 
-// Hover ergonomics with grace buffer
 function onCategoryMouseEnter(): void {
   if (closeTimer) clearTimeout(closeTimer);
   isCategoryDropdownOpen.value = true;
@@ -124,11 +127,15 @@ onUnmounted(() => {
 
 <template>
   <header
-    class="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40 transition-all shadow-[0_4px_20px_rgba(5,34,25,0.04)] select-none"
+    class="bg-white/95 backdrop-blur-md sticky top-0 z-40 transition-all duration-300 select-none"
+    :class="[
+      isScrolled
+        ? 'border-b border-slate-200 shadow-[0_8px_30px_rgba(5,34,25,0.08)]'
+        : 'border-b border-slate-200/80 shadow-[0_4px_20px_rgba(5,34,25,0.04)]'
+    ]"
   >
     <!-- Top Row: Real Logo & Main Navigation -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-      
       <!-- Left: Mobile Trigger & Authentic Real Logo -->
       <div class="flex items-center gap-3">
         <button
@@ -152,15 +159,13 @@ onUnmounted(() => {
         </NuxtLink>
       </div>
 
-      <!-- Center: Desktop Navigation Links + Polished Side-by-Side Category Toggle + Request CTA -->
+      <!-- Center: Desktop Navigation Links -->
       <nav aria-label="Main Navigation" class="hidden md:flex items-center gap-6 lg:gap-7 text-xs font-bold tracking-wide">
-        
-        <!-- Home Link -->
         <a href="/" class="nav-link-item text-[#052219] py-1 cursor-pointer">
           Home
         </a>
 
-        <!-- Category Dropdown: Icon Side-by-Side with Text and Chevron -->
+        <!-- Category Dropdown -->
         <div
           class="relative"
           @mouseenter="onCategoryMouseEnter"
@@ -173,7 +178,6 @@ onUnmounted(() => {
             :class="{ 'border-[#E8750D] text-[#E8750D] bg-[#FFF7ED] shadow-2xs': isCategoryDropdownOpen }"
             @click.stop="toggleCategoryDropdown"
           >
-            <!-- Icon Side-by-Side to Text -->
             <LayoutGrid :size="13" class="text-[#E8750D] flex-shrink-0" />
             <span>Categories</span>
             <ChevronDown
@@ -183,7 +187,6 @@ onUnmounted(() => {
             />
           </button>
 
-          <!-- Dropdown Menu Panel -->
           <Transition name="dropdown-fade">
             <div
               v-if="isCategoryDropdownOpen"
@@ -202,7 +205,6 @@ onUnmounted(() => {
               </div>
 
               <div class="max-h-72 overflow-y-auto py-1">
-                <!-- General / All Books Option (Shows all books) -->
                 <button
                   type="button"
                   class="w-full text-left px-4 py-2 hover:bg-[#FFF7ED] hover:text-[#C25E00] text-xs font-bold transition-colors text-slate-900 cursor-pointer flex items-center justify-between group"
@@ -230,17 +232,14 @@ onUnmounted(() => {
           </Transition>
         </div>
 
-        <!-- Flash Sale Link -->
         <a href="#flash-sale" class="nav-link-item text-[#052219] py-1 cursor-pointer">
           Flash Sale
         </a>
 
-        <!-- Bestsellers Link -->
         <a href="#bestsellers-week" class="nav-link-item text-[#052219] py-1 cursor-pointer">
           Bestsellers
         </a>
 
-        <!-- Help Link -->
         <a
           :href="helpWhatsAppUrl"
           target="_blank"
@@ -250,7 +249,6 @@ onUnmounted(() => {
           Help
         </a>
 
-        <!-- Brand-Orange "Request Book!" Action Button -->
         <button
           type="button"
           class="bg-[#E8750D] hover:bg-[#D45B05] active:bg-[#B84A00] text-white text-[11px] font-extrabold uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-xs hover:shadow transition-all duration-200 cursor-pointer active:scale-95 flex items-center gap-1.5 flex-shrink-0"
@@ -262,9 +260,8 @@ onUnmounted(() => {
         </button>
       </nav>
 
-      <!-- Right: Action Icons (WhatsApp Messenger + Supermarket Cart) -->
+      <!-- Right: WhatsApp Messenger & Shopping Cart -->
       <div class="flex items-center gap-3 sm:gap-4 text-[#052219]">
-        <!-- 1. WhatsApp Messenger Button -->
         <a
           :href="helpWhatsAppUrl"
           target="_blank"
@@ -276,7 +273,6 @@ onUnmounted(() => {
           <WhatsAppIcon class="w-5 h-5 transition-transform hover:scale-110" />
         </a>
 
-        <!-- 2. Supermarket Cart Button with Live Item Badge -->
         <button
           type="button"
           class="relative p-1.5 text-[#052219] hover:text-[#E8750D] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
@@ -355,7 +351,6 @@ onUnmounted(() => {
       class="md:hidden bg-white/95 backdrop-blur-xl border-t border-slate-200 px-6 py-4 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto"
     >
       <div class="flex flex-col gap-2.5 text-xs font-bold tracking-wide">
-        <!-- Request Book CTA -->
         <button
           type="button"
           class="w-full text-center bg-[#E8750D] hover:bg-[#D45B05] text-white font-extrabold text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer mb-1"
@@ -365,40 +360,21 @@ onUnmounted(() => {
           <span>Request Book!</span>
         </button>
 
-        <a
-          href="/"
-          class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors"
-          @click="isMobileOpen = false"
-        >
+        <a href="/" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">
           Home
         </a>
-        <a
-          href="#flash-sale"
-          class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors"
-          @click="isMobileOpen = false"
-        >
+        <a href="#flash-sale" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">
           Flash Sale
         </a>
-        <a
-          href="#bestsellers-week"
-          class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors"
-          @click="isMobileOpen = false"
-        >
+        <a href="#bestsellers-week" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">
           Bestsellers
         </a>
-        <a
-          :href="helpWhatsAppUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="py-2 text-[#25D366] font-bold border-b border-slate-100 flex items-center gap-2"
-          @click="isMobileOpen = false"
-        >
+        <a :href="helpWhatsAppUrl" target="_blank" rel="noopener noreferrer" class="py-2 text-[#25D366] font-bold border-b border-slate-100 flex items-center gap-2" @click="isMobileOpen = false">
           <WhatsAppIcon class="w-4 h-4 text-[#25D366]" />
           <span>Help & Support</span>
         </a>
       </div>
 
-      <!-- Mobile Categories List -->
       <div class="pt-2">
         <span class="text-[10px] font-mono uppercase font-bold text-slate-400 tracking-wider block mb-2">
           Filter by Category:

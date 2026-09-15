@@ -6,6 +6,13 @@
 import { defineEventHandler, getCookie, getHeader, createError } from 'h3';
 import { ofetch } from 'ofetch';
 
+function resolveApiBaseUrl(raw?: string): string {
+  const base = (raw || process.env.SOKO_API_BASE_URL || 'http://localhost:3000/api/v1')
+    .trim()
+    .replace(/\/+$/, '');
+  return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
+}
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
   const id = event.context.params?.id;
@@ -31,11 +38,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized' });
   }
 
-  const sokoApiUrl = config.sokoApiBaseUrl || process.env.SOKO_API_BASE_URL || 'http://localhost:3000';
+  const baseApiUrl = resolveApiBaseUrl(config.sokoApiBaseUrl);
 
   try {
     const res = await ofetch<{ success: boolean; data?: any }>(
-      `${sokoApiUrl}/api/v1/products/${id}`,
+      `${baseApiUrl}/products/${id}`,
       {
         method: 'GET',
         headers: { Authorization: `Bearer ${token}` },

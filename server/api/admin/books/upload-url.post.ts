@@ -1,7 +1,4 @@
-// =============================================================================
-// flemela/server/api/admin/books/upload-url.post.ts
-// Canonical Upload URL Negotiation Endpoint
-// =============================================================================
+// server/api/admin/books/upload-url.post.ts
 
 import { defineEventHandler, readBody, getCookie, getHeader, createError } from 'h3';
 import { ofetch } from 'ofetch';
@@ -34,7 +31,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const sokoApiUrl = config.sokoApiBaseUrl || process.env.SOKO_API_BASE_URL || 'http://localhost:3000';
+  const sokoApiUrl = config.sokoApiBaseUrl || process.env.SOKO_API_BASE_URL || 'http://localhost:3000/api/v1';
 
   try {
     const res = await ofetch<{
@@ -69,10 +66,17 @@ export default defineEventHandler(async (event) => {
 
     return res.data;
   } catch (err: any) {
+    const backendMessage =
+      err.data?.error?.message ||
+      err.data?.message ||
+      err.response?._data?.error?.message ||
+      err.message ||
+      'Storage service unavailable.';
+
     throw createError({
       statusCode: err.statusCode || err.response?.status || 500,
-      statusMessage: 'Upload Error',
-      data: { message: err.data?.message || err.message || 'Storage service unavailable.' },
+      statusMessage: backendMessage,
+      data: { message: backendMessage },
     });
   }
 });

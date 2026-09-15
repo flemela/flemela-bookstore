@@ -11,6 +11,7 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
+    '@vueuse/nuxt',
   ],
 
   css: [
@@ -36,14 +37,12 @@ export default defineNuxtConfig({
       title: 'The Sunrise Bookstore — Authentic Books & eBooks in Kenya',
       meta: [
         { charset: 'utf-8' },
-        // Viewport optimized for Google Mobile-Friendly Indexing (zoom-accessible)
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'theme-color', content: '#052219' },
         {
           name: 'description',
           content: 'Discover handpicked bestsellers, finance, literature, and self-help books at The Sunrise Bookstore, Diamond Mall, Parklands, Nairobi. Fast doorstep delivery across Kenya and instant eBook downloads.',
         },
-        // SEO & Indexing Directives
         { name: 'robots', content: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' },
         { name: 'googlebot', content: 'index, follow' },
         { name: 'author', content: 'The Sunrise Bookstore' },
@@ -52,7 +51,6 @@ export default defineNuxtConfig({
         { name: 'geo.placename', content: 'Nairobi, Parklands' },
         { name: 'geo.position', content: '-1.2612;36.8167' },
         { name: 'ICBM', content: '-1.2612, 36.8167' },
-        // Open Graph Global Defaults
         { property: 'og:site_name', content: 'The Sunrise Bookstore' },
         { property: 'og:type', content: 'website' },
         { property: 'og:locale', content: 'en_KE' },
@@ -63,7 +61,6 @@ export default defineNuxtConfig({
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
         { property: 'og:image:alt', content: 'The Sunrise Bookstore Library' },
-        // Twitter Card Defaults
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'The Sunrise Bookstore — Authentic Books & eBooks in Kenya' },
         { name: 'twitter:description', content: 'Discover handpicked bestsellers, finance, literature, and self-help books at The Sunrise Bookstore, Diamond Mall, Parklands, Nairobi.' },

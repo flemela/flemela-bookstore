@@ -5,6 +5,13 @@
 import { defineEventHandler, readBody, getCookie, getHeader, createError } from 'h3';
 import { ofetch } from 'ofetch';
 
+function resolveApiBaseUrl(raw?: string): string {
+  const base = (raw || process.env.SOKO_API_BASE_URL || 'http://localhost:3000/api/v1')
+    .trim()
+    .replace(/\/+$/, '');
+  return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
+}
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
   const { productId, formatId } = event.context.params || {};
@@ -17,7 +24,6 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Extract session token
   let token = getCookie(event, 'flemela_admin_session');
   if (!token) {
     const authHeader = getHeader(event, 'authorization');
@@ -35,11 +41,10 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody(event);
-  const sokoApiUrl = config.sokoApiBaseUrl || process.env.SOKO_API_BASE_URL || 'http://localhost:3000';
-  const targetUrl = `${sokoApiUrl}/api/v1/products/${productId}/formats/${formatId}`;
+  const baseApiUrl = resolveApiBaseUrl(config.sokoApiBaseUrl);
+  const targetUrl = `${baseApiUrl}/products/${productId}/formats/${formatId}`;
 
   try {
-    // ofetch bypasses Nitro's internal route scoring union, eliminating TS2321
     return await ofetch(targetUrl, {
       method: 'PATCH',
       headers: {
