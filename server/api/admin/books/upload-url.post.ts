@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
         expiresInSeconds: number;
       };
       error?: { message: string };
-    }>(`${sokoApiUrl}/api/v1/books/upload-url`, {
+    }>(`${sokoApiUrl}/books/upload-url`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
