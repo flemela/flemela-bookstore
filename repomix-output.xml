@@ -32,7 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Files matching these patterns are excluded: node_modules
+- Files matching these patterns are excluded: node_modules, soko-frontend
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -195,6 +195,7 @@ server/
     products/
       [slug].get.ts
       index.get.ts
+      search.get.ts
     stores/
       current.get.ts
     checkout.post.ts
@@ -209,11 +210,13 @@ server/
 types/
   index.ts
 utils/
+  fuzzy.ts
   phone.ts
 .env.example
 .gitignore
 app.vue
 dump.rdb
+error.vue
 nuxt.config.ts
 package.json
 README.md
@@ -3529,6 +3532,43 @@ export default defineEventHandler(async (event) => {
 });
 </file>
 
+<file path="server/api/products/search.get.ts">
+// server/api/products/search.get.ts
+// =============================================================================
+// Global Catalog Search & Typo-Tolerant Matcher (Searches ALL Pages)
+// =============================================================================
+
+import { sokoClient } from '../../utils/sokoClient';
+import { fuzzySearchBooks } from '../../../utils/fuzzy';
+import type { Book } from '~/types';
+
+export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig();
+  const storeSlug = config.public.storeSlug;
+  const query = getQuery(event);
+  const q = typeof query.q === 'string' ? query.q.trim() : '';
+
+  if (!q) {
+    return [];
+  }
+
+  try {
+    const res = await sokoClient<any>(`/public/stores/${storeSlug}/products`, {
+      query: {
+        limit: 250,
+      },
+    });
+
+    const allBooks: Book[] = Array.isArray(res) ? res : res?.products || [];
+    const matches = fuzzySearchBooks(allBooks, q, 0.35, 6);
+
+    return matches.map((m) => m.book);
+  } catch {
+    return [];
+  }
+});
+</file>
+
 <file path="server/api/stores/current.get.ts">
 // =============================================================================
 // server/api/stores/current.get.ts
@@ -3728,6 +3768,117 @@ ${xmlEntries}
 });
 </file>
 
+<file path="utils/fuzzy.ts">
+// utils/fuzzy.ts
+// =============================================================================
+// Typo-Tolerant Fuzzy Search & Levenshtein Distance Matcher
+// =============================================================================
+
+import type { Book } from '~/types';
+
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  return dp[m][n];
+}
+
+export function fuzzyScore(query: string, target: string): number {
+  const q = query.toLowerCase().trim();
+  const t = target.toLowerCase().trim();
+
+  if (!q || !t) return 0;
+  if (t === q) return 1.0;
+  if (t.startsWith(q)) return 0.95;
+  if (t.includes(q)) return 0.85;
+
+  const queryTokens = q.split(/\s+/).filter(Boolean);
+  const targetTokens = t.split(/\s+/).filter(Boolean);
+
+  let totalScore = 0;
+
+  for (const qToken of queryTokens) {
+    let bestTokenScore = 0;
+
+    for (const tToken of targetTokens) {
+      if (tToken === qToken) {
+        bestTokenScore = Math.max(bestTokenScore, 1.0);
+      } else if (tToken.startsWith(qToken) || tToken.includes(qToken)) {
+        bestTokenScore = Math.max(bestTokenScore, 0.8);
+      } else {
+        const maxLen = Math.max(qToken.length, tToken.length);
+        const dist = levenshteinDistance(qToken, tToken);
+        const allowedErrors = qToken.length <= 4 ? 1 : 2;
+
+        if (dist <= allowedErrors) {
+          const score = 1.0 - dist / maxLen;
+          bestTokenScore = Math.max(bestTokenScore, score * 0.78);
+        }
+      }
+    }
+
+    totalScore += bestTokenScore;
+  }
+
+  return totalScore / queryTokens.length;
+}
+
+export interface FuzzySearchResult {
+  book: Book;
+  score: number;
+  isFuzzyMatch: boolean;
+}
+
+export function fuzzySearchBooks(
+  books: Book[],
+  query: string,
+  minThreshold = 0.35,
+  limit = 20
+): FuzzySearchResult[] {
+  const cleanQuery = query.trim();
+  if (!cleanQuery) return [];
+
+  const results: FuzzySearchResult[] = [];
+
+  for (const book of books) {
+    const titleScore = fuzzyScore(cleanQuery, book.name || '');
+    const authorScore = book.author ? fuzzyScore(cleanQuery, book.author) * 0.85 : 0;
+    const catScore = book.category_name ? fuzzyScore(cleanQuery, book.category_name) * 0.6 : 0;
+    const skuScore = book.sku ? fuzzyScore(cleanQuery, book.sku) * 0.9 : 0;
+
+    const maxScore = Math.max(titleScore, authorScore, catScore, skuScore);
+
+    if (maxScore >= minThreshold) {
+      const isExact = (book.name || '').toLowerCase().includes(cleanQuery.toLowerCase());
+      results.push({
+        book,
+        score: maxScore,
+        isFuzzyMatch: !isExact,
+      });
+    }
+  }
+
+  return results
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+</file>
+
 <file path=".env.example">
 # Server-only Soko Backend Connection
 SOKO_API_BASE_URL=http://localhost:3000/api/v1
@@ -3763,6 +3914,35 @@ logs
 .env
 .env.*
 !.env.example
+</file>
+
+<file path="error.vue">
+<!-- error.vue (in project root) -->
+<script setup lang="ts">
+import type { NuxtError } from '#app';
+
+defineProps<{
+  error: NuxtError;
+}>();
+
+const handleError = () => clearError({ redirect: '/' });
+</script>
+
+<template>
+  <div class="min-h-screen p-8 bg-slate-900 text-white font-mono">
+    <h1 class="text-2xl font-bold text-red-400">
+      {{ error.statusCode }} — {{ error.statusMessage || 'Server Error' }}
+    </h1>
+    <p class="mt-2 text-yellow-300">{{ error.message }}</p>
+    <pre class="mt-4 p-4 bg-black/60 rounded text-xs overflow-auto text-slate-300">{{ error.stack }}</pre>
+    <button
+      class="mt-6 px-4 py-2 bg-emerald-600 rounded text-sm font-bold"
+      @click="handleError"
+    >
+      Clear &amp; Return Home
+    </button>
+  </div>
+</template>
 </file>
 
 <file path="README.md">
@@ -13844,406 +14024,6 @@ export default defineEventHandler(async (event) => {
 });
 </file>
 
-<file path="components/storefront/BentoCategories.vue">
-<!-- components/storefront/BentoCategories.vue -->
-<script setup lang="ts">
-import { computed } from 'vue';
-import {
-  BookOpen,
-  GraduationCap,
-  Heart,
-  Briefcase,
-  Laptop,
-  Star,
-  ArrowRight,
-} from 'lucide-vue-next';
-import type { Book } from '~/types';
-
-const emit = defineEmits<{
-  select: [category: string];
-}>();
-
-// Fetch live catalog books to dynamically calculate inventory counts
-const { data: catalogBooks } = await useFetch<Book[]>('/api/products');
-
-const CATEGORIES = [
-  {
-    name: 'Fiction',
-    icon: BookOpen,
-    fallbackCount: '2,450+',
-    query: 'Fiction',
-  },
-  {
-    name: 'Non-Fiction',
-    icon: GraduationCap,
-    fallbackCount: '1,630+',
-    query: 'Non-Fiction',
-  },
-  {
-    name: 'Self Help',
-    icon: Heart,
-    fallbackCount: '980+',
-    query: 'Self-Help',
-  },
-  {
-    name: 'Business',
-    icon: Briefcase,
-    fallbackCount: '760+',
-    query: 'Business',
-  },
-  {
-    name: 'Technology',
-    icon: Laptop,
-    fallbackCount: '540+',
-    query: 'Technology',
-  },
-  {
-    name: 'Classic',
-    icon: Star,
-    fallbackCount: '320+',
-    query: 'Classic',
-  },
-];
-
-const countMap = computed(() => {
-  const map = new Map<string, number>();
-  if (catalogBooks.value) {
-    for (const b of catalogBooks.value) {
-      const cat = (b.category_name || 'General').toLowerCase();
-      map.set(cat, (map.get(cat) || 0) + 1);
-    }
-  }
-  return map;
-});
-
-function getDisplayCount(query: string, fallback: string): string {
-  const q = query.toLowerCase();
-  let total = 0;
-  for (const [cat, count] of countMap.value.entries()) {
-    if (cat.includes(q) || q.includes(cat)) {
-      total += count;
-    }
-  }
-  return total > 0 ? `${total} titles` : `${fallback} titles`;
-}
-
-function handleCategoryClick(catQuery: string): void {
-  emit('select', catQuery);
-  if (process.client) {
-    const el = document.getElementById('catalog-results');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  }
-}
-</script>
-
-<template>
-  <section id="categories-grid" class="py-8 sm:py-12 md:py-14 px-4 max-w-7xl mx-auto w-full space-y-4 sm:space-y-6 select-none">
-    <!-- Header with 'View all ->' Link -->
-    <div class="flex items-end justify-between border-b border-theme-border pb-3">
-      <div>
-        <h2 class="font-sans font-extrabold text-xl sm:text-2xl md:text-3xl text-theme-ink tracking-tight">
-          Shop by Category
-        </h2>
-      </div>
-
-      <button
-        type="button"
-        class="text-xs sm:text-sm font-bold text-theme-accent hover:text-theme-accent-hover flex items-center gap-1 transition-colors cursor-pointer"
-        @click="handleCategoryClick('General')"
-      >
-        <span>View all</span>
-        <ArrowRight :size="14" />
-      </button>
-    </div>
-
-    <!-- Category Grid: 3 Icons per Row on Mobile (<768px), 6 Items per Row on Tablet & Desktop (>=768px) -->
-    <div class="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
-      <button
-        v-for="cat in CATEGORIES"
-        :key="cat.name"
-        type="button"
-        class="bg-theme-surface hover:bg-theme-surface-subtle border border-theme-border hover:border-theme-accent rounded-xl p-2.5 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center gap-1.5 sm:gap-2.5 transition-all duration-200 group cursor-pointer shadow-2xs hover:shadow-xs hover:-translate-y-0.5 min-h-[92px] sm:min-h-[110px]"
-        @click="handleCategoryClick(cat.query)"
-      >
-        <!-- Category Line Icon -->
-        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-theme-surface-subtle group-hover:bg-theme-accent-soft text-theme-ink group-hover:text-theme-accent flex items-center justify-center transition-colors flex-shrink-0">
-          <component :is="cat.icon" :size="18" class="sm:w-5 sm:h-5 stroke-[1.75]" />
-        </div>
-
-        <!-- Category Title and Count -->
-        <div class="space-y-0.5 w-full min-w-0">
-          <h3 class="font-sans font-bold text-[11px] sm:text-xs md:text-sm text-theme-ink group-hover:text-theme-accent transition-colors leading-tight truncate">
-            {{ cat.name }}
-          </h3>
-          <p class="text-[9px] sm:text-[10px] md:text-[11px] text-theme-ink-muted font-medium truncate">
-            {{ getDisplayCount(cat.query, cat.fallbackCount) }}
-          </p>
-        </div>
-      </button>
-    </div>
-  </section>
-</template>
-</file>
-
-<file path="data/seeds.ts">
-// data/seeds.ts
-// =============================================================================
-// Permanent Seed Collection with Proportional Digital Strikethrough Pricing
-// =============================================================================
-
-import type { Book } from '~/types';
-
-export interface SeedBook extends Book {
-  isSeed: true;
-}
-
-export const MONTHLY_TOP_SEEDS: SeedBook[] = [
-  {
-    id: 'seed-atomic-habits',
-    org_id: 'seed-flemela',
-    category_id: 'cat-self-help',
-    category_name: 'Psychology & Self-Help',
-    name: 'Atomic Habits',
-    slug: 'atomic-habits',
-    author: 'James Clear',
-    description: 'An Easy & Proven Way to Build Good Habits & Break Bad Ones.',
-    price: 1250,
-    compare_at_price: 1800,
-    status: 'published',
-    badge: 'NO1_PICK',
-    images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg', 
-      image_public_id: 'seed_atomic_habits', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-1', product_id: 'seed-atomic-habits', format: 'hardcopy', price: 1250, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-2', product_id: 'seed-atomic-habits', format: 'pdf', price: 199, compare_at_price: 290, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-2b', product_id: 'seed-atomic-habits', format: 'epub', price: 199, compare_at_price: 290, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-dont-make-me-think',
-    org_id: 'seed-flemela',
-    category_id: 'cat-business',
-    category_name: 'Business & Finance',
-    name: "Don't Make Me Think",
-    slug: 'dont-make-me-think',
-    author: 'Steve Krug',
-    description: 'A Common Sense Approach to Web Usability.',
-    price: 1100,
-    compare_at_price: 1550,
-    status: 'published',
-    badge: 'NO1_PICK',
-    images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/isbn/9780321965516-L.jpg', 
-      image_public_id: 'seed_dont_make_me_think', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-3', product_id: 'seed-dont-make-me-think', format: 'hardcopy', price: 1100, compare_at_price: 1550, file_url: null, file_public_id: null, file_size_bytes: null, stock: 18, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-4', product_id: 'seed-dont-make-me-think', format: 'pdf', price: 149, compare_at_price: 210, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-4b', product_id: 'seed-dont-make-me-think', format: 'epub', price: 149, compare_at_price: 210, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-psychology-of-money',
-    org_id: 'seed-flemela',
-    category_id: 'cat-finance',
-    category_name: 'Business & Finance',
-    name: 'The Psychology of Money',
-    slug: 'psychology-of-money',
-    author: 'Morgan Housel',
-    description: 'Timeless lessons on wealth, greed, and happiness.',
-    price: 1150,
-    compare_at_price: 1650,
-    status: 'published',
-    badge: 'NO1_PICK',
-    images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/isbn/9780857197689-L.jpg', 
-      image_public_id: 'seed_psych_money', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-5', product_id: 'seed-psychology-of-money', format: 'hardcopy', price: 1150, compare_at_price: 1650, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-6', product_id: 'seed-psychology-of-money', format: 'pdf', price: 149, compare_at_price: 215, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-6b', product_id: 'seed-psychology-of-money', format: 'epub', price: 149, compare_at_price: 215, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-deep-work',
-    org_id: 'seed-flemela',
-    category_id: 'cat-self-help',
-    category_name: 'Psychology & Self-Help',
-    name: 'Deep Work',
-    slug: 'deep-work',
-    author: 'Cal Newport',
-    description: 'Rules for Focused Success in a Distracted World.',
-    price: 1100,
-    compare_at_price: 1500,
-    status: 'published',
-    badge: 'NO1_PICK',
-    images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/isbn/9781455586691-L.jpg', 
-      image_public_id: 'seed_deep_work', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-7', product_id: 'seed-deep-work', format: 'hardcopy', price: 1100, compare_at_price: 1500, file_url: null, file_public_id: null, file_size_bytes: null, stock: 14, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-7b', product_id: 'seed-deep-work', format: 'pdf', price: 149, compare_at_price: 205, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-7c', product_id: 'seed-deep-work', format: 'epub', price: 149, compare_at_price: 205, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-];
-
-export const DEALS_SEEDS: SeedBook[] = [
-  {
-    id: 'seed-48-laws-of-power',
-    org_id: 'seed-flemela',
-    category_id: 'cat-self-help',
-    category_name: 'Psychology & Self-Help',
-    name: 'The 48 Laws of Power',
-    slug: '48-laws-of-power',
-    author: 'Robert Greene',
-    description: 'Amoral, cunning, and instructive wisdom on mastery.',
-    price: 1200,
-    compare_at_price: 1800,
-    status: 'published',
-    badge: 'DEAL_OF_WEEK',
-    images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/isbn/9780140280197-L.jpg', 
-      image_public_id: 'seed_48_laws', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-8', product_id: 'seed-48-laws-of-power', format: 'hardcopy', price: 1200, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-8b', product_id: 'seed-48-laws-of-power', format: 'pdf', price: 199, compare_at_price: 300, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-8c', product_id: 'seed-48-laws-of-power', format: 'epub', price: 199, compare_at_price: 300, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-rich-dad-poor-dad',
-    org_id: 'seed-flemela',
-    category_id: 'cat-finance',
-    category_name: 'Business & Finance',
-    name: 'Rich Dad Poor Dad',
-    slug: 'rich-dad-poor-dad',
-    author: 'Robert T. Kiyosaki',
-    description: 'What the rich teach their kids about money.',
-    price: 850,
-    compare_at_price: 1300,
-    status: 'published',
-    badge: 'DEAL_OF_WEEK',
-    images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/isbn/9781612680194-L.jpg', 
-      image_public_id: 'seed_rich_dad', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-9', product_id: 'seed-rich-dad-poor-dad', format: 'hardcopy', price: 850, compare_at_price: 1300, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-9b', product_id: 'seed-rich-dad-poor-dad', format: 'pdf', price: 149, compare_at_price: 230, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-9c', product_id: 'seed-rich-dad-poor-dad', format: 'epub', price: 149, compare_at_price: 230, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-the-alchemist',
-    org_id: 'seed-flemela',
-    category_id: 'cat-fiction',
-    category_name: 'Fiction & Literature',
-    name: 'The Alchemist',
-    slug: 'the-alchemist',
-    author: 'Paulo Coelho',
-    description: 'A magical fable about following your dream.',
-    price: 750,
-    compare_at_price: 1100,
-    status: 'published',
-    badge: 'DEAL_OF_WEEK',
-    images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/isbn/9780062315007-L.jpg', 
-      image_public_id: 'seed_the_alchemist', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-10', product_id: 'seed-the-alchemist', format: 'hardcopy', price: 750, compare_at_price: 1100, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-10b', product_id: 'seed-the-alchemist', format: 'pdf', price: 149, compare_at_price: 220, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-10c', product_id: 'seed-the-alchemist', format: 'epub', price: 149, compare_at_price: 220, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-  {
-    id: 'seed-1984',
-    org_id: 'seed-flemela',
-    category_id: 'cat-fiction',
-    category_name: 'Fiction & Literature',
-    name: '1984',
-    slug: '1984-george-orwell',
-    author: 'George Orwell',
-    description: 'The dystopian masterpiece of surveillance and truth.',
-    price: 799,
-    compare_at_price: 1200,
-    status: 'published',
-    badge: 'DEAL_OF_WEEK',
-    images: [{ 
-      image_url: 'https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg', 
-      image_public_id: 'seed_1984', 
-      sort_order: 0 
-    }],
-    formats: [
-      { id: 'seed-fmt-11', product_id: 'seed-1984', format: 'hardcopy', price: 799, compare_at_price: 1200, file_url: null, file_public_id: null, file_size_bytes: null, stock: 22, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-11b', product_id: 'seed-1984', format: 'pdf', price: 149, compare_at_price: 225, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
-      { id: 'seed-fmt-11c', product_id: 'seed-1984', format: 'epub', price: 149, compare_at_price: 225, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
-    ],
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-    isSeed: true,
-  },
-];
-
-export function mergeWithSeeds(
-  realBooks: Book[] | null | undefined,
-  seedCollection: SeedBook[],
-  targetCount = 4
-): Book[] {
-  const real = realBooks || [];
-
-  if (real.length >= targetCount) {
-    return real;
-  }
-
-  const realSlugs = new Set(real.map((b) => b.slug.toLowerCase()));
-  const realNames = new Set(real.map((b) => b.name.toLowerCase()));
-
-  const eligibleSeeds = seedCollection.filter(
-    (s) => !realSlugs.has(s.slug.toLowerCase()) && !realNames.has(s.name.toLowerCase())
-  );
-
-  const needed = targetCount - real.length;
-  return [...real, ...eligibleSeeds.slice(0, needed)];
-}
-</file>
-
 <file path="pages/admin/books/[id]/edit.vue">
 <!-- =============================================================================
      flemela/pages/admin/books/[id]/edit.vue
@@ -14857,6 +14637,151 @@ async function handleUpdate() {
 </script>
 </file>
 
+<file path="components/storefront/BentoCategories.vue">
+<!-- components/storefront/BentoCategories.vue -->
+<script setup lang="ts">
+import { computed } from 'vue';
+import {
+  BookOpen,
+  GraduationCap,
+  Heart,
+  Briefcase,
+  Laptop,
+  Star,
+  ArrowRight,
+} from 'lucide-vue-next';
+import type { Book } from '~/types';
+
+const emit = defineEmits<{
+  select: [category: string];
+}>();
+
+// Fetch live catalog books to dynamically calculate inventory counts
+const { data: catalogResponse } = await useFetch<any>('/api/products');
+
+const CATEGORIES = [
+  {
+    name: 'Fiction',
+    icon: BookOpen,
+    fallbackCount: '2,450+',
+    query: 'Fiction',
+  },
+  {
+    name: 'Non-Fiction',
+    icon: GraduationCap,
+    fallbackCount: '1,630+',
+    query: 'Non-Fiction',
+  },
+  {
+    name: 'Self Help',
+    icon: Heart,
+    fallbackCount: '980+',
+    query: 'Self-Help',
+  },
+  {
+    name: 'Business',
+    icon: Briefcase,
+    fallbackCount: '760+',
+    query: 'Business',
+  },
+  {
+    name: 'Technology',
+    icon: Laptop,
+    fallbackCount: '540+',
+    query: 'Technology',
+  },
+  {
+    name: 'Classic',
+    icon: Star,
+    fallbackCount: '320+',
+    query: 'Classic',
+  },
+];
+
+const countMap = computed(() => {
+  const map = new Map<string, number>();
+  const list: Book[] = Array.isArray(catalogResponse.value)
+    ? catalogResponse.value
+    : catalogResponse.value?.products || [];
+
+  for (const b of list) {
+    const cat = (b?.category_name || 'General').toLowerCase();
+    map.set(cat, (map.get(cat) || 0) + 1);
+  }
+  return map;
+});
+
+function getDisplayCount(query: string, fallback: string): string {
+  const q = query.toLowerCase();
+  let total = 0;
+  for (const [cat, count] of countMap.value.entries()) {
+    if (cat.includes(q) || q.includes(cat)) {
+      total += count;
+    }
+  }
+  return total > 0 ? `${total} titles` : `${fallback} titles`;
+}
+
+function handleCategoryClick(catQuery: string): void {
+  emit('select', catQuery);
+  if (process.client) {
+    const el = document.getElementById('catalog-results');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+}
+</script>
+
+<template>
+  <section id="categories-grid" class="py-8 sm:py-12 md:py-14 px-4 max-w-7xl mx-auto w-full space-y-4 sm:space-y-6 select-none">
+    <!-- Header with 'View all ->' Link -->
+    <div class="flex items-end justify-between border-b border-theme-border pb-3">
+      <div>
+        <h2 class="font-sans font-extrabold text-xl sm:text-2xl md:text-3xl text-theme-ink tracking-tight">
+          Shop by Category
+        </h2>
+      </div>
+
+      <button
+        type="button"
+        class="text-xs sm:text-sm font-bold text-theme-accent hover:text-theme-accent-hover flex items-center gap-1 transition-colors cursor-pointer"
+        @click="handleCategoryClick('General')"
+      >
+        <span>View all</span>
+        <ArrowRight :size="14" />
+      </button>
+    </div>
+
+    <!-- Category Grid: 3 Icons per Row on Mobile (<768px), 6 Items per Row on Tablet & Desktop (>=768px) -->
+    <div class="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+      <button
+        v-for="cat in CATEGORIES"
+        :key="cat.name"
+        type="button"
+        class="bg-theme-surface hover:bg-theme-surface-subtle border border-theme-border hover:border-theme-accent rounded-xl p-2.5 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center gap-1.5 sm:gap-2.5 transition-all duration-200 group cursor-pointer shadow-2xs hover:shadow-xs hover:-translate-y-0.5 min-h-[92px] sm:min-h-[110px]"
+        @click="handleCategoryClick(cat.query)"
+      >
+        <!-- Category Line Icon -->
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-theme-surface-subtle group-hover:bg-theme-accent-soft text-theme-ink group-hover:text-theme-accent flex items-center justify-center transition-colors flex-shrink-0">
+          <component :is="cat.icon" :size="18" class="sm:w-5 sm:h-5 stroke-[1.75]" />
+        </div>
+
+        <!-- Category Title and Count -->
+        <div class="space-y-0.5 w-full min-w-0">
+          <h3 class="font-sans font-bold text-[11px] sm:text-xs md:text-sm text-theme-ink group-hover:text-theme-accent transition-colors leading-tight truncate">
+            {{ cat.name }}
+          </h3>
+          <p class="text-[9px] sm:text-[10px] md:text-[11px] text-theme-ink-muted font-medium truncate">
+            {{ getDisplayCount(cat.query, cat.fallbackCount) }}
+          </p>
+        </div>
+      </button>
+    </div>
+  </section>
+</template>
+</file>
+
 <file path="components/storefront/HeroCarousel.vue">
 <!-- components/storefront/HeroCarousel.vue -->
 <script setup lang="ts">
@@ -15170,426 +15095,267 @@ onUnmounted(() => {
 </template>
 </file>
 
-<file path="components/storefront/StoreNavbar.vue">
-<!-- components/storefront/StoreNavbar.vue -->
-<script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { ShoppingCart, Menu, X, Search, ChevronDown, Sparkles, LayoutGrid } from 'lucide-vue-next';
-import WhatsAppIcon from '~/components/icons/WhatsAppIcon.vue';
-import { useCart } from '~/composables/useCart';
-import { buildWhatsAppLink } from '~/utils/phone';
+<file path="data/seeds.ts">
+// data/seeds.ts
+// =============================================================================
+// Permanent Seed Collection with Proportional Digital Strikethrough Pricing
+// =============================================================================
+
 import type { Book } from '~/types';
 
-const emit = defineEmits<{
-  search: [query: string];
-  'select-category': [category: string];
-  'request-book': [];
-}>();
+export interface SeedBook extends Book {
+  isSeed: true;
+}
 
-const { totalItems, openDrawer } = useCart();
+export const MONTHLY_TOP_SEEDS: SeedBook[] = [
+  {
+    id: 'seed-atomic-habits',
+    org_id: 'seed-flemela',
+    category_id: 'cat-self-help',
+    category_name: 'Psychology & Self-Help',
+    name: 'Atomic Habits',
+    slug: 'atomic-habits',
+    author: 'James Clear',
+    description: 'An Easy & Proven Way to Build Good Habits & Break Bad Ones.',
+    price: 1250,
+    compare_at_price: 1800,
+    status: 'published',
+    badge: 'NO1_PICK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg', 
+      image_public_id: 'seed_atomic_habits', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-1', product_id: 'seed-atomic-habits', format: 'hardcopy', price: 1250, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-2', product_id: 'seed-atomic-habits', format: 'pdf', price: 199, compare_at_price: 290, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-2b', product_id: 'seed-atomic-habits', format: 'epub', price: 199, compare_at_price: 290, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-dont-make-me-think',
+    org_id: 'seed-flemela',
+    category_id: 'cat-business',
+    category_name: 'Business & Finance',
+    name: "Don't Make Me Think",
+    slug: 'dont-make-me-think',
+    author: 'Steve Krug',
+    description: 'A Common Sense Approach to Web Usability.',
+    price: 1100,
+    compare_at_price: 1550,
+    status: 'published',
+    badge: 'NO1_PICK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780321965516-L.jpg', 
+      image_public_id: 'seed_dont_make_me_think', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-3', product_id: 'seed-dont-make-me-think', format: 'hardcopy', price: 1100, compare_at_price: 1550, file_url: null, file_public_id: null, file_size_bytes: null, stock: 18, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-4', product_id: 'seed-dont-make-me-think', format: 'pdf', price: 149, compare_at_price: 210, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-4b', product_id: 'seed-dont-make-me-think', format: 'epub', price: 149, compare_at_price: 210, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-psychology-of-money',
+    org_id: 'seed-flemela',
+    category_id: 'cat-finance',
+    category_name: 'Business & Finance',
+    name: 'The Psychology of Money',
+    slug: 'psychology-of-money',
+    author: 'Morgan Housel',
+    description: 'Timeless lessons on wealth, greed, and happiness.',
+    price: 1150,
+    compare_at_price: 1650,
+    status: 'published',
+    badge: 'NO1_PICK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780857197689-L.jpg', 
+      image_public_id: 'seed_psych_money', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-5', product_id: 'seed-psychology-of-money', format: 'hardcopy', price: 1150, compare_at_price: 1650, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-6', product_id: 'seed-psychology-of-money', format: 'pdf', price: 149, compare_at_price: 215, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-6b', product_id: 'seed-psychology-of-money', format: 'epub', price: 149, compare_at_price: 215, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-deep-work',
+    org_id: 'seed-flemela',
+    category_id: 'cat-self-help',
+    category_name: 'Psychology & Self-Help',
+    name: 'Deep Work',
+    slug: 'deep-work',
+    author: 'Cal Newport',
+    description: 'Rules for Focused Success in a Distracted World.',
+    price: 1100,
+    compare_at_price: 1500,
+    status: 'published',
+    badge: 'NO1_PICK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9781455586691-L.jpg', 
+      image_public_id: 'seed_deep_work', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-7', product_id: 'seed-deep-work', format: 'hardcopy', price: 1100, compare_at_price: 1500, file_url: null, file_public_id: null, file_size_bytes: null, stock: 14, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-7b', product_id: 'seed-deep-work', format: 'pdf', price: 149, compare_at_price: 205, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-7c', product_id: 'seed-deep-work', format: 'epub', price: 149, compare_at_price: 205, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+];
 
-const isMobileOpen = ref(false);
-const searchInput = ref('');
-const isCategoryDropdownOpen = ref(false);
-let closeTimer: ReturnType<typeof setTimeout> | undefined;
+export const DEALS_SEEDS: SeedBook[] = [
+  {
+    id: 'seed-48-laws-of-power',
+    org_id: 'seed-flemela',
+    category_id: 'cat-self-help',
+    category_name: 'Psychology & Self-Help',
+    name: 'The 48 Laws of Power',
+    slug: '48-laws-of-power',
+    author: 'Robert Greene',
+    description: 'Amoral, cunning, and instructive wisdom on mastery.',
+    price: 1200,
+    compare_at_price: 1800,
+    status: 'published',
+    badge: 'DEAL_OF_WEEK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780140280197-L.jpg', 
+      image_public_id: 'seed_48_laws', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-8', product_id: 'seed-48-laws-of-power', format: 'hardcopy', price: 1200, compare_at_price: 1800, file_url: null, file_public_id: null, file_size_bytes: null, stock: 30, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-8b', product_id: 'seed-48-laws-of-power', format: 'pdf', price: 199, compare_at_price: 300, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-8c', product_id: 'seed-48-laws-of-power', format: 'epub', price: 199, compare_at_price: 300, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-rich-dad-poor-dad',
+    org_id: 'seed-flemela',
+    category_id: 'cat-finance',
+    category_name: 'Business & Finance',
+    name: 'Rich Dad Poor Dad',
+    slug: 'rich-dad-poor-dad',
+    author: 'Robert T. Kiyosaki',
+    description: 'What the rich teach their kids about money.',
+    price: 850,
+    compare_at_price: 1300,
+    status: 'published',
+    badge: 'DEAL_OF_WEEK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9781612680194-L.jpg', 
+      image_public_id: 'seed_rich_dad', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-9', product_id: 'seed-rich-dad-poor-dad', format: 'hardcopy', price: 850, compare_at_price: 1300, file_url: null, file_public_id: null, file_size_bytes: null, stock: 25, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-9b', product_id: 'seed-rich-dad-poor-dad', format: 'pdf', price: 149, compare_at_price: 230, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-9c', product_id: 'seed-rich-dad-poor-dad', format: 'epub', price: 149, compare_at_price: 230, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-the-alchemist',
+    org_id: 'seed-flemela',
+    category_id: 'cat-fiction',
+    category_name: 'Fiction & Literature',
+    name: 'The Alchemist',
+    slug: 'the-alchemist',
+    author: 'Paulo Coelho',
+    description: 'A magical fable about following your dream.',
+    price: 750,
+    compare_at_price: 1100,
+    status: 'published',
+    badge: 'DEAL_OF_WEEK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780062315007-L.jpg', 
+      image_public_id: 'seed_the_alchemist', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-10', product_id: 'seed-the-alchemist', format: 'hardcopy', price: 750, compare_at_price: 1100, file_url: null, file_public_id: null, file_size_bytes: null, stock: 20, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-10b', product_id: 'seed-the-alchemist', format: 'pdf', price: 149, compare_at_price: 220, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-10c', product_id: 'seed-the-alchemist', format: 'epub', price: 149, compare_at_price: 220, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+  {
+    id: 'seed-1984',
+    org_id: 'seed-flemela',
+    category_id: 'cat-fiction',
+    category_name: 'Fiction & Literature',
+    name: '1984',
+    slug: '1984-george-orwell',
+    author: 'George Orwell',
+    description: 'The dystopian masterpiece of surveillance and truth.',
+    price: 799,
+    compare_at_price: 1200,
+    status: 'published',
+    badge: 'DEAL_OF_WEEK',
+    images: [{ 
+      image_url: 'https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg', 
+      image_public_id: 'seed_1984', 
+      sort_order: 0 
+    }],
+    formats: [
+      { id: 'seed-fmt-11', product_id: 'seed-1984', format: 'hardcopy', price: 799, compare_at_price: 1200, file_url: null, file_public_id: null, file_size_bytes: null, stock: 22, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-11b', product_id: 'seed-1984', format: 'pdf', price: 149, compare_at_price: 225, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' },
+      { id: 'seed-fmt-11c', product_id: 'seed-1984', format: 'epub', price: 149, compare_at_price: 225, file_url: null, file_public_id: null, file_size_bytes: null, stock: null, created_at: '', updated_at: '' }
+    ],
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    isSeed: true,
+  },
+];
 
-// Dynamic categories extraction from live catalog products
-const { data: catalogBooks } = await useFetch<Book[]>('/api/products');
+export function mergeWithSeeds(
+  realBooks: Book[] | null | undefined,
+  seedCollection: SeedBook[],
+  targetCount = 4
+): Book[] {
+  const real = realBooks || [];
 
-const categories = computed<string[]>(() => {
-  const set = new Set<string>();
-  if (catalogBooks.value) {
-    for (const book of catalogBooks.value) {
-      if (book.category_name && book.category_name.trim()) {
-        const name = book.category_name.trim();
-        if (name.toLowerCase() !== 'general') {
-          set.add(name);
-        }
-      }
-    }
+  if (real.length >= targetCount) {
+    return real;
   }
-  if (set.size > 0) {
-    return Array.from(set).sort();
-  }
-  return [
-    'Business & Finance',
-    'Psychology & Self-Help',
-    'Self-Help',
-    'Fiction & Literature',
-    'Christian Books',
-    'Education & Textbooks',
-    'Biographies & Memoir',
-  ];
-});
 
-const helpWhatsAppUrl = buildWhatsAppLink(
-  'Hello The Sunrise Bookstore Help Desk, I need assistance with an order or book inquiry.'
-);
+  const realSlugs = new Set(
+    real.map((b) => (b?.slug ? b.slug.toLowerCase() : ''))
+  );
+  const realNames = new Set(
+    real.map((b) => (b?.name ? b.name.toLowerCase() : ''))
+  );
 
-function submitSearch(): void {
-  if (searchInput.value.trim()) {
-    emit('search', searchInput.value.trim());
-    isMobileOpen.value = false;
-  }
+  const eligibleSeeds = seedCollection.filter(
+    (s) =>
+      !realSlugs.has((s.slug || '').toLowerCase()) &&
+      !realNames.has((s.name || '').toLowerCase())
+  );
+
+  const needed = targetCount - real.length;
+  return [...real, ...eligibleSeeds.slice(0, needed)];
 }
-
-function clearSearch(): void {
-  searchInput.value = '';
-  emit('search', '');
-}
-
-function chooseCategory(cat: string): void {
-  emit('select-category', cat);
-  isCategoryDropdownOpen.value = false;
-  isMobileOpen.value = false;
-
-  if (process.client) {
-    const el = document.getElementById('catalog-results');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  }
-}
-
-function handleRequestBookClick(event: Event): void {
-  event.preventDefault();
-  emit('request-book');
-  isMobileOpen.value = false;
-}
-
-function onCategoryMouseEnter(): void {
-  if (closeTimer) clearTimeout(closeTimer);
-  isCategoryDropdownOpen.value = true;
-}
-
-function onCategoryMouseLeave(): void {
-  closeTimer = setTimeout(() => {
-    isCategoryDropdownOpen.value = false;
-  }, 160);
-}
-
-function toggleCategoryDropdown(): void {
-  isCategoryDropdownOpen.value = !isCategoryDropdownOpen.value;
-}
-
-function handleOutsideClick(event: MouseEvent): void {
-  const target = event.target as HTMLElement | null;
-  if (target && !target.closest('#nav-category-dropdown') && !target.closest('#nav-category-trigger')) {
-    isCategoryDropdownOpen.value = false;
-  }
-}
-
-onMounted(() => {
-  if (process.client) {
-    window.addEventListener('click', handleOutsideClick);
-  }
-});
-
-onUnmounted(() => {
-  if (process.client) {
-    window.removeEventListener('click', handleOutsideClick);
-  }
-  if (closeTimer) clearTimeout(closeTimer);
-});
-</script>
-
-<template>
-  <header
-    class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-[0_4px_20px_rgba(5,34,25,0.05)] select-none"
-  >
-    <!-- Top Row: Logo & Main Navigation -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-      <!-- Left: Mobile Trigger & Authentic Logo -->
-      <div class="flex items-center gap-3">
-        <button
-          type="button"
-          class="md:hidden p-1.5 text-[#052219] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-          aria-label="Toggle navigation menu"
-          @click="isMobileOpen = !isMobileOpen"
-        >
-          <component :is="isMobileOpen ? X : Menu" :size="20" />
-        </button>
-
-        <NuxtLink to="/" class="flex items-center group py-1" aria-label="The Sunrise Bookstore Home">
-          <img
-            src="/images/logo.png"
-            alt="The Sunrise Bookstore"
-            class="h-8 sm:h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-            loading="eager"
-            width="120"
-            height="40"
-          />
-        </NuxtLink>
-      </div>
-
-      <!-- Center: Desktop Navigation Links -->
-      <nav aria-label="Main Navigation" class="hidden md:flex items-center gap-6 lg:gap-7 text-xs font-bold tracking-wide">
-        <a href="/" class="nav-link-item text-[#052219] py-1 cursor-pointer">
-          Home
-        </a>
-
-        <!-- Category Dropdown -->
-        <div
-          class="relative"
-          @mouseenter="onCategoryMouseEnter"
-          @mouseleave="onCategoryMouseLeave"
-        >
-          <button
-            id="nav-category-trigger"
-            type="button"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 hover:border-[#E8750D] text-[#052219] hover:text-[#E8750D] bg-slate-50/70 hover:bg-[#FFF7ED] transition-all cursor-pointer font-bold select-none text-xs"
-            :class="{ 'border-[#E8750D] text-[#E8750D] bg-[#FFF7ED] shadow-2xs': isCategoryDropdownOpen }"
-            @click.stop="toggleCategoryDropdown"
-          >
-            <LayoutGrid :size="13" class="text-[#E8750D] flex-shrink-0" />
-            <span>Categories</span>
-            <ChevronDown
-              :size="12"
-              class="transition-transform duration-200 text-slate-500 flex-shrink-0"
-              :class="{ 'rotate-180 text-[#E8750D]': isCategoryDropdownOpen }"
-            />
-          </button>
-
-          <Transition name="dropdown-fade">
-            <div
-              v-if="isCategoryDropdownOpen"
-              id="nav-category-dropdown"
-              class="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-left"
-              @mouseenter="onCategoryMouseEnter"
-              @mouseleave="onCategoryMouseLeave"
-            >
-              <div class="px-4 py-1.5 border-b border-slate-100 flex items-center justify-between">
-                <span class="text-[10px] font-mono uppercase font-bold text-slate-400 tracking-wider">
-                  Store Catalog
-                </span>
-                <span class="text-[10px] font-mono text-[#E8750D] font-bold">
-                  {{ categories.length + 1 }} Options
-                </span>
-              </div>
-
-              <div class="max-h-72 overflow-y-auto py-1">
-                <button
-                  type="button"
-                  class="w-full text-left px-4 py-2 hover:bg-[#FFF7ED] hover:text-[#C25E00] text-xs font-bold transition-colors text-slate-900 cursor-pointer flex items-center justify-between group"
-                  @click="chooseCategory('General')"
-                >
-                  <span class="flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#E8750D]"></span>
-                    General (All Books)
-                  </span>
-                  <span class="text-[10px] font-mono text-slate-400 group-hover:text-[#E8750D]">↗</span>
-                </button>
-
-                <button
-                  v-for="cat in categories"
-                  :key="cat"
-                  type="button"
-                  class="w-full text-left px-4 py-2 hover:bg-[#FFF7ED] hover:text-[#C25E00] text-xs font-semibold transition-colors text-slate-700 cursor-pointer flex items-center justify-between group"
-                  @click="chooseCategory(cat)"
-                >
-                  <span class="truncate pr-2">{{ cat }}</span>
-                  <span class="text-[10px] font-mono text-slate-400 group-hover:text-[#E8750D]">↗</span>
-                </button>
-              </div>
-            </div>
-          </Transition>
-        </div>
-
-        <a href="#flash-sale" class="nav-link-item text-[#052219] py-1 cursor-pointer">
-          Flash Sale
-        </a>
-
-        <a href="#bestsellers-week" class="nav-link-item text-[#052219] py-1 cursor-pointer">
-          Bestsellers
-        </a>
-
-        <a
-          :href="helpWhatsAppUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="nav-link-item text-[#052219] py-1 cursor-pointer"
-        >
-          Help
-        </a>
-
-        <button
-          type="button"
-          class="bg-[#E8750D] hover:bg-[#D45B05] active:bg-[#B84A00] text-white text-[11px] font-extrabold uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-xs hover:shadow transition-all duration-200 cursor-pointer active:scale-95 flex items-center gap-1.5 flex-shrink-0"
-          title="Request any title you can't find in stock"
-          @click="handleRequestBookClick"
-        >
-          <Sparkles :size="12" class="text-white" />
-          <span>Request Book!</span>
-        </button>
-      </nav>
-
-      <!-- Right: WhatsApp & Shopping Cart -->
-      <div class="flex items-center gap-3 sm:gap-4 text-[#052219]">
-        <a
-          :href="helpWhatsAppUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="p-1.5 text-[#25D366] hover:text-[#1eb855] hover:bg-emerald-50 rounded-lg transition-all cursor-pointer flex items-center justify-center"
-          title="Chat with The Sunrise Bookstore on WhatsApp"
-          aria-label="Chat with The Sunrise Bookstore on WhatsApp"
-        >
-          <WhatsAppIcon class="w-5 h-5 transition-transform hover:scale-110" />
-        </a>
-
-        <button
-          type="button"
-          class="relative p-1.5 text-[#052219] hover:text-[#E8750D] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
-          aria-label="Open Shopping Cart"
-          @click="openDrawer"
-        >
-          <ShoppingCart :size="19" class="transition-transform hover:scale-105" />
-          <span
-            v-if="totalItems > 0"
-            class="absolute -top-1 -right-1 bg-[#E8750D] text-white font-mono text-[9px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs"
-          >
-            {{ totalItems }}
-          </span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Row 2: Search Bar Strip -->
-    <div
-      class="w-full px-4 sm:px-6 py-2.5 sm:py-3 transition-all relative overflow-hidden bg-slate-50/70 border-t border-slate-100"
-    >
-      <form
-        class="max-w-3xl mx-auto flex items-center gap-2 relative z-10"
-        @submit.prevent="submitSearch"
-      >
-        <div
-          class="flex-1 flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white border border-slate-200 transition-all shadow-xs focus-within:border-[#E8750D] focus-within:ring-1 focus-within:ring-[#E8750D]/20"
-        >
-          <Search :size="16" class="text-slate-400 flex-shrink-0" />
-
-          <input
-            v-model="searchInput"
-            type="text"
-            placeholder="Search books by title, author, or ISBN..."
-            class="w-full bg-transparent text-xs sm:text-sm text-[#052219] placeholder:text-slate-400 outline-none font-sans font-medium"
-          />
-
-          <button
-            v-if="searchInput"
-            type="button"
-            class="text-slate-400 hover:text-[#052219] p-0.5 transition-colors cursor-pointer"
-            aria-label="Clear search"
-            @click="clearSearch"
-          >
-            <X :size="14" />
-          </button>
-        </div>
-
-        <button
-          type="submit"
-          class="bg-[#E8750D] hover:bg-[#D45B05] text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider px-5 sm:px-6 py-2.5 rounded-full transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md active:scale-95 flex-shrink-0 flex items-center gap-1.5"
-        >
-          <Search :size="13" class="hidden sm:inline" />
-          <span>Search</span>
-        </button>
-      </form>
-    </div>
-
-    <!-- Mobile Drawer Menu -->
-    <div
-      v-if="isMobileOpen"
-      class="md:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto"
-    >
-      <div class="flex flex-col gap-2.5 text-xs font-bold tracking-wide">
-        <button
-          type="button"
-          class="w-full text-center bg-[#E8750D] hover:bg-[#D45B05] text-white font-extrabold text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer mb-1"
-          @click="handleRequestBookClick"
-        >
-          <Sparkles :size="14" />
-          <span>Request Book!</span>
-        </button>
-
-        <a href="/" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">
-          Home
-        </a>
-        <a href="#flash-sale" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">
-          Flash Sale
-        </a>
-        <a href="#bestsellers-week" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">
-          Bestsellers
-        </a>
-        <a :href="helpWhatsAppUrl" target="_blank" rel="noopener noreferrer" class="py-2 text-[#25D366] font-bold border-b border-slate-100 flex items-center gap-2" @click="isMobileOpen = false">
-          <WhatsAppIcon class="w-4 h-4 text-[#25D366]" />
-          <span>Help & Support</span>
-        </a>
-      </div>
-
-      <div class="pt-2">
-        <span class="text-[10px] font-mono uppercase font-bold text-slate-400 tracking-wider block mb-2">
-          Filter by Category:
-        </span>
-        <div class="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            class="text-left px-3 py-2 rounded-lg bg-slate-50 text-[11px] font-bold text-[#E8750D] border border-orange-200"
-            @click="chooseCategory('General')"
-          >
-            General (All Books)
-          </button>
-          <button
-            v-for="cat in categories"
-            :key="cat"
-            type="button"
-            class="text-left px-3 py-2 rounded-lg bg-slate-50 text-[11px] font-semibold text-slate-800 border border-slate-100 truncate"
-            @click="chooseCategory(cat)"
-          >
-            {{ cat }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </header>
-</template>
-
-<style scoped>
-.nav-link-item {
-  position: relative;
-  display: inline-block;
-  transition: color 0.25s ease;
-}
-
-.nav-link-item:hover {
-  color: #E8750D;
-}
-
-.nav-link-item::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 50%;
-  width: 100%;
-  height: 2px;
-  background-color: #E8750D;
-  transform: translateX(-50%) scaleX(0);
-  transform-origin: center;
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-  border-radius: 9999px;
-}
-
-.nav-link-item:hover::after {
-  transform: translateX(-50%) scaleX(1);
-}
-
-.dropdown-fade-enter-active,
-.dropdown-fade-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-.dropdown-fade-enter-from,
-.dropdown-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-</style>
 </file>
 
 <file path="components/storefront/FlashSaleStrip.vue">
@@ -16005,6 +15771,575 @@ function handleQuickAdd(book: Book, event: Event): void {
 </template>
 </file>
 
+<file path="components/storefront/StoreNavbar.vue">
+<!-- components/storefront/StoreNavbar.vue -->
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import {
+  ShoppingCart,
+  Menu,
+  X,
+  Search,
+  ChevronDown,
+  Sparkles,
+  LayoutGrid,
+  BookOpen,
+  ArrowRight,
+  Zap,
+} from 'lucide-vue-next';
+import WhatsAppIcon from '~/components/icons/WhatsAppIcon.vue';
+import { useCart } from '~/composables/useCart';
+import { buildWhatsAppLink } from '~/utils/phone';
+import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import type { Book } from '~/types';
+
+const router = useRouter();
+
+const emit = defineEmits<{
+  search: [query: string];
+  'select-category': [category: string];
+  'request-book': [];
+}>();
+
+const { totalItems, openDrawer } = useCart();
+
+const isMobileOpen = ref(false);
+const searchInput = ref('');
+const isCategoryDropdownOpen = ref(false);
+const isSearchDropdownOpen = ref(false);
+const selectedIndex = ref(-1);
+const searchContainerRef = ref<HTMLElement | null>(null);
+
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+let closeTimer: ReturnType<typeof setTimeout> | undefined;
+
+// Catalog products dataset
+const { data: catalogResponse } = await useFetch<any>('/api/products');
+
+const allBooks = computed<Book[]>(() => {
+  const remoteList: Book[] = Array.isArray(catalogResponse.value)
+    ? catalogResponse.value
+    : catalogResponse.value?.products || [];
+  return mergeWithSeeds(remoteList, [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS], 12);
+});
+
+const categories = computed<string[]>(() => {
+  const set = new Set<string>();
+  for (const book of allBooks.value) {
+    if (book?.category_name && book.category_name.trim()) {
+      const name = book.category_name.trim();
+      if (name.toLowerCase() !== 'general') {
+        set.add(name);
+      }
+    }
+  }
+  return set.size > 0
+    ? Array.from(set).sort()
+    : ['Business & Finance', 'Psychology & Self-Help', 'Self-Help', 'Fiction & Literature'];
+});
+
+// Live recommendations from global search endpoint
+const searchSuggestions = ref<Book[]>([]);
+
+watch(searchInput, (val) => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  selectedIndex.value = -1;
+
+  const queryText = val.trim();
+  if (!queryText) {
+    searchSuggestions.value = [];
+    isSearchDropdownOpen.value = false;
+    return;
+  }
+
+  debounceTimer = setTimeout(async () => {
+    try {
+      const results = await $fetch<Book[]>('/api/products/search', {
+        query: { q: queryText },
+      });
+      searchSuggestions.value = results || [];
+      isSearchDropdownOpen.value = searchSuggestions.value.length > 0;
+    } catch {
+      searchSuggestions.value = [];
+    }
+  }, 120);
+});
+
+function getLowestPrice(book: Book): number {
+  if (book.formats && book.formats.length > 0) {
+    const prices = book.formats.map((f) => f.price).filter((p) => p > 0);
+    if (prices.length > 0) return Math.min(...prices);
+  }
+  return book.price || 999;
+}
+
+function selectSuggestion(book: Book): void {
+  isSearchDropdownOpen.value = false;
+  searchInput.value = book.name;
+  router.push(`/book/${book.slug}`);
+}
+
+function submitSearch(): void {
+  if (selectedIndex.value >= 0 && searchSuggestions.value[selectedIndex.value]) {
+    selectSuggestion(searchSuggestions.value[selectedIndex.value]);
+    return;
+  }
+
+  if (searchInput.value.trim()) {
+    emit('search', searchInput.value.trim());
+    isSearchDropdownOpen.value = false;
+    isMobileOpen.value = false;
+  }
+}
+
+function handleKeydown(e: KeyboardEvent): void {
+  if (!isSearchDropdownOpen.value || searchSuggestions.value.length === 0) {
+    if (e.key === 'Enter') {
+      submitSearch();
+    }
+    return;
+  }
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    selectedIndex.value = (selectedIndex.value + 1) % searchSuggestions.value.length;
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    selectedIndex.value = (selectedIndex.value - 1 + searchSuggestions.value.length) % searchSuggestions.value.length;
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (selectedIndex.value >= 0 && searchSuggestions.value[selectedIndex.value]) {
+      selectSuggestion(searchSuggestions.value[selectedIndex.value]);
+    } else {
+      submitSearch();
+    }
+  } else if (e.key === 'Escape') {
+    isSearchDropdownOpen.value = false;
+  }
+}
+
+function clearSearch(): void {
+  searchInput.value = '';
+  searchSuggestions.value = [];
+  isSearchDropdownOpen.value = false;
+  emit('search', '');
+}
+
+function chooseCategory(cat: string): void {
+  emit('select-category', cat);
+  isCategoryDropdownOpen.value = false;
+  isMobileOpen.value = false;
+
+  if (process.client) {
+    const el = document.getElementById('catalog-results');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+function handleRequestBookClick(event: Event): void {
+  event.preventDefault();
+  emit('request-book');
+  isMobileOpen.value = false;
+}
+
+function onCategoryMouseEnter(): void {
+  if (closeTimer) clearTimeout(closeTimer);
+  isCategoryDropdownOpen.value = true;
+}
+
+function onCategoryMouseLeave(): void {
+  closeTimer = setTimeout(() => {
+    isCategoryDropdownOpen.value = false;
+  }, 160);
+}
+
+function toggleCategoryDropdown(): void {
+  isCategoryDropdownOpen.value = !isCategoryDropdownOpen.value;
+}
+
+function handleOutsideClick(event: MouseEvent): void {
+  const target = event.target as HTMLElement | null;
+  if (target && !target.closest('#nav-category-dropdown') && !target.closest('#nav-category-trigger')) {
+    isCategoryDropdownOpen.value = false;
+  }
+  if (searchContainerRef.value && !searchContainerRef.value.contains(target as Node)) {
+    isSearchDropdownOpen.value = false;
+  }
+}
+
+const helpWhatsAppUrl = buildWhatsAppLink(
+  'Hello The Sunrise Bookstore Help Desk, I need assistance with an order or book inquiry.'
+);
+
+onMounted(() => {
+  if (process.client) {
+    window.addEventListener('click', handleOutsideClick);
+  }
+});
+
+onUnmounted(() => {
+  if (process.client) {
+    window.removeEventListener('click', handleOutsideClick);
+  }
+  if (closeTimer) clearTimeout(closeTimer);
+  if (debounceTimer) clearTimeout(debounceTimer);
+});
+</script>
+
+<template>
+  <header
+    class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-[0_4px_20px_rgba(5,34,25,0.05)] select-none"
+  >
+    <!-- Top Row: Brand & Navigation -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="md:hidden p-1.5 text-[#052219] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+          aria-label="Toggle navigation menu"
+          @click="isMobileOpen = !isMobileOpen"
+        >
+          <component :is="isMobileOpen ? X : Menu" :size="20" />
+        </button>
+
+        <NuxtLink to="/" class="flex items-center group py-1" aria-label="The Sunrise Bookstore Home">
+          <img
+            src="/images/logo.png"
+            alt="The Sunrise Bookstore"
+            class="h-8 sm:h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            loading="eager"
+            width="120"
+            height="40"
+          />
+        </NuxtLink>
+      </div>
+
+      <!-- Center Desktop Navigation -->
+      <nav aria-label="Main Navigation" class="hidden md:flex items-center gap-6 lg:gap-7 text-xs font-bold tracking-wide">
+        <a href="/" class="nav-link-item text-[#052219] py-1 cursor-pointer">Home</a>
+
+        <!-- Category Dropdown -->
+        <div
+          class="relative"
+          @mouseenter="onCategoryMouseEnter"
+          @mouseleave="onCategoryMouseLeave"
+        >
+          <button
+            id="nav-category-trigger"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 hover:border-[#E8750D] text-[#052219] hover:text-[#E8750D] bg-slate-50/70 hover:bg-[#FFF7ED] transition-all cursor-pointer font-bold select-none text-xs"
+            :class="{ 'border-[#E8750D] text-[#E8750D] bg-[#FFF7ED] shadow-2xs': isCategoryDropdownOpen }"
+            @click.stop="toggleCategoryDropdown"
+          >
+            <LayoutGrid :size="13" class="text-[#E8750D] flex-shrink-0" />
+            <span>Categories</span>
+            <ChevronDown
+              :size="12"
+              class="transition-transform duration-200 text-slate-500 flex-shrink-0"
+              :class="{ 'rotate-180 text-[#E8750D]': isCategoryDropdownOpen }"
+            />
+          </button>
+
+          <Transition name="dropdown-fade">
+            <div
+              v-if="isCategoryDropdownOpen"
+              id="nav-category-dropdown"
+              class="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-left"
+            >
+              <div class="px-4 py-1.5 border-b border-slate-100 flex items-center justify-between">
+                <span class="text-[10px] font-mono uppercase font-bold text-slate-400 tracking-wider">
+                  Store Catalog
+                </span>
+                <span class="text-[10px] font-mono text-[#E8750D] font-bold">
+                  {{ categories.length + 1 }} Options
+                </span>
+              </div>
+
+              <div class="max-h-72 overflow-y-auto py-1">
+                <button
+                  type="button"
+                  class="w-full text-left px-4 py-2 hover:bg-[#FFF7ED] hover:text-[#C25E00] text-xs font-bold transition-colors text-slate-900 cursor-pointer flex items-center justify-between group"
+                  @click="chooseCategory('General')"
+                >
+                  <span class="flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#E8750D]"></span>
+                    General (All Books)
+                  </span>
+                  <span class="text-[10px] font-mono text-slate-400 group-hover:text-[#E8750D]">↗</span>
+                </button>
+
+                <button
+                  v-for="cat in categories"
+                  :key="cat"
+                  type="button"
+                  class="w-full text-left px-4 py-2 hover:bg-[#FFF7ED] hover:text-[#C25E00] text-xs font-semibold transition-colors text-slate-700 cursor-pointer flex items-center justify-between group"
+                  @click="chooseCategory(cat)"
+                >
+                  <span class="truncate pr-2">{{ cat }}</span>
+                  <span class="text-[10px] font-mono text-slate-400 group-hover:text-[#E8750D]">↗</span>
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </div>
+
+        <a href="#flash-sale" class="nav-link-item text-[#052219] py-1 cursor-pointer">Flash Sale</a>
+        <a href="#bestsellers-week" class="nav-link-item text-[#052219] py-1 cursor-pointer">Bestsellers</a>
+        <a :href="helpWhatsAppUrl" target="_blank" rel="noopener noreferrer" class="nav-link-item text-[#052219] py-1 cursor-pointer">Help</a>
+
+        <button
+          type="button"
+          class="bg-[#E8750D] hover:bg-[#D45B05] active:bg-[#B84A00] text-white text-[11px] font-extrabold uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-xs hover:shadow transition-all duration-200 cursor-pointer active:scale-95 flex items-center gap-1.5 flex-shrink-0"
+          title="Request any title you can't find in stock"
+          @click="handleRequestBookClick"
+        >
+          <Sparkles :size="12" class="text-white" />
+          <span>Request Book!</span>
+        </button>
+      </nav>
+
+      <!-- Right Action Icons -->
+      <div class="flex items-center gap-3 sm:gap-4 text-[#052219]">
+        <a
+          :href="helpWhatsAppUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="p-1.5 text-[#25D366] hover:text-[#1eb855] hover:bg-emerald-50 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+          title="Chat with The Sunrise Bookstore on WhatsApp"
+        >
+          <WhatsAppIcon class="w-5 h-5 transition-transform hover:scale-110" />
+        </a>
+
+        <button
+          type="button"
+          class="relative p-1.5 text-[#052219] hover:text-[#E8750D] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+          aria-label="Open Shopping Cart"
+          @click="openDrawer"
+        >
+          <ShoppingCart :size="19" class="transition-transform hover:scale-105" />
+          <span
+            v-if="totalItems > 0"
+            class="absolute -top-1 -right-1 bg-[#E8750D] text-white font-mono text-[9px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs"
+          >
+            {{ totalItems }}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Row 2: Search Bar Strip with Instant Recommendations Dropdown -->
+    <div
+      ref="searchContainerRef"
+      class="w-full px-4 sm:px-6 py-2.5 sm:py-3 transition-all relative overflow-visible bg-slate-50/70 border-t border-slate-100"
+    >
+      <form
+        class="max-w-3xl mx-auto flex items-center gap-2 relative z-20"
+        @submit.prevent="submitSearch"
+      >
+        <div
+          class="flex-1 flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white border border-slate-200 transition-all shadow-xs focus-within:border-[#E8750D] focus-within:ring-1 focus-within:ring-[#E8750D]/20 relative"
+        >
+          <Search :size="16" class="text-slate-400 flex-shrink-0" />
+
+          <input
+            v-model="searchInput"
+            type="text"
+            placeholder="Search books by title, author, or keyword (typo tolerant)..."
+            class="w-full bg-transparent text-xs sm:text-sm text-[#052219] placeholder:text-slate-400 outline-none font-sans font-medium"
+            autocomplete="off"
+            @focus="isSearchDropdownOpen = searchSuggestions.length > 0"
+            @keydown="handleKeydown"
+          />
+
+          <button
+            v-if="searchInput"
+            type="button"
+            class="text-slate-400 hover:text-[#052219] p-0.5 transition-colors cursor-pointer"
+            aria-label="Clear search"
+            @click="clearSearch"
+          >
+            <X :size="14" />
+          </button>
+        </div>
+
+        <button
+          type="submit"
+          class="bg-[#E8750D] hover:bg-[#D45B05] text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider px-5 sm:px-6 py-2.5 rounded-full transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md active:scale-95 flex-shrink-0 flex items-center gap-1.5"
+        >
+          <Search :size="13" class="hidden sm:inline" />
+          <span>Search</span>
+        </button>
+
+        <!-- RECOMMENDATIONS DROPDOWN -->
+        <Transition name="dropdown-fade">
+          <div
+            v-if="isSearchDropdownOpen && searchSuggestions.length > 0"
+            class="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-50 text-left divide-y divide-slate-100"
+          >
+            <div class="px-4 py-2 bg-[#FFF7ED] border-b border-orange-100 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-1.5 text-[#C25E00] font-semibold text-[11px]">
+                <Zap :size="12" class="text-[#E8750D]" />
+                <span>Recommendations for "<strong>{{ searchInput }}</strong>":</span>
+              </div>
+              <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Closest Match</span>
+            </div>
+
+            <!-- List of Recommended Titles -->
+            <div class="max-h-80 overflow-y-auto py-1">
+              <button
+                v-for="(book, idx) in searchSuggestions"
+                :key="book.id"
+                type="button"
+                class="w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
+                :class="selectedIndex === idx ? 'bg-[#FFF7ED] text-[#C25E00]' : 'hover:bg-slate-50 text-slate-900'"
+                @click="selectSuggestion(book)"
+              >
+                <!-- Cover & Info -->
+                <div class="flex items-center gap-3 min-w-0 flex-1">
+                  <div class="w-9 h-12 rounded bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center shadow-2xs">
+                    <img
+                      v-if="book.images?.[0]?.image_url || (book as any).cover_image_url"
+                      :src="book.images?.[0]?.image_url || (book as any).cover_image_url"
+                      :alt="book.name"
+                      class="w-full h-full object-cover"
+                      referrerpolicy="no-referrer"
+                    />
+                    <BookOpen v-else :size="14" class="text-slate-400 opacity-40" />
+                  </div>
+
+                  <div class="min-w-0 flex-1 space-y-0.5">
+                    <h4 class="text-xs font-bold truncate leading-tight">
+                      {{ book.name }}
+                    </h4>
+                    <p class="text-[11px] text-slate-500 truncate italic">
+                      {{ book.author || book.category_name || 'Publisher Edition' }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Price and Arrow -->
+                <div class="flex items-center gap-2 flex-shrink-0 text-right font-mono">
+                  <div class="flex flex-col items-end">
+                    <span class="text-xs font-bold text-slate-900">
+                      KSh {{ getLowestPrice(book).toLocaleString('en-KE') }}
+                    </span>
+                    <span class="text-[9px] text-slate-400 uppercase">
+                      {{ book.formats?.some(f => f.format === 'pdf') ? 'eBook / Print' : 'Hardcopy' }}
+                    </span>
+                  </div>
+                  <ArrowRight :size="13" class="text-slate-400" />
+                </div>
+              </button>
+            </div>
+
+            <!-- Footer: See all filtered matches -->
+            <div class="p-2.5 bg-slate-50 text-center border-t border-slate-100">
+              <button
+                type="button"
+                class="text-xs font-bold text-[#E8750D] hover:underline cursor-pointer inline-flex items-center gap-1"
+                @click="submitSearch"
+              >
+                <span>Filter all results for "{{ searchInput }}" in catalogue</span>
+                <ArrowRight :size="12" />
+              </button>
+            </div>
+          </div>
+        </Transition>
+      </form>
+    </div>
+
+    <!-- Mobile Drawer Menu -->
+    <div
+      v-if="isMobileOpen"
+      class="md:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto"
+    >
+      <div class="flex flex-col gap-2.5 text-xs font-bold tracking-wide">
+        <button
+          type="button"
+          class="w-full text-center bg-[#E8750D] hover:bg-[#D45B05] text-white font-extrabold text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer mb-1"
+          @click="handleRequestBookClick"
+        >
+          <Sparkles :size="14" />
+          <span>Request Book!</span>
+        </button>
+
+        <a href="/" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">Home</a>
+        <a href="#flash-sale" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">Flash Sale</a>
+        <a href="#bestsellers-week" class="py-2 text-[#052219] hover:text-[#E8750D] border-b border-slate-100 transition-colors" @click="isMobileOpen = false">Bestsellers</a>
+        <a :href="helpWhatsAppUrl" target="_blank" rel="noopener noreferrer" class="py-2 text-[#25D366] font-bold border-b border-slate-100 flex items-center gap-2" @click="isMobileOpen = false">
+          <WhatsAppIcon class="w-4 h-4 text-[#25D366]" />
+          <span>Help & Support</span>
+        </a>
+      </div>
+
+      <div class="pt-2">
+        <span class="text-[10px] font-mono uppercase font-bold text-slate-400 tracking-wider block mb-2">
+          Filter by Category:
+        </span>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            class="text-left px-3 py-2 rounded-lg bg-slate-50 text-[11px] font-bold text-[#E8750D] border border-orange-200"
+            @click="chooseCategory('General')"
+          >
+            General (All Books)
+          </button>
+          <button
+            v-for="cat in categories"
+            :key="cat"
+            type="button"
+            class="text-left px-3 py-2 rounded-lg bg-slate-50 text-[11px] font-semibold text-slate-800 border border-slate-100 truncate"
+            @click="chooseCategory(cat)"
+          >
+            {{ cat }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+</template>
+
+<style scoped>
+.nav-link-item {
+  position: relative;
+  display: inline-block;
+  transition: color 0.25s ease;
+}
+
+.nav-link-item:hover {
+  color: #E8750D;
+}
+
+.nav-link-item::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background-color: #E8750D;
+  transform: translateX(-50%) scaleX(0);
+  transform-origin: center;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 9999px;
+}
+
+.nav-link-item:hover::after {
+  transform: translateX(-50%) scaleX(1);
+}
+
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+</style>
+</file>
+
 <file path="components/storefront/BookCard.vue">
 <!-- components/storefront/BookCard.vue -->
 <script setup lang="ts">
@@ -16417,8 +16752,9 @@ import CartDrawer from '~/components/storefront/CartDrawer.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
 import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
 import Pagination from '~/components/ui/Pagination.vue';
-import { BookOpen, ChevronDown, Check, Sparkles, Filter, X } from 'lucide-vue-next';
+import { BookOpen, ChevronDown, Check, Sparkles, Filter, X, Zap } from 'lucide-vue-next';
 import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
+import { fuzzySearchBooks } from '~/utils/fuzzy';
 import type { Book } from '~/types';
 
 // Pagination & Search Reactive State
@@ -16429,7 +16765,7 @@ const searchQuery = ref<string>('');
 const debouncedSearch = ref<string>('');
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Reactive Catalogue Query — Automatically refetches from the PostgreSQL database
+// Reactive Catalogue Query with clean computed query unwrapping for SSR
 const { data: catalogData, status: booksStatus } = await useFetch<{
   products: Book[];
   total: number;
@@ -16437,12 +16773,12 @@ const { data: catalogData, status: booksStatus } = await useFetch<{
   limit: number;
   totalPages: number;
 }>('/api/products', {
-  query: {
-    page: currentPage,
-    limit: itemsPerPage,
-    category: computed(() => (activeCategoryFilter.value === 'General' ? undefined : activeCategoryFilter.value)),
-    q: computed(() => (debouncedSearch.value.trim() ? debouncedSearch.value.trim() : undefined)),
-  },
+  query: computed(() => ({
+    page: currentPage.value,
+    limit: itemsPerPage.value,
+    category: activeCategoryFilter.value === 'General' ? undefined : activeCategoryFilter.value,
+    q: debouncedSearch.value.trim() ? debouncedSearch.value.trim() : undefined,
+  })),
   watch: [currentPage, activeCategoryFilter, debouncedSearch],
 });
 
@@ -16494,11 +16830,55 @@ useHead({
 });
 
 const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
-const books = computed<Book[]>(() => catalogData.value?.products || []);
-const totalBooksCount = computed(() => catalogData.value?.total ?? 0);
-const totalPages = computed(() => catalogData.value?.totalPages ?? 1);
 
-// Range status text: e.g. "Showing 1–50 of 240 titles"
+// Full known catalog pool (used for fuzzy fallback when exact backend search has typos)
+const fullCatalogPool = computed<Book[]>(() => {
+  const remoteList: Book[] = Array.isArray(showcaseBooks.value)
+    ? showcaseBooks.value
+    : showcaseBooks.value?.products || [];
+  return mergeWithSeeds(remoteList, [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS], 20);
+});
+
+// Final display books: uses backend query if found; otherwise runs fuzzy ranking on typos
+const isFuzzyFallbackActive = ref(false);
+
+const displayBooks = computed<Book[]>(() => {
+  const rawQuery = debouncedSearch.value.trim();
+  const backendResults = catalogData.value?.products || [];
+
+  if (!rawQuery) {
+    isFuzzyFallbackActive.value = false;
+    return backendResults;
+  }
+
+  // If backend found exact/partial matches, use them
+  if (backendResults.length > 0) {
+    isFuzzyFallbackActive.value = false;
+    return backendResults;
+  }
+
+  // If backend returned 0 matches (e.g. "atmoic habts"), run fuzzy matching
+  const fuzzyResults = fuzzySearchBooks(fullCatalogPool.value, rawQuery, 0.35, itemsPerPage.value);
+  if (fuzzyResults.length > 0) {
+    isFuzzyFallbackActive.value = true;
+    return fuzzyResults.map((r) => r.book);
+  }
+
+  isFuzzyFallbackActive.value = false;
+  return [];
+});
+
+const totalBooksCount = computed(() => {
+  if (isFuzzyFallbackActive.value) return displayBooks.value.length;
+  return catalogData.value?.total ?? displayBooks.value.length;
+});
+
+const totalPages = computed(() => {
+  if (isFuzzyFallbackActive.value) return Math.max(1, Math.ceil(displayBooks.value.length / itemsPerPage.value));
+  return catalogData.value?.totalPages ?? 1;
+});
+
+// Range status text
 const paginationRangeText = computed(() => {
   const total = totalBooksCount.value;
   if (total === 0) return '0 titles';
@@ -16514,7 +16894,9 @@ const isFilterActive = computed(() => {
 
 // Flash Sale & Bestsellers Shelves
 const flashSaleBooks = computed<Book[]>(() => {
-  const list: Book[] = showcaseBooks.value?.products || showcaseBooks.value || [];
+  const list: Book[] = Array.isArray(showcaseBooks.value)
+    ? showcaseBooks.value
+    : showcaseBooks.value?.products || [];
   return list.filter((b) => {
     if (b.badge === 'FLASH_SALE' || b.badge === 'LIMITED_TIME') return true;
     if (!b.badge && b.compare_at_price && b.compare_at_price > b.price) return true;
@@ -16523,7 +16905,9 @@ const flashSaleBooks = computed<Book[]>(() => {
 });
 
 const bestsellersOfWeek = computed<Book[]>(() => {
-  const list: Book[] = showcaseBooks.value?.products || showcaseBooks.value || [];
+  const list: Book[] = Array.isArray(showcaseBooks.value)
+    ? showcaseBooks.value
+    : showcaseBooks.value?.products || [];
   const tagged = list.filter((b) => b.badge === 'BESTSELLER');
   const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
   return mergeWithSeeds(tagged, combinedSeeds, 4);
@@ -16532,9 +16916,11 @@ const bestsellersOfWeek = computed<Book[]>(() => {
 // Dynamic Categories Dropdown list
 const catalogueCategories = computed<string[]>(() => {
   const set = new Set<string>();
-  const allList: Book[] = showcaseBooks.value?.products || showcaseBooks.value || [];
+  const allList: Book[] = Array.isArray(showcaseBooks.value)
+    ? showcaseBooks.value
+    : showcaseBooks.value?.products || [];
   for (const b of allList) {
-    if (b.category_name && b.category_name.trim() && b.category_name.toLowerCase() !== 'general') {
+    if (b?.category_name && b.category_name.trim() && b.category_name.toLowerCase() !== 'general') {
       set.add(b.category_name.trim());
     }
   }
@@ -16778,7 +17164,25 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- SKELETON LOADING GRID: 8 Cards shown during fetch -->
+      <!-- FUZZY TYPO MATCH NOTICE BANNER -->
+      <div
+        v-if="isFuzzyFallbackActive"
+        class="p-3.5 bg-[#FFF7ED] border border-orange-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-[#C25E00]"
+      >
+        <div class="flex items-center gap-2">
+          <Zap :size="16" class="text-[#E8750D] flex-shrink-0" />
+          <span>No exact title found for "<strong>{{ debouncedSearch }}</strong>". Displaying closest matching books below:</span>
+        </div>
+        <button
+          type="button"
+          class="text-xs font-bold underline hover:text-[#E8750D] cursor-pointer flex-shrink-0"
+          @click="clearAllFilters"
+        >
+          View All Books
+        </button>
+      </div>
+
+      <!-- SKELETON LOADING GRID -->
       <div
         v-if="booksStatus === 'pending'"
         class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center"
@@ -16803,27 +17207,27 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- REAL BOOKS 50-PER-PAGE GRID -->
+      <!-- REAL BOOKS 50-PER-PAGE / FUZZY FILTERED GRID -->
       <div
-        v-else-if="books.length > 0"
+        v-else-if="displayBooks.length > 0"
         class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center animate-in fade-in duration-300"
       >
         <BookCard
-          v-for="book in books"
+          v-for="book in displayBooks"
           :key="book.id"
           :book="book"
           @request-seed="handleRequestSeed"
         />
       </div>
 
-      <!-- TRUE EMPTY STATE: Displayed only when search/category yields zero database results -->
+      <!-- TRUE EMPTY STATE -->
       <div
         v-else
         class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm animate-in fade-in duration-200"
       >
         <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
         <h3 class="font-display font-bold text-base text-slate-800">
-          No books found in the catalogue
+          No books found matching "{{ debouncedSearch }}"
         </h3>
         <p class="text-xs text-slate-500 max-w-xs mx-auto">
           We can source any title in Kenya directly for you upon request via WhatsApp.
@@ -16837,7 +17241,7 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- NUMBERED PAGINATION CONTROLS (Previous, Nth Page Buttons, Next) -->
+      <!-- NUMBERED PAGINATION CONTROLS -->
       <Pagination
         :page="currentPage"
         :total-pages="totalPages"
@@ -16875,7 +17279,7 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-6px);
 }
-</style>
+	</style>
 </file>
 
 </files>
