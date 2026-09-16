@@ -465,17 +465,19 @@ onUnmounted(() => {
       </div>
 
       <!-- REAL BOOKS GRID: Uniform 4-column desktop layout identical to DealsWeek -->
-      <div
-        v-else-if="displayBooks.length > 0"
-        class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300"
-      >
-        <BookCard
-          v-for="book in displayBooks"
-          :key="book.id"
-          class="h-full"
-          @request-seed="handleRequestSeed"
-        />
-      </div>
+      <!-- REAL BOOKS GRID: Uniform 4-column desktop layout identical to DealsWeek -->
+<div
+  v-else-if="displayBooks.length > 0"
+  class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300"
+>
+  <BookCard
+    v-for="book in displayBooks"
+    :key="book.id"
+    :book="book"
+    class="h-full"
+    @request-seed="handleRequestSeed"
+  />
+</div>
 
       <!-- TRUE EMPTY STATE -->
       <div
