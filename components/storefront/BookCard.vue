@@ -1,311 +1,392 @@
+<!-- components/storefront/BookCard.vue -->
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue';
+import { ShoppingCart, Zap, Flame, Star, Tag, Clock } from 'lucide-vue-next';
+import { useCart } from '~/composables/useCart';
+import { useToast } from '~/composables/useToast';
+import type { Book, ProductFormat, BookFormatType } from '~/types';
+
+interface Props {
+  book: Book;
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<{
+  requestSeed: [title: string, author?: string];
+}>();
+
+const { addItem, openDrawer } = useCart();
+const { push: pushToast } = useToast();
+
+const imageFailed = ref(false);
+const selectedFormatId = ref<string>('');
+
+// 1. Filter to available digital formats with valid files
+const availableDigitalFormats = computed<ProductFormat[]>(() => {
+  if (!props.book?.formats || props.book.formats.length === 0) return [];
+
+  return props.book.formats.filter((f) => {
+    const isDigital = f.format === 'pdf' || f.format === 'epub';
+    if (!isDigital) return false;
+    if (props.book.isSeed) return true;
+
+    return Boolean(
+      (f.file_url && f.file_url.trim().length > 0) ||
+      (f.file_public_id && f.file_public_id.trim().length > 0)
+    );
+  });
+});
+
+const hasDigitalCopy = computed(() => availableDigitalFormats.value.length > 0);
+
+// 2. Guaranteed Hardcopy Format
+const hardcopyFormat = computed<ProductFormat | null>(() => {
+  const existing = props.book?.formats?.find((f) => f.format === 'hardcopy');
+  if (existing) return existing;
+
+  if (hasDigitalCopy.value || props.book.price) {
+    return {
+      id: `synthetic-hardcopy-${props.book.id}`,
+      product_id: props.book.id,
+      format: 'hardcopy' as BookFormatType,
+      price: props.book.price || 999,
+      compare_at_price: props.book.compare_at_price || null,
+      file_url: null,
+      file_public_id: null,
+      file_size_bytes: null,
+      stock: props.book.stock ?? 10,
+      created_at: props.book.created_at || '',
+      updated_at: props.book.updated_at || '',
+    };
+  }
+
+  return null;
+});
+
+// 3. Combined Formats (Ordered: Hardcopy first, then eBooks)
+const availableFormats = computed<ProductFormat[]>(() => {
+  const list: ProductFormat[] = [];
+  if (hardcopyFormat.value) {
+    list.push(hardcopyFormat.value);
+  }
+  list.push(...availableDigitalFormats.value);
+  return list;
+});
+
+// Default selection: Hardcopy if available, else first digital format
+watch(
+  availableFormats,
+  (fmts) => {
+    imageFailed.value = false;
+    if (fmts && fmts.length > 0) {
+      if (!fmts.some((f) => f.id === selectedFormatId.value)) {
+        selectedFormatId.value = fmts[0].id;
+      }
+    } else {
+      selectedFormatId.value = '';
+    }
+  },
+  { immediate: true }
+);
+
+const activeFormat = computed<ProductFormat | undefined>(() => {
+  if (!availableFormats.value.length) return undefined;
+  return availableFormats.value.find((f) => f.id === selectedFormatId.value) || availableFormats.value[0];
+});
+
+// Format-specific display label helper (type-safe exhaustive narrowing)
+function getFormatDisplayLabel(fmt: ProductFormat): string {
+  if (fmt.format === 'hardcopy') return 'Hardcopy';
+  if (fmt.format === 'pdf') return 'eBook (PDF)';
+  if (fmt.format === 'epub') return 'eBook (EPUB)';
+  return String(fmt.format || '').toUpperCase();
+}
+
+// Pricing calculations
+const pricing = computed(() => {
+  const pBook = props.book.price ?? 0;
+  const cpBook = props.book.compare_at_price ?? null;
+  const hasParentSale = Boolean(cpBook && cpBook > pBook && pBook > 0);
+  const parentDiscountRatio = hasParentSale && cpBook ? (cpBook - pBook) / cpBook : 0;
+
+  const fmt = activeFormat.value;
+  let p = fmt ? fmt.price : pBook;
+  let cp: number | null = null;
+
+  if (fmt) {
+    if (fmt.compare_at_price && fmt.compare_at_price > fmt.price) {
+      cp = fmt.compare_at_price;
+    } else if (fmt.format === 'hardcopy') {
+      cp = cpBook;
+    } else if (hasParentSale && parentDiscountRatio > 0 && parentDiscountRatio < 1) {
+      cp = Math.round(fmt.price / (1 - parentDiscountRatio));
+    }
+  } else {
+    cp = cpBook;
+  }
+
+  if (cp !== null && cp !== undefined && cp > 0 && p > 0 && cp !== p) {
+    const minP = Math.min(p, cp);
+    const maxP = Math.max(p, cp);
+    const diff = maxP - minP;
+    const percentDown = Math.round((diff / maxP) * 100);
+
+    return {
+      currentPrice: minP,
+      originalPrice: maxP,
+      discountPercentage: percentDown > 0 ? percentDown : 0,
+    };
+  }
+
+  return {
+    currentPrice: p,
+    originalPrice: null,
+    discountPercentage: 0,
+  };
+});
+
+const currentPrice = computed<number>(() => pricing.value.currentPrice);
+const originalPrice = computed<number | null>(() => pricing.value.originalPrice);
+const discountPercentage = computed<number>(() => pricing.value.discountPercentage);
+
+const coverImage = computed(() => {
+  if (!props.book) return null;
+  const rawImg: unknown = props.book.images?.[0];
+  if (typeof rawImg === 'string' && rawImg.trim().length > 5) return rawImg.trim();
+  if (rawImg && typeof rawImg === 'object' && 'image_url' in rawImg) {
+    const url = (rawImg as { image_url?: string }).image_url;
+    if (typeof url === 'string' && url.trim().length > 5) return url.trim();
+  }
+  const fallback = (props.book as any).cover_image_url;
+  if (typeof fallback === 'string' && fallback.trim().length > 5) return fallback.trim();
+  return null;
+});
+
+const displayAuthor = computed(() => {
+  if (!props.book.author) return 'Original Edition';
+  return props.book.author.startsWith('By ') ? props.book.author : `By ${props.book.author}`;
+});
+
+// Badge → { icon, label } instead of an emoji-prefixed string. Same five
+// badge types, same meaning — rendered with lucide icons so they look
+// consistent across platforms and match the ShoppingCart icon language.
+type BadgeInfo = { icon: typeof Zap; label: string } | null;
+
+function getBadgeInfo(badgeStr?: string | null): BadgeInfo {
+  if (!badgeStr) return null;
+  switch (badgeStr) {
+    case 'FLASH_SALE':
+      return { icon: Zap, label: 'FLASH' };
+    case 'BESTSELLER':
+      return { icon: Flame, label: 'BESTSELLER' };
+    case 'NO1_PICK':
+      return { icon: Star, label: '#1 PICK' };
+    case 'DEAL_OF_WEEK':
+      return { icon: Tag, label: 'DEAL' };
+    case 'LIMITED_TIME':
+      return { icon: Clock, label: 'LIMITED' };
+    default:
+      return { icon: Tag, label: badgeStr.replace(/_/g, ' ') };
+  }
+}
+
+const badgeInfo = computed(() => getBadgeInfo(props.book.badge));
+
+function handleImageError(): void {
+  imageFailed.value = true;
+}
+
+function formatCurrency(val: number): string {
+  return `KSh ${val.toLocaleString('en-KE')}`;
+}
+
+function selectFormat(fmtId: string, event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
+  selectedFormatId.value = fmtId;
+}
+
+function handleCardClick(event: Event): void {
+  if (props.book.isSeed) {
+    event.preventDefault();
+    emit('requestSeed', props.book.name, props.book.author || undefined);
+  }
+}
+
+function handleAddToCart(event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (props.book.isSeed) {
+    emit('requestSeed', props.book.name, props.book.author || undefined);
+    return;
+  }
+
+  const fmt = activeFormat.value;
+  const isPhysical = fmt?.format === 'hardcopy';
+  const formatType: BookFormatType = fmt ? fmt.format : 'hardcopy';
+
+  const isSynthetic = !fmt || fmt.id.startsWith('synthetic-');
+  const validFormatId = isSynthetic ? '' : fmt.id;
+
+  addItem({
+    productId: props.book.id,
+    formatId: validFormatId,
+    title: props.book.name,
+    format: formatType,
+    price: currentPrice.value,
+    compare_at_price: originalPrice.value,
+    quantity: 1,
+    deliveryMethod: isPhysical ? 'delivery' : 'digital',
+    coverUrl: coverImage.value,
+    author: props.book.author,
+  });
+
+  pushToast({
+    message: `Added "${props.book.name}" (${formatType === 'hardcopy' ? 'Hardcopy' : formatType.toUpperCase()}) to cart!`,
+    variant: 'success',
+  });
+
+  openDrawer();
+}
+</script>
+
 <template>
-  <div
-    class="group relative flex flex-col justify-between bg-theme-surface rounded-2xl p-4 border border-theme-border shadow-card hover:border-theme-border-strong hover:shadow-medium transition-all duration-300"
-  >
-    <!-- Cover Jacket Area -->
-    <div class="relative w-full">
-      <div
-        class="relative w-full aspect-[1/1.37] rounded-xl overflow-hidden bg-theme-bg shadow-sm"
+  <!--
+    Redesign notes:
+    - Card widened from 160px -> 176px so text isn't starved into micro-sizes.
+    - Type scale collapsed to 3 tiers: label (10px), body (xs), price (sm).
+    - Raw hex swapped for theme.* tokens already defined in tailwind.config.js.
+    - Color now has one job each: coral = action (discount, active format,
+      cart button), forest/turquoise = brand identity (promo badge only),
+      ink/slate = everything neutral. Strikethrough price moved off red
+      onto slate, since the discount badge already signals "on sale".
+  -->
+  <div class="w-full max-w-none sm:max-w-[176px] bg-white text-theme-ink rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-medium transition-all flex flex-col justify-between group select-none text-left border border-theme-border hover:border-theme-border-strong">
+    <div>
+      <!-- Book Cover -->
+      <NuxtLink
+        :to="book.isSeed ? '#' : `/book/${book.slug}`"
+        class="block relative aspect-[1/1.37] rounded-book overflow-hidden bg-stone-100 book-cover-3d mb-2 sm:mb-2.5 cursor-pointer"
+        @click="handleCardClick"
       >
-        <!-- 3D Spine Gradient -->
         <div
-          class="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/20 via-black/5 to-transparent z-10 pointer-events-none"
-        />
-
-        <NuxtLink :to="`/books/${book.slug}`" class="block w-full h-full">
-          <img
-            :src="coverImageUrl"
-            :alt="book.name"
-            loading="lazy"
-            class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-          />
-        </NuxtLink>
-
-        <!-- Top-Left Editorial Badge -->
-        <div
-          v-if="editorialBadge"
-          class="absolute top-2 left-2 z-20 flex items-center gap-1 px-2 py-0.5 rounded-full bg-theme-dark/90 backdrop-blur-xs text-white text-[10px] font-mono font-bold uppercase tracking-wider"
+          v-if="imageFailed || !coverImage"
+          class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-theme-dark to-theme-forest text-white text-left select-none"
         >
-          <span>{{ editorialBadge }}</span>
+          <div class="space-y-0.5">
+            <span class="text-[10px] font-mono uppercase tracking-widest text-theme-turquoise font-bold block truncate">
+              {{ book.category_name || 'Book' }}
+            </span>
+            <h4 class="font-display font-bold text-xs leading-tight line-clamp-3 text-white">
+              {{ book.name }}
+            </h4>
+          </div>
+          <span class="text-[10px] font-mono text-white/70 truncate block pt-0.5 border-t border-white/10">
+            {{ book.author || 'Edition' }}
+          </span>
         </div>
 
-        <!-- Top-Right Discount Badge -->
-        <div
+        <img
+          v-else
+          :src="coverImage"
+          :alt="book.name"
+          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          width="144"
+          height="188"
+          referrerpolicy="no-referrer"
+          @error="handleImageError"
+        />
+
+        <!-- Discount badge: coral is the ONLY "act now" color on this card -->
+        <span
           v-if="discountPercentage > 0"
-          class="absolute top-2 right-2 z-20 px-2 py-0.5 rounded-full bg-theme-accent text-white text-[11px] font-mono font-black"
+          class="absolute top-1.5 right-1.5 bg-theme-coral text-white font-mono font-extrabold text-[10px] px-1.5 py-0.5 rounded shadow-xs z-10"
         >
           -{{ discountPercentage }}%
+        </span>
+
+        <!-- Identity badge: forest + turquoise, icon instead of emoji -->
+        <span
+          v-if="badgeInfo"
+          class="absolute top-1.5 left-1.5 bg-theme-forest text-theme-turquoise font-mono font-bold text-[10px] px-1.5 py-0.5 rounded uppercase z-10 flex items-center gap-1"
+        >
+          <component :is="badgeInfo.icon" :size="10" />
+          {{ badgeInfo.label }}
+        </span>
+      </NuxtLink>
+
+      <!-- Book Title -->
+      <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
+        <h3 class="font-display text-xs font-bold text-theme-ink group-hover:text-theme-coral transition-colors line-clamp-1 leading-snug">
+          {{ book.name }}
+        </h3>
+      </NuxtLink>
+
+      <!-- Author -->
+      <p class="text-[10px] text-theme-muted italic truncate mt-0.5">
+        {{ displayAuthor }}
+      </p>
+
+      <!-- Stacked Format Selector -->
+      <div class="mt-2 space-y-1">
+        <template v-if="availableFormats.length > 1">
+          <button
+            v-for="fmt in availableFormats"
+            :key="fmt.id"
+            type="button"
+            class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans transition-all cursor-pointer select-none leading-none border"
+            :class="
+              activeFormat?.id === fmt.id
+                ? 'bg-theme-coral/10 border-theme-coral text-theme-coral-hover font-extrabold shadow-2xs'
+                : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold'
+            "
+            @click="selectFormat(fmt.id, $event)"
+          >
+            <span class="truncate pr-1">{{ getFormatDisplayLabel(fmt) }}</span>
+            <span class="font-mono font-bold text-[10px] flex-shrink-0" :class="activeFormat?.id === fmt.id ? 'text-theme-coral-hover' : 'text-slate-600'">
+              {{ formatCurrency(fmt.price) }}
+            </span>
+          </button>
+        </template>
+        <div
+          v-else-if="activeFormat"
+          class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans font-bold bg-theme-coral/10 border border-theme-coral/60 text-theme-coral-hover"
+        >
+          <span class="truncate pr-1">{{ getFormatDisplayLabel(activeFormat) }}</span>
+          <span class="font-mono font-bold text-[10px] flex-shrink-0">
+            {{ formatCurrency(activeFormat.price) }}
+          </span>
         </div>
       </div>
     </div>
 
-    <!-- Book Information & Details -->
-    <div class="mt-3.5 flex flex-col flex-grow justify-between">
-      <div>
-        <!-- Format Pills & Category -->
-        <div class="flex items-center justify-between gap-1 mb-2">
-          <!-- Format Pills -->
-          <div v-if="formatsList.length > 1" class="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-            <button
-              v-for="fmt in formatsList"
-              :key="fmt.id"
-              type="button"
-              @click.stop="selectedFormatId = fmt.id"
-              :class="[
-                'text-[11px] font-semibold px-2 py-0.5 rounded-md border transition-all cursor-pointer',
-                selectedFormatId === fmt.id
-                  ? 'bg-theme-ink text-white border-theme-ink'
-                  : 'bg-theme-bg text-theme-muted border-theme-border hover:border-theme-border-strong'
-              ]"
-            >
-              {{ fmt.label }}
-            </button>
-          </div>
-          <div v-else class="text-xs font-bold text-theme-accent">
-            {{ activeFormatLabel }}
-          </div>
-
-          <!-- Category -->
-          <span class="text-[11px] text-theme-muted truncate max-w-[100px]">
-            {{ book.category_name || 'General' }}
-          </span>
-        </div>
-
-        <!-- Book Title -->
-        <NuxtLink :to="`/books/${book.slug}`" class="block">
-          <h3
-            class="font-display font-bold text-base text-theme-ink leading-snug line-clamp-2 hover:text-theme-accent transition-colors"
-            :title="book.name"
-          >
-            {{ book.name }}
-          </h3>
-        </NuxtLink>
-
-        <!-- Author Line -->
-        <p class="text-xs text-theme-muted italic truncate mt-1">
-          {{ displayAuthor }}
-        </p>
-
-        <!-- Rating Stars -->
-        <div class="flex items-center gap-1.5 mt-1.5">
-          <div class="flex items-center text-amber-400 text-xs">
-            <span v-for="i in 5" :key="i">★</span>
-          </div>
-          <span class="font-mono text-xs font-bold text-theme-ink">
-            {{ displayRating }}
-          </span>
-          <span class="text-[11px] text-theme-muted">
-            ({{ reviewCount }})
-          </span>
-        </div>
-      </div>
-
-      <!-- Price & Value Anchoring -->
-      <div class="mt-3 pt-2 border-t border-theme-border/60 flex items-baseline justify-between">
-        <div class="flex items-baseline gap-2">
-          <span class="font-mono font-extrabold text-lg text-theme-ink">
-            KSh {{ effectivePrice.toLocaleString('en-KE') }}
-          </span>
-          <span
-            v-if="effectiveCompareAtPrice && effectiveCompareAtPrice > effectivePrice"
-            class="text-xs font-mono text-theme-muted line-through"
-          >
-            KSh {{ effectiveCompareAtPrice.toLocaleString('en-KE') }}
-          </span>
-        </div>
-
+    <!-- Bottom Bar: Price + Cart Button -->
+    <div class="pt-2 mt-2.5 border-t border-theme-border flex items-end justify-between gap-1.5">
+      <div class="min-w-0 flex flex-col justify-center">
+        <!-- Strikethrough moved off red -> slate. The discount badge already
+             says "on sale"; this doesn't need to shout too. -->
         <span
-          v-if="isHardcopy && stockCount > 0 && stockCount <= 5"
-          class="text-[10px] font-mono font-bold text-amber-600"
+          v-if="originalPrice && originalPrice > currentPrice"
+          class="text-[10px] text-slate-400 line-through decoration-slate-400 decoration-1 font-mono font-bold block leading-none mb-0.5"
         >
-          {{ stockCount }} left
+          {{ formatCurrency(originalPrice) }}
+        </span>
+        <span class="text-sm font-black font-mono leading-tight text-theme-ink tracking-tight">
+          {{ formatCurrency(currentPrice) }}
         </span>
       </div>
 
-      <!-- Primary Action CTA -->
       <button
         type="button"
+        class="w-8 h-8 rounded-lg bg-theme-forest hover:bg-theme-coral text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-sm hover:shadow flex-shrink-0"
+        :title="book.isSeed ? 'Request Book' : (activeFormat?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart')"
+        :aria-label="book.isSeed ? 'Request Book' : (activeFormat?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart')"
         @click="handleAddToCart"
-        class="mt-3 w-full py-2.5 px-4 rounded-xl bg-theme-accent hover:bg-theme-accent-hover active:scale-[0.99] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
       >
-        <svg
-          class="w-4 h-4 shrink-0"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <path d="M16 10a4 4 0 0 1-8 0" />
-        </svg>
-        <span>{{ isHardcopy ? 'Order Copy' : 'Download' }}</span>
+        <ShoppingCart :size="14" class="transition-transform group-hover:scale-105" />
       </button>
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed } from 'vue';
-
-export interface ProductFormat {
-  id: string;
-  product_id?: string;
-  format: 'pdf' | 'epub' | 'hardcopy' | string;
-  price: number;
-  compare_at_price?: number | null;
-  file_url?: string | null;
-  stock?: number | null;
-  [key: string]: any;
-}
-
-export interface ProductImage {
-  image_url: string;
-  image_public_id?: string;
-  sort_order?: number;
-  [key: string]: any;
-}
-
-export interface Book {
-  id: string;
-  name: string;
-  slug: string;
-  sku?: string | null;
-  author?: string | null;
-  description?: string | null;
-  category_name?: string | null;
-  category_id?: string | null;
-  price: number;
-  compare_at_price?: number | null;
-  badge?: string | null;
-  stock?: number | null;
-  images?: (ProductImage | string)[] | null;
-  formats?: ProductFormat[] | null;
-  [key: string]: any;
-}
-
-const props = defineProps<{
-  book: Book;
-  customRating?: number;
-}>();
-
-const emit = defineEmits<{
-  (e: 'add-to-cart', payload: { book: Book; formatId?: string; price: number; format: string }): void;
-  (e: 'request-seed', title?: string, author?: string): void;
-}>();
-
-// Formats List
-const formatsList = computed(() => {
-  if (!props.book.formats || props.book.formats.length === 0) return [];
-  return props.book.formats.map((f) => ({
-    id: f.id,
-    rawFormat: f.format,
-    label: f.format === 'pdf' ? 'PDF' : f.format === 'epub' ? 'EPUB' : 'Hardcopy',
-    price: f.price,
-    compare_at_price: f.compare_at_price ?? null,
-    stock: f.stock ?? null,
-  }));
-});
-
-const selectedFormatId = ref<string>(
-  formatsList.value.length > 0 ? formatsList.value[0].id : ''
-);
-
-const activeFormat = computed(() => {
-  if (formatsList.value.length === 0) return null;
-  return formatsList.value.find((f) => f.id === selectedFormatId.value) || formatsList.value[0];
-});
-
-const activeFormatLabel = computed(() => {
-  if (activeFormat.value) {
-    return activeFormat.value.rawFormat === 'pdf'
-      ? 'eBook (PDF)'
-      : activeFormat.value.rawFormat === 'epub'
-      ? 'eBook (EPUB)'
-      : 'Hardcopy';
-  }
-  return 'eBook (PDF)';
-});
-
-const isHardcopy = computed(() => activeFormat.value?.rawFormat === 'hardcopy');
-
-const stockCount = computed(() => {
-  if (isHardcopy.value && activeFormat.value?.stock !== undefined && activeFormat.value?.stock !== null) {
-    return activeFormat.value.stock;
-  }
-  return props.book.stock ?? 10;
-});
-
-// Prices
-const effectivePrice = computed(() => {
-  return activeFormat.value ? activeFormat.value.price : props.book.price;
-});
-
-const effectiveCompareAtPrice = computed(() => {
-  if (activeFormat.value?.compare_at_price) {
-    return activeFormat.value.compare_at_price;
-  }
-  return props.book.compare_at_price ?? null;
-});
-
-const discountPercentage = computed(() => {
-  const current = effectivePrice.value;
-  const original = effectiveCompareAtPrice.value;
-  if (!original || original <= current) return 0;
-  return Math.round(((original - current) / original) * 100);
-});
-
-// Image URL
-const coverImageUrl = computed(() => {
-  if (props.book.images && props.book.images.length > 0) {
-    const first = props.book.images[0];
-    if (typeof first === 'string') return first;
-    if (first && typeof first === 'object' && first.image_url) return first.image_url;
-  }
-  return 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=800';
-});
-
-// Author
-const displayAuthor = computed(() => {
-  if (props.book.author) return props.book.author;
-  if (props.book.description && props.book.description.startsWith('By ')) {
-    const match = props.book.description.match(/^By\s+([^<\n]+)/);
-    if (match) return match[1].trim();
-  }
-  return 'Bestselling Author';
-});
-
-// Rating & Reviews
-const displayRating = computed(() => {
-  if (props.customRating) return props.customRating.toFixed(1);
-  const hash = (props.book.id || props.book.name)
-    .split('')
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return (4.6 + (hash % 5) * 0.1).toFixed(1);
-});
-
-const reviewCount = computed(() => {
-  const hash = (props.book.name || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return 40 + (hash % 180);
-});
-
-// Badge
-const editorialBadge = computed(() => {
-  const badge = props.book.badge;
-  if (badge === 'NO1_PICK') return '#1 PICK';
-  if (badge === 'FLASH_SALE') return 'FLASH';
-  if (badge === 'BESTSELLER') return 'BESTSELLER';
-  return null;
-});
-
-function handleAddToCart() {
-  emit('add-to-cart', {
-    book: props.book,
-    formatId: activeFormat.value?.id,
-    price: effectivePrice.value,
-    format: activeFormat.value?.rawFormat || 'pdf',
-  });
-}
-</script>
