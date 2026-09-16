@@ -21,6 +21,23 @@ const { push: pushToast } = useToast();
 const imageFailed = ref(false);
 const selectedFormatId = ref<string>('');
 
+// Deterministic rating between 4.0 and 5.0 (never less than 4, zero SSR hydration mismatch)
+const bookRating = computed(() => {
+  const str = props.book.id || props.book.name || 'book';
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const absHash = Math.abs(hash);
+  const score = 4.0 + (absHash % 11) * 0.1; // 4.0 to 5.0 in 0.1 steps
+  const reviews = 32 + (absHash % 240);
+  return {
+    rating: Math.min(5.0, Math.max(4.0, Number(score.toFixed(1)))),
+    reviewsCount: reviews,
+  };
+});
+
 // 1. Filter to available digital formats with valid files
 const availableDigitalFormats = computed<ProductFormat[]>(() => {
   if (!props.book?.formats || props.book.formats.length === 0) return [];
@@ -315,6 +332,24 @@ function handleAddToCart(event: Event): void {
         {{ displayAuthor }}
       </p>
 
+      <!-- Star Rating Row (Always >= 4.0 stars) -->
+      <div class="flex items-center gap-1.5 mt-1.5 select-none">
+        <div class="flex items-center gap-0.5">
+          <Star
+            v-for="s in 5"
+            :key="s"
+            :size="11"
+            :class="s <= Math.round(bookRating.rating) ? 'fill-amber-400 text-amber-400' : 'text-slate-300 fill-slate-100'"
+          />
+        </div>
+        <span class="text-[11px] font-mono font-bold text-slate-700 leading-none">
+          {{ bookRating.rating.toFixed(1) }}
+        </span>
+        <span class="text-[10px] font-mono text-slate-400 leading-none">
+          ({{ bookRating.reviewsCount }})
+        </span>
+      </div>
+
       <!-- Format Selector -->
       <div class="mt-2.5 space-y-1">
         <template v-if="availableFormats.length > 1">
@@ -362,7 +397,7 @@ function handleAddToCart(event: Event): void {
         </span>
       </div>
 
-      <!-- Button styled in the brand's orange -->
+      <!-- Add Button in Brand Orange -->
       <button
         type="button"
         class="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#E8750D] hover:bg-[#D45B05] active:bg-[#B84A00] text-white font-bold text-xs sm:text-sm py-2.5 transition-all cursor-pointer active:scale-95 shadow-xs hover:shadow"

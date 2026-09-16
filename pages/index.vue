@@ -161,13 +161,14 @@ const flashSaleBooks = computed<Book[]>(() => {
   });
 });
 
+// Provide at least 8 items so DealsWeek is scrollable (4 in view on desktop, 2 on mobile)
 const bestsellersOfWeek = computed<Book[]>(() => {
   const list: Book[] = Array.isArray(showcaseBooks.value)
     ? showcaseBooks.value
     : showcaseBooks.value?.products || [];
-  const tagged = list.filter((b) => b.badge === 'BESTSELLER');
+  const tagged = list.filter((b) => b.badge === 'BESTSELLER' || b.badge === 'DEAL_OF_WEEK');
   const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
-  return mergeWithSeeds(tagged, combinedSeeds, 4);
+  return mergeWithSeeds(tagged, combinedSeeds, 8);
 });
 
 const catalogueCategories = computed<string[]>(() => {
@@ -342,7 +343,7 @@ onUnmounted(() => {
       id="catalog-results"
       class="pt-10 sm:pt-14 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6"
     >
-      <!-- Section Title & Dynamic Filter Row -->
+      <!-- Standardized Section Title & Dynamic Filter Row -->
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-slate-200">
         <div class="space-y-1">
           <div class="flex items-center gap-2">
@@ -438,7 +439,7 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- SKELETON LOADING GRID: Full width, zero empty margin bottleneck -->
+      <!-- SKELETON LOADING GRID -->
       <div
         v-if="booksStatus === 'pending'"
         class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-5 lg:gap-6 w-full"
@@ -463,7 +464,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- REAL BOOKS GRID: Full-width responsive 5-column layout without side gaps -->
+      <!-- REAL BOOKS GRID: Full-width 5-column layout without side gaps -->
       <div
         v-else-if="displayBooks.length > 0"
         class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300"
