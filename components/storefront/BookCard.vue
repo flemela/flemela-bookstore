@@ -30,15 +30,15 @@ const bookRating = computed(() => {
     hash |= 0;
   }
   const absHash = Math.abs(hash);
-  const score = 4.0 + (absHash % 11) * 0.1; // 4.0 to 5.0 in 0.1 steps
-  const reviews = 32 + (absHash % 240);
+  const score = 4.0 + (absHash % 11) * 0.1; // 4.0 to 5.0
+  const reviews = 35 + (absHash % 245);
   return {
     rating: Math.min(5.0, Math.max(4.0, Number(score.toFixed(1)))),
     reviewsCount: reviews,
   };
 });
 
-// 1. Filter to available digital formats with valid files
+// 1. Available digital formats
 const availableDigitalFormats = computed<ProductFormat[]>(() => {
   if (!props.book?.formats || props.book.formats.length === 0) return [];
 
@@ -56,7 +56,7 @@ const availableDigitalFormats = computed<ProductFormat[]>(() => {
 
 const hasDigitalCopy = computed(() => availableDigitalFormats.value.length > 0);
 
-// 2. Guaranteed Hardcopy Format
+// 2. Hardcopy format
 const hardcopyFormat = computed<ProductFormat | null>(() => {
   const existing = props.book?.formats?.find((f) => f.format === 'hardcopy');
   if (existing) return existing;
@@ -80,7 +80,7 @@ const hardcopyFormat = computed<ProductFormat | null>(() => {
   return null;
 });
 
-// 3. Combined Formats (Ordered: Hardcopy first, then eBooks)
+// 3. Combined formats
 const availableFormats = computed<ProductFormat[]>(() => {
   const list: ProductFormat[] = [];
   if (hardcopyFormat.value) {
@@ -90,7 +90,6 @@ const availableFormats = computed<ProductFormat[]>(() => {
   return list;
 });
 
-// Default selection: Hardcopy if available, else first digital format
 watch(
   availableFormats,
   (fmts) => {
@@ -118,7 +117,6 @@ function getFormatDisplayLabel(fmt: ProductFormat): string {
   return String(fmt.format || '').toUpperCase();
 }
 
-// Pricing calculations
 const pricing = computed(() => {
   const pBook = props.book.price ?? 0;
   const cpBook = props.book.compare_at_price ?? null;
@@ -265,7 +263,7 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <div class="w-full bg-white text-theme-ink rounded-xl p-3.5 sm:p-4 shadow-card hover:shadow-medium transition-all flex flex-col justify-between group select-none text-left border border-theme-border hover:border-theme-border-strong">
+  <div class="w-full h-full bg-white text-theme-ink rounded-xl p-3.5 sm:p-4 shadow-card hover:shadow-medium transition-all flex flex-col justify-between group select-none text-left border border-theme-border hover:border-theme-border-strong">
     <div>
       <!-- Book Cover -->
       <NuxtLink
@@ -332,7 +330,7 @@ function handleAddToCart(event: Event): void {
         {{ displayAuthor }}
       </p>
 
-      <!-- Star Rating Row (Always >= 4.0 stars) -->
+      <!-- Star Rating Row (Never less than 4) -->
       <div class="flex items-center gap-1.5 mt-1.5 select-none">
         <div class="flex items-center gap-0.5">
           <Star

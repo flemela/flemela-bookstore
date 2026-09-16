@@ -116,7 +116,7 @@ function handleCategoryClick(catQuery: string): void {
       </button>
     </div>
 
-    <!-- Category Grid: 3 Icons per Row on Mobile, 6 on Desktop -->
+    <!-- Category Grid: 3 Icons on Mobile, 6 on Desktop -->
     <div class="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
       <button
         v-for="cat in CATEGORIES"

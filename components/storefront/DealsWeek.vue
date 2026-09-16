@@ -3,7 +3,7 @@
   <section id="bestsellers-week" class="py-10 sm:py-14 bg-transparent select-none">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
-      <!-- TOP HEADER: Title, Badge & Live Countdown Timer -->
+      <!-- TOP HEADER: Title, Eyebrow & Countdown Timer -->
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
         <div class="space-y-1">
           <div class="flex items-center gap-2">
@@ -19,60 +19,64 @@
           </p>
         </div>
 
-        <!-- Right: Timer & Slider Navigation Controls -->
-        <div class="flex items-center gap-3 self-start sm:self-auto flex-wrap">
-          <!-- Countdown Timer Module -->
-          <div class="flex items-center gap-2.5 bg-theme-surface border border-slate-200 rounded-xl px-3.5 py-2 shadow-xs shrink-0">
-            <span class="text-xs font-mono font-bold text-[#E8750D] flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-[#E8750D] animate-pulse" />
-              DEALS END IN:
-            </span>
-            <div class="flex items-center gap-1 font-mono text-xs font-black text-theme-ink">
-              <span class="bg-slate-100 px-1.5 py-0.5 rounded">{{ formattedTime.hours }}h</span>
-              <span class="text-theme-muted">:</span>
-              <span class="bg-slate-100 px-1.5 py-0.5 rounded">{{ formattedTime.minutes }}m</span>
-              <span class="text-theme-muted">:</span>
-              <span class="bg-slate-100 px-1.5 py-0.5 rounded">{{ formattedTime.seconds }}s</span>
-            </div>
-          </div>
-
-          <!-- Carousel Controls -->
-          <div class="flex items-center gap-1.5">
-            <button
-              type="button"
-              class="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-95 shadow-2xs"
-              aria-label="Previous Deals"
-              @click="scrollLeft"
-            >
-              <ChevronLeft :size="16" />
-            </button>
-            <button
-              type="button"
-              class="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-95 shadow-2xs"
-              aria-label="Next Deals"
-              @click="scrollRight"
-            >
-              <ChevronRight :size="16" />
-            </button>
+        <!-- Live Countdown Timer -->
+        <div class="flex items-center gap-2.5 bg-theme-surface border border-slate-200 rounded-xl px-3.5 py-2 shadow-xs shrink-0 self-start sm:self-auto">
+          <span class="text-xs font-mono font-bold text-[#E8750D] flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#E8750D] animate-pulse" />
+            DEALS END IN:
+          </span>
+          <div class="flex items-center gap-1 font-mono text-xs font-black text-theme-ink">
+            <span class="bg-slate-100 px-1.5 py-0.5 rounded">{{ formattedTime.hours }}h</span>
+            <span class="text-theme-muted">:</span>
+            <span class="bg-slate-100 px-1.5 py-0.5 rounded">{{ formattedTime.minutes }}m</span>
+            <span class="text-theme-muted">:</span>
+            <span class="bg-slate-100 px-1.5 py-0.5 rounded">{{ formattedTime.seconds }}s</span>
           </div>
         </div>
       </div>
 
-      <!-- ONE ROW GRID: Exactly 2 in place on mobile, 4 in place on desktop, with non-blocking vertical scroll -->
-      <div
-        ref="scrollContainer"
-        class="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto scroll-smooth no-scrollbar py-2"
-        style="touch-action: pan-y;"
-      >
-        <div
-          v-for="book in books"
-          :key="book.id"
-          class="w-[calc((100%-0.75rem)/2)] sm:w-[calc((100%-2*1rem)/3)] lg:w-[calc((100%-3*1.25rem)/4)] flex-shrink-0 snap-start flex"
+      <!-- CAROUSEL ROW WITH LEFT & RIGHT FLANKING CHEVRONS -->
+      <div class="relative group">
+        <!-- Left Chevron (Positioned on the Left of Carousel) -->
+        <button
+          type="button"
+          class="absolute -left-3 sm:-left-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:border-[#E8750D] hover:bg-[#FFF7ED] border border-slate-300 shadow-[0_4px_18px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-slate-800 disabled:hover:border-slate-300 disabled:hover:bg-white"
+          :disabled="!canScrollLeft"
+          aria-label="Scroll left to previous books"
+          @click="scrollLeft"
         >
-          <BookCard 
-            :book="book" 
-            @request-seed="(t, a) => $emit('request-seed', t, a)" 
-          />
+          <ChevronLeft :size="24" class="stroke-[2.5]" />
+        </button>
+
+        <!-- Right Chevron (Positioned on the Right of Carousel) -->
+        <button
+          type="button"
+          class="absolute -right-3 sm:-right-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:border-[#E8750D] hover:bg-[#FFF7ED] border border-slate-300 shadow-[0_4px_18px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-slate-800 disabled:hover:border-slate-300 disabled:hover:bg-white"
+          :disabled="!canScrollRight"
+          aria-label="Scroll right to next books"
+          @click="scrollRight"
+        >
+          <ChevronRight :size="24" class="stroke-[2.5]" />
+        </button>
+
+        <!-- 1-Row Track: Exactly 2 in view on mobile, 4 on desktop -->
+        <div
+          ref="scrollContainer"
+          class="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto scroll-smooth no-scrollbar py-2 snap-x snap-mandatory"
+          style="touch-action: pan-y;"
+          @scroll="checkScrollButtons"
+        >
+          <div
+            v-for="book in books"
+            :key="book.id"
+            class="w-[calc((100%-0.75rem)/2)] sm:w-[calc((100%-1rem*2)/3)] lg:w-[calc((100%-1.5rem*3)/4)] flex-shrink-0 snap-start flex"
+          >
+            <BookCard 
+              :book="book" 
+              class="h-full"
+              @request-seed="(t, a) => $emit('request-seed', t, a)" 
+            />
+          </div>
         </div>
       </div>
 
@@ -81,11 +85,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import BookCard from './BookCard.vue';
 
-defineProps<{
+const props = defineProps<{
   books: any[];
 }>();
 
@@ -95,22 +99,46 @@ defineEmits<{
 }>();
 
 const scrollContainer = ref<HTMLElement | null>(null);
+const canScrollLeft = ref(false);
+const canScrollRight = ref(true);
+
+function checkScrollButtons(): void {
+  if (!scrollContainer.value) return;
+  const { scrollLeft, scrollWidth, clientWidth } = scrollContainer.value;
+  canScrollLeft.value = scrollLeft > 8;
+  canScrollRight.value = scrollLeft + clientWidth < scrollWidth - 8;
+}
 
 function scrollLeft(): void {
   if (!scrollContainer.value) return;
   const firstChild = scrollContainer.value.firstElementChild as HTMLElement | null;
-  const scrollAmount = firstChild ? firstChild.clientWidth + 16 : 280;
-  scrollContainer.value.scrollBy({ left: -scrollAmount * 2, behavior: 'smooth' });
+  const cardWidth = firstChild ? firstChild.clientWidth : 280;
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+  const count = isDesktop ? 4 : 2;
+  const scrollDistance = (cardWidth + 24) * count;
+  scrollContainer.value.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
 }
 
 function scrollRight(): void {
   if (!scrollContainer.value) return;
   const firstChild = scrollContainer.value.firstElementChild as HTMLElement | null;
-  const scrollAmount = firstChild ? firstChild.clientWidth + 16 : 280;
-  scrollContainer.value.scrollBy({ left: scrollAmount * 2, behavior: 'smooth' });
+  const cardWidth = firstChild ? firstChild.clientWidth : 280;
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+  const count = isDesktop ? 4 : 2;
+  const scrollDistance = (cardWidth + 24) * count;
+  scrollContainer.value.scrollBy({ left: scrollDistance, behavior: 'smooth' });
 }
 
-// Dynamic 48-Hour Live Countdown Loop
+watch(
+  () => props.books,
+  async () => {
+    await nextTick();
+    checkScrollButtons();
+  },
+  { deep: true }
+);
+
+// 48-Hour Live Countdown Loop
 const timeLeftSeconds = ref(47 * 3600 + 38 * 60 + 15);
 let timerInterval: any = null;
 
@@ -122,10 +150,16 @@ onMounted(() => {
       timeLeftSeconds.value = 48 * 3600;
     }
   }, 1000);
+
+  setTimeout(checkScrollButtons, 300);
+  window.addEventListener('resize', checkScrollButtons);
 });
 
 onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval);
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', checkScrollButtons);
+  }
 });
 
 const formattedTime = computed(() => {

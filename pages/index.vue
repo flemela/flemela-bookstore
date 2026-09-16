@@ -27,7 +27,7 @@ const searchQuery = ref<string>('');
 const debouncedSearch = ref<string>('');
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Reactive Catalogue Query with clean computed query unwrapping for SSR
+// Reactive Catalogue Query
 const { data: catalogData, status: booksStatus } = await useFetch<{
   products: Book[];
   total: number;
@@ -93,7 +93,7 @@ useHead({
 
 const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
 
-// Full known catalog pool
+// Full catalog pool for fuzzy fallback
 const fullCatalogPool = computed<Book[]>(() => {
   const remoteList: Book[] = Array.isArray(showcaseBooks.value)
     ? showcaseBooks.value
@@ -335,7 +335,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Bestsellers of the Week (DealsWeek) -->
+    <!-- Bestsellers of the Week (Scrollable with 4 in place on desktop, 2 on mobile) -->
     <DealsWeek :books="bestsellersOfWeek" @request-seed="handleRequestSeed" />
 
     <!-- Complete Bookstore Catalogue Archive -->
@@ -343,7 +343,7 @@ onUnmounted(() => {
       id="catalog-results"
       class="pt-10 sm:pt-14 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6"
     >
-      <!-- Standardized Section Title & Dynamic Filter Row -->
+      <!-- Unified Section Title & Dynamic Filter Row -->
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-slate-200">
         <div class="space-y-1">
           <div class="flex items-center gap-2">
@@ -439,15 +439,15 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- SKELETON LOADING GRID -->
+      <!-- SKELETON LOADING GRID: 4 columns matching DealsWeek card dimensions -->
       <div
         v-if="booksStatus === 'pending'"
-        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-5 lg:gap-6 w-full"
+        class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full"
       >
         <div
-          v-for="n in 10"
+          v-for="n in 8"
           :key="`skel-catalog-${n}`"
-          class="w-full bg-white rounded-xl p-3 sm:p-4 border border-slate-200 shadow-card flex flex-col justify-between space-y-3"
+          class="w-full bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-card flex flex-col justify-between space-y-3"
         >
           <div class="aspect-[1/1.37] rounded-lg bg-slate-200 animate-pulse" />
           <div class="space-y-1.5 pt-1">
@@ -464,15 +464,15 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- REAL BOOKS GRID: Full-width 5-column layout without side gaps -->
+      <!-- REAL BOOKS GRID: Uniform 4-column desktop layout identical to DealsWeek -->
       <div
         v-else-if="displayBooks.length > 0"
-        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300"
+        class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300"
       >
         <BookCard
           v-for="book in displayBooks"
           :key="book.id"
-          :book="book"
+          class="h-full"
           @request-seed="handleRequestSeed"
         />
       </div>
@@ -484,6 +484,9 @@ onUnmounted(() => {
       >
         <BookOpen :size="36" class="mx-auto text-slate-400 opacity-60" />
         <h3 class="font-display font-bold text-base text-slate-800">
+          No books found matching "{{ debouncedSearch }}"
+        </h3>
+        <p class="text-xs text-slate-500 max-w-xs mx-auto">
           No books found matching "{{ debouncedSearch }}"
         </h3>
         <p class="text-xs text-slate-500 max-w-xs mx-auto">
