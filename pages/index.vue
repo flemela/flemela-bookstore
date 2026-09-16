@@ -93,7 +93,7 @@ useHead({
 
 const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
 
-// Full known catalog pool (used for fuzzy fallback when exact backend search has typos)
+// Full known catalog pool
 const fullCatalogPool = computed<Book[]>(() => {
   const remoteList: Book[] = Array.isArray(showcaseBooks.value)
     ? showcaseBooks.value
@@ -101,7 +101,6 @@ const fullCatalogPool = computed<Book[]>(() => {
   return mergeWithSeeds(remoteList, [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS], 20);
 });
 
-// Final display books: uses backend query if found; otherwise runs fuzzy ranking on typos
 const isFuzzyFallbackActive = ref(false);
 
 const displayBooks = computed<Book[]>(() => {
@@ -113,13 +112,11 @@ const displayBooks = computed<Book[]>(() => {
     return backendResults;
   }
 
-  // If backend found exact/partial matches, use them
   if (backendResults.length > 0) {
     isFuzzyFallbackActive.value = false;
     return backendResults;
   }
 
-  // If backend returned 0 matches (e.g. "atmoic habts"), run fuzzy matching
   const fuzzyResults = fuzzySearchBooks(fullCatalogPool.value, rawQuery, 0.35, itemsPerPage.value);
   if (fuzzyResults.length > 0) {
     isFuzzyFallbackActive.value = true;
@@ -140,7 +137,6 @@ const totalPages = computed(() => {
   return catalogData.value?.totalPages ?? 1;
 });
 
-// Range status text
 const paginationRangeText = computed(() => {
   const total = totalBooksCount.value;
   if (total === 0) return '0 titles';
@@ -154,7 +150,6 @@ const isFilterActive = computed(() => {
   return (cat !== 'general' && cat !== 'all') || debouncedSearch.value.trim().length > 0;
 });
 
-// Flash Sale & Bestsellers Shelves
 const flashSaleBooks = computed<Book[]>(() => {
   const list: Book[] = Array.isArray(showcaseBooks.value)
     ? showcaseBooks.value
@@ -175,7 +170,6 @@ const bestsellersOfWeek = computed<Book[]>(() => {
   return mergeWithSeeds(tagged, combinedSeeds, 4);
 });
 
-// Dynamic Categories Dropdown list
 const catalogueCategories = computed<string[]>(() => {
   const set = new Set<string>();
   const allList: Book[] = Array.isArray(showcaseBooks.value)
@@ -310,7 +304,7 @@ onUnmounted(() => {
     <BentoCategories @select="handleCategorySelect" />
 
     <!-- Visual Bridge Banner -->
-    <div class="max-w-6xl mx-auto px-4 w-full">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
       <div class="rounded-2xl bg-gradient-to-r from-[#052219] via-[#0C3A2B] to-[#124E38] p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 text-white shadow-md border border-[#2EE59D]/30 relative overflow-hidden">
         <div class="flex items-center gap-3 relative z-10">
           <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-[#2EE59D] flex-shrink-0">
@@ -340,13 +334,13 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Bestsellers of the Week -->
+    <!-- Bestsellers of the Week (DealsWeek) -->
     <DealsWeek :books="bestsellersOfWeek" @request-seed="handleRequestSeed" />
 
     <!-- Complete Bookstore Catalogue Archive -->
     <section
       id="catalog-results"
-      class="pt-12 sm:pt-16 pb-14 px-4 max-w-6xl mx-auto w-full space-y-6"
+      class="pt-10 sm:pt-14 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6"
     >
       <!-- Section Title & Dynamic Filter Row -->
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-slate-200">
@@ -444,15 +438,15 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- SKELETON LOADING GRID -->
+      <!-- SKELETON LOADING GRID: Full width, zero empty margin bottleneck -->
       <div
         v-if="booksStatus === 'pending'"
-        class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center"
+        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-5 lg:gap-6 w-full"
       >
         <div
-          v-for="n in 8"
+          v-for="n in 10"
           :key="`skel-catalog-${n}`"
-          class="w-full max-w-[176px] bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200 shadow-card flex flex-col justify-between space-y-3"
+          class="w-full bg-white rounded-xl p-3 sm:p-4 border border-slate-200 shadow-card flex flex-col justify-between space-y-3"
         >
           <div class="aspect-[1/1.37] rounded-lg bg-slate-200 animate-pulse" />
           <div class="space-y-1.5 pt-1">
@@ -464,15 +458,15 @@ onUnmounted(() => {
           </div>
           <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
             <div class="h-4 bg-slate-200 rounded w-16 animate-pulse" />
-            <div class="w-8 h-8 bg-slate-200 rounded-lg animate-pulse" />
+            <div class="w-full h-8 bg-slate-200 rounded-lg animate-pulse" />
           </div>
         </div>
       </div>
 
-      <!-- REAL BOOKS 50-PER-PAGE / FUZZY FILTERED GRID -->
+      <!-- REAL BOOKS GRID: Full-width responsive 5-column layout without side gaps -->
       <div
         v-else-if="displayBooks.length > 0"
-        class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 w-full max-w-[720px] mx-auto px-2 sm:px-4 justify-items-center animate-in fade-in duration-300"
+        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300"
       >
         <BookCard
           v-for="book in displayBooks"
@@ -496,7 +490,7 @@ onUnmounted(() => {
         </p>
         <button
           type="button"
-          class="bg-[#F05A36] hover:bg-[#D94827] text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95"
+          class="bg-[#E8750D] hover:bg-[#D45B05] text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95"
           @click="handleRequestSeed(debouncedSearch)"
         >
           Request This Book on WhatsApp
@@ -541,4 +535,4 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-6px);
 }
-	</style>
+</style>

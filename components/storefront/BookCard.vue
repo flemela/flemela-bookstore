@@ -94,7 +94,6 @@ const activeFormat = computed<ProductFormat | undefined>(() => {
   return availableFormats.value.find((f) => f.id === selectedFormatId.value) || availableFormats.value[0];
 });
 
-// Format-specific display label helper (type-safe exhaustive narrowing)
 function getFormatDisplayLabel(fmt: ProductFormat): string {
   if (fmt.format === 'hardcopy') return 'Hardcopy';
   if (fmt.format === 'pdf') return 'eBook (PDF)';
@@ -167,9 +166,6 @@ const displayAuthor = computed(() => {
   return props.book.author.startsWith('By ') ? props.book.author : `By ${props.book.author}`;
 });
 
-// Badge → { icon, label } instead of an emoji-prefixed string. Same five
-// badge types, same meaning — rendered with lucide icons so they look
-// consistent across platforms and match the ShoppingCart icon language.
 type BadgeInfo = { icon: typeof Zap; label: string } | null;
 
 function getBadgeInfo(badgeStr?: string | null): BadgeInfo {
@@ -252,42 +248,27 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <!--
-    Redesign notes:
-    - Card widened from 160px -> 210/235px so text isn't starved into micro-sizes.
-    - Type scale bumped up: title text-base/lg/xl, author xs/13px, price lg/xl.
-    - Format pills unified to square corners (rounded-none) in both selected
-      and unselected states; selected pill drops to a bottom-only border.
-    - Price + strikethrough sit side by side (baseline-aligned) with a
-      full-width "Add" button directly beneath, cart icon filled instead
-      of stroked.
-    - Raw hex swapped for theme.* tokens already defined in tailwind.config.js.
-    - Color now has one job each: coral = action (discount, active format,
-      cart button), forest/turquoise = brand identity (promo badge only),
-      ink/slate = everything neutral. Strikethrough price moved off red
-      onto slate, since the discount badge already signals "on sale".
-  -->
-  <div class="w-full max-w-none sm:max-w-[210px] md:max-w-[235px] bg-white text-theme-ink rounded-xl p-3.5 sm:p-4 shadow-card hover:shadow-medium transition-all flex flex-col justify-between group select-none text-left border border-theme-border hover:border-theme-border-strong">
+  <div class="w-full bg-white text-theme-ink rounded-xl p-3.5 sm:p-4 shadow-card hover:shadow-medium transition-all flex flex-col justify-between group select-none text-left border border-theme-border hover:border-theme-border-strong">
     <div>
       <!-- Book Cover -->
       <NuxtLink
         :to="book.isSeed ? '#' : `/book/${book.slug}`"
-        class="block relative aspect-[1/1.37] rounded-book overflow-hidden bg-stone-100 book-cover-3d mb-2 sm:mb-2.5 cursor-pointer"
+        class="block relative aspect-[1/1.37] rounded-book overflow-hidden bg-stone-100 book-cover-3d mb-2.5 sm:mb-3 cursor-pointer"
         @click="handleCardClick"
       >
         <div
           v-if="imageFailed || !coverImage"
-          class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-theme-dark to-theme-forest text-white text-left select-none"
+          class="w-full h-full flex flex-col justify-between p-2.5 bg-gradient-to-br from-theme-dark to-theme-forest text-white text-left select-none"
         >
           <div class="space-y-0.5">
             <span class="text-[10px] font-mono uppercase tracking-widest text-theme-turquoise font-bold block truncate">
               {{ book.category_name || 'Book' }}
             </span>
-            <h4 class="font-display font-bold text-xs leading-tight line-clamp-3 text-white">
+            <h4 class="font-display font-bold text-xs sm:text-sm leading-tight line-clamp-3 text-white">
               {{ book.name }}
             </h4>
           </div>
-          <span class="text-[10px] font-mono text-white/70 truncate block pt-0.5 border-t border-white/10">
+          <span class="text-[10px] font-mono text-white/70 truncate block pt-1 border-t border-white/10">
             {{ book.author || 'Edition' }}
           </span>
         </div>
@@ -298,24 +279,24 @@ function handleAddToCart(event: Event): void {
           :alt="book.name"
           class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
-          width="144"
-          height="188"
+          width="180"
+          height="246"
           referrerpolicy="no-referrer"
           @error="handleImageError"
         />
 
-        <!-- Discount badge: coral is the ONLY "act now" color on this card -->
+        <!-- Discount badge -->
         <span
           v-if="discountPercentage > 0"
-          class="absolute top-1.5 right-1.5 bg-theme-coral text-white font-mono font-extrabold text-[10px] px-1.5 py-0.5 rounded shadow-xs z-10"
+          class="absolute top-1.5 right-1.5 bg-[#E8750D] text-white font-mono font-extrabold text-[10px] px-1.5 py-0.5 rounded shadow-xs z-10"
         >
           -{{ discountPercentage }}%
         </span>
 
-        <!-- Identity badge: forest + turquoise, icon instead of emoji -->
+        <!-- Identity badge -->
         <span
           v-if="badgeInfo"
-          class="absolute top-1.5 left-1.5 bg-theme-forest text-theme-turquoise font-mono font-bold text-[10px] px-1.5 py-0.5 rounded uppercase z-10 flex items-center gap-1"
+          class="absolute top-1.5 left-1.5 bg-theme-forest text-theme-turquoise font-mono font-bold text-[10px] px-1.5 py-0.5 rounded uppercase z-10 flex items-center gap-1 shadow-xs"
         >
           <component :is="badgeInfo.icon" :size="10" />
           {{ badgeInfo.label }}
@@ -324,40 +305,40 @@ function handleAddToCart(event: Event): void {
 
       <!-- Book Title -->
       <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
-        <h3 class="font-display text-base sm:text-lg lg:text-xl font-bold text-theme-ink group-hover:text-theme-coral transition-colors line-clamp-1 leading-snug">
+        <h3 class="font-display text-sm sm:text-base font-bold text-theme-ink group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug">
           {{ book.name }}
         </h3>
       </NuxtLink>
 
       <!-- Author -->
-      <p class="text-xs sm:text-[13px] text-theme-muted italic truncate mt-0.5">
+      <p class="text-xs text-theme-muted italic truncate mt-0.5">
         {{ displayAuthor }}
       </p>
 
-      <!-- Stacked Format Selector -->
-      <div class="mt-2 space-y-1">
+      <!-- Format Selector -->
+      <div class="mt-2.5 space-y-1">
         <template v-if="availableFormats.length > 1">
           <button
             v-for="fmt in availableFormats"
             :key="fmt.id"
             type="button"
-            class="w-full flex items-center justify-between px-2 py-1 rounded-none text-[10px] font-sans transition-all cursor-pointer select-none leading-none"
+            class="w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-sans transition-all cursor-pointer select-none leading-none border"
             :class="
               activeFormat?.id === fmt.id
-                ? 'border-0 border-b border-theme-coral bg-theme-coral/10 text-theme-coral-hover font-extrabold shadow-2xs'
-                : 'border border-slate-200 bg-slate-50/80 text-slate-700 hover:bg-slate-100 font-semibold'
+                ? 'border-[#E8750D] bg-[#FFF7ED] text-[#C25E00] font-extrabold shadow-2xs'
+                : 'border-slate-200 bg-slate-50/80 text-slate-700 hover:bg-slate-100 font-semibold'
             "
             @click="selectFormat(fmt.id, $event)"
           >
             <span class="truncate pr-1">{{ getFormatDisplayLabel(fmt) }}</span>
-            <span class="font-mono font-bold text-[10px] flex-shrink-0" :class="activeFormat?.id === fmt.id ? 'text-theme-coral-hover' : 'text-slate-600'">
+            <span class="font-mono font-bold text-[10px] flex-shrink-0" :class="activeFormat?.id === fmt.id ? 'text-[#C25E00]' : 'text-slate-600'">
               {{ formatCurrency(fmt.price) }}
             </span>
           </button>
         </template>
         <div
           v-else-if="activeFormat"
-          class="w-full flex items-center justify-between px-2 py-1 rounded-none border-0 border-b border-theme-coral/60 text-[10px] font-sans font-bold bg-theme-coral/10 text-theme-coral-hover"
+          class="w-full flex items-center justify-between px-2 py-1 rounded-md border border-[#E8750D]/40 text-[10px] font-sans font-bold bg-[#FFF7ED] text-[#C25E00]"
         >
           <span class="truncate pr-1">{{ getFormatDisplayLabel(activeFormat) }}</span>
           <span class="font-mono font-bold text-[10px] flex-shrink-0">
@@ -367,30 +348,29 @@ function handleAddToCart(event: Event): void {
       </div>
     </div>
 
-    <!-- Bottom Bar: Price row + full-width Add button -->
-    <div class="pt-2 mt-2.5 border-t border-theme-border flex flex-col gap-2">
+    <!-- Bottom Bar: Price row + Brand Orange Add button -->
+    <div class="pt-2.5 mt-2.5 border-t border-theme-border flex flex-col gap-2">
       <div class="flex items-baseline gap-1.5">
-        <!-- Strikethrough moved off red -> slate. The discount badge already
-             says "on sale"; this doesn't need to shout too. -->
         <span
           v-if="originalPrice && originalPrice > currentPrice"
           class="text-xs sm:text-sm text-slate-400 line-through decoration-slate-400 decoration-1 font-mono font-bold leading-none"
         >
           {{ formatCurrency(originalPrice) }}
         </span>
-        <span class="text-lg sm:text-xl font-black font-mono leading-tight text-theme-ink tracking-tight">
+        <span class="text-base sm:text-lg font-black font-mono leading-tight text-theme-ink tracking-tight">
           {{ formatCurrency(currentPrice) }}
         </span>
       </div>
 
+      <!-- Button styled in the brand's orange -->
       <button
         type="button"
-        class="w-full flex items-center justify-center gap-1.5 rounded-lg bg-theme-forest hover:bg-theme-coral text-white font-bold text-xs sm:text-sm py-2 transition-all cursor-pointer active:scale-95 shadow-sm hover:shadow"
+        class="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#E8750D] hover:bg-[#D45B05] active:bg-[#B84A00] text-white font-bold text-xs sm:text-sm py-2.5 transition-all cursor-pointer active:scale-95 shadow-xs hover:shadow"
         :title="book.isSeed ? 'Request Book' : (activeFormat?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart')"
         :aria-label="book.isSeed ? 'Request Book' : (activeFormat?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart')"
         @click="handleAddToCart"
       >
-        <ShoppingCart :size="16" fill="currentColor" class="transition-transform group-hover:scale-105" />
+        <ShoppingCart :size="15" fill="currentColor" class="transition-transform group-hover:scale-105" />
         <span>Add</span>
       </button>
     </div>
