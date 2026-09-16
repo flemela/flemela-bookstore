@@ -489,9 +489,6 @@ onUnmounted(() => {
           No books found matching "{{ debouncedSearch }}"
         </h3>
         <p class="text-xs text-slate-500 max-w-xs mx-auto">
-          No books found matching "{{ debouncedSearch }}"
-        </h3>
-        <p class="text-xs text-slate-500 max-w-xs mx-auto">
           We can source any title in Kenya directly for you upon request via WhatsApp.
         </p>
         <button
