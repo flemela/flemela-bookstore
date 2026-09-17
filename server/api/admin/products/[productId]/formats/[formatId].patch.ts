@@ -54,10 +54,17 @@ export default defineEventHandler(async (event) => {
       body,
     });
   } catch (err: any) {
+    const errorMsg =
+      err.data?.error?.message ||
+      err.data?.message ||
+      err.response?._data?.error?.message ||
+      err.message ||
+      'Failed to update format';
+
     throw createError({
       statusCode: err.statusCode || err.response?.status || 500,
-      statusMessage: 'API Gateway Error',
-      data: { message: err.data?.message || err.message || 'Failed to update format' },
+      statusMessage: errorMsg,
+      data: { message: errorMsg },
     });
   }
 });

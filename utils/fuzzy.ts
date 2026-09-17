@@ -1,11 +1,11 @@
-// utils/fuzzy.ts
 // =============================================================================
-// Typo-Tolerant Fuzzy Search & Levenshtein Distance Matcher
+// utils/fuzzy.ts
+// Typo-Tolerant Fuzzy Matcher & Levenshtein Distance Helper
 // =============================================================================
 
 import type { Book } from '~/types';
 
-function levenshteinDistance(a: string, b: string): number {
+export function levenshteinDistance(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
@@ -64,7 +64,7 @@ export function fuzzyScore(query: string, target: string): number {
     totalScore += bestTokenScore;
   }
 
-  return totalScore / queryTokens.length;
+  return queryTokens.length > 0 ? totalScore / queryTokens.length : 0;
 }
 
 export interface FuzzySearchResult {
