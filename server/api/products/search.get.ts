@@ -1,13 +1,12 @@
-// server/api/products/search.get.ts
 // =============================================================================
-// Global Catalog Search & Typo-Tolerant Matcher (Searches ALL Pages)
+// server/api/products/search.get.ts
+// Full-Catalog Typo-Tolerant Search Proxy (Direct Database-Backed Relevance)
 // =============================================================================
 
 import { sokoClient } from '../../utils/sokoClient';
-import { fuzzySearchBooks } from '../../../utils/fuzzy';
 import type { Book } from '~/types';
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<Book[]> => {
   const config = useRuntimeConfig();
   const storeSlug = config.public.storeSlug;
   const query = getQuery(event);
@@ -20,14 +19,13 @@ export default defineEventHandler(async (event) => {
   try {
     const res = await sokoClient<any>(`/public/stores/${storeSlug}/products`, {
       query: {
-        limit: 250,
+        q,
+        limit: 8,
       },
     });
 
-    const allBooks: Book[] = Array.isArray(res) ? res : res?.products || [];
-    const matches = fuzzySearchBooks(allBooks, q, 0.35, 6);
-
-    return matches.map((m) => m.book);
+    const books: Book[] = Array.isArray(res) ? res : res?.products || [];
+    return books;
   } catch {
     return [];
   }
