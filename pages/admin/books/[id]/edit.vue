@@ -544,6 +544,17 @@ function handlePdfRemoved() {
 async function handleUpdate() {
   formError.value = '';
   successToast.value = '';
+
+  if (!form.name.trim()) {
+    formError.value = 'Book title is required.';
+    return;
+  }
+
+  if (!form.category_id) {
+    formError.value = 'Please select a category.';
+    return;
+  }
+
   isSubmitting.value = true;
 
   try {
@@ -561,50 +572,67 @@ async function handleUpdate() {
           : [],
       },
     });
-	  // 2. Update Hardcopy Format
+
+    const formatPromises: Promise<any>[] = [];
+
+    // 2. Update Hardcopy Format
     if (hardcopyFormatId.value) {
-      await ofetch(`/api/admin/products/${productId}/formats/${hardcopyFormatId.value}`, {
-        method: 'PATCH',
-        body: {
-          price: form.hardcopyPrice,
-          stock: form.hardcopyStock,
-        },
-      });
+      formatPromises.push(
+        ofetch(`/api/admin/products/${productId}/formats/${hardcopyFormatId.value}`, {
+          method: 'PATCH',
+          body: {
+            price: Math.max(0, Number(form.hardcopyPrice) || 0),
+            stock: Math.max(0, Number(form.hardcopyStock) || 0),
+          },
+        })
+      );
     }
 
     // 3. Update or Create PDF Format
     if (pdfFormatId.value) {
-      await ofetch(`/api/admin/products/${productId}/formats/${pdfFormatId.value}`, {
-        method: 'PATCH',
-        body: {
-          price: form.pdfPrice,
-          file_url: form.pdfFileUrl || form.pdfKey,
-          file_public_id: form.pdfKey,
-          file_size_bytes: form.pdfFileSize || null,
-        },
-      });
+      formatPromises.push(
+        ofetch(`/api/admin/products/${productId}/formats/${pdfFormatId.value}`, {
+          method: 'PATCH',
+          body: {
+            price: Math.max(0, Number(form.pdfPrice) || 0),
+            file_url: form.pdfFileUrl || form.pdfKey,
+            file_public_id: form.pdfKey,
+            file_size_bytes: form.pdfFileSize ? Number(form.pdfFileSize) : null,
+          },
+        })
+      );
     } else if (form.pdfKey) {
-      const createdFormat = await ofetch<any>(`/api/admin/products/${productId}/formats`, {
-        method: 'POST',
-        body: {
-          format: 'pdf',
-          price: form.pdfPrice,
-          file_url: form.pdfFileUrl || form.pdfKey,
-          file_public_id: form.pdfKey,
-          file_size_bytes: form.pdfFileSize,
-        },
-      });
-      pdfFormatId.value = createdFormat?.id || createdFormat?.data?.id;
+      formatPromises.push(
+        ofetch<any>(`/api/admin/products/${productId}/formats`, {
+          method: 'POST',
+          body: {
+            format: 'pdf',
+            price: Math.max(0, Number(form.pdfPrice) || 0),
+            file_url: form.pdfFileUrl || form.pdfKey,
+            file_public_id: form.pdfKey,
+            file_size_bytes: form.pdfFileSize ? Number(form.pdfFileSize) : null,
+          },
+        }).then((createdFormat) => {
+          pdfFormatId.value = createdFormat?.id || createdFormat?.data?.id;
+        })
+      );
     }
 
+    await Promise.all(formatPromises);
+
     isPdfDirty.value = false;
-    successToast.value = 'Book details, badges, cover art, and digital formats saved successfully!';
+    successToast.value = 'Book details, badges, cover art, and formats saved successfully!';
     pushToast({ message: successToast.value, variant: 'success' });
   } catch (err: any) {
     formError.value =
-      err.data?.data?.message || err.data?.message || err.message || 'Failed to save changes.';
+      err.data?.message ||
+      err.data?.error?.message ||
+      err.statusMessage ||
+      err.message ||
+      'Failed to save changes.';
+    pushToast({ message: formError.value, variant: 'error' });
   } finally {
     isSubmitting.value = false;
   }
-}
+  }
 </script>

@@ -16,7 +16,6 @@ import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
 import Pagination from '~/components/ui/Pagination.vue';
 import { BookOpen, ChevronDown, Check, Sparkles, Filter, X, Zap } from 'lucide-vue-next';
 import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
-import { fuzzySearchBooks } from '~/utils/fuzzy';
 import type { Book } from '~/types';
 
 // Pagination & Search Reactive State
@@ -27,7 +26,7 @@ const searchQuery = ref<string>('');
 const debouncedSearch = ref<string>('');
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Reactive Catalogue Query
+// Reactive Catalogue Query (powered natively by backend pg_trgm fuzzy matching)
 const { data: catalogData, status: booksStatus } = await useFetch<{
   products: Book[];
   total: number;
@@ -93,48 +92,20 @@ useHead({
 
 const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
 
-// Full catalog pool for fuzzy fallback
-const fullCatalogPool = computed<Book[]>(() => {
-  const remoteList: Book[] = Array.isArray(showcaseBooks.value)
-    ? showcaseBooks.value
-    : showcaseBooks.value?.products || [];
-  return mergeWithSeeds(remoteList, [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS], 20);
-});
-
-const isFuzzyFallbackActive = ref(false);
-
+// Authoritative Database Results
 const displayBooks = computed<Book[]>(() => {
-  const rawQuery = debouncedSearch.value.trim();
-  const backendResults = catalogData.value?.products || [];
-
-  if (!rawQuery) {
-    isFuzzyFallbackActive.value = false;
-    return backendResults;
-  }
-
-  if (backendResults.length > 0) {
-    isFuzzyFallbackActive.value = false;
-    return backendResults;
-  }
-
-  const fuzzyResults = fuzzySearchBooks(fullCatalogPool.value, rawQuery, 0.35, itemsPerPage.value);
-  if (fuzzyResults.length > 0) {
-    isFuzzyFallbackActive.value = true;
-    return fuzzyResults.map((r) => r.book);
-  }
-
-  isFuzzyFallbackActive.value = false;
-  return [];
+  return catalogData.value?.products || [];
 });
 
-const totalBooksCount = computed(() => {
-  if (isFuzzyFallbackActive.value) return displayBooks.value.length;
-  return catalogData.value?.total ?? displayBooks.value.length;
-});
+const totalBooksCount = computed(() => catalogData.value?.total ?? displayBooks.value.length);
+const totalPages = computed(() => catalogData.value?.totalPages ?? 1);
 
-const totalPages = computed(() => {
-  if (isFuzzyFallbackActive.value) return Math.max(1, Math.ceil(displayBooks.value.length / itemsPerPage.value));
-  return catalogData.value?.totalPages ?? 1;
+// Detect whether a fuzzy typo hit was served by Postgres
+const isTypoCorrectionActive = computed(() => {
+  const q = debouncedSearch.value.trim().toLowerCase();
+  if (!q || displayBooks.value.length === 0) return false;
+  // If none of the top 3 books literally contain the query string, it's a fuzzy hit
+  return !displayBooks.value.slice(0, 3).some((b) => b.name.toLowerCase().includes(q));
 });
 
 const paginationRangeText = computed(() => {
@@ -161,7 +132,7 @@ const flashSaleBooks = computed<Book[]>(() => {
   });
 });
 
-// Provide at least 8 items so DealsWeek is scrollable (4 in view on desktop, 2 on mobile)
+// Provide at least 8 items for DealsWeek scrolling (4 in view on desktop, 2 on mobile)
 const bestsellersOfWeek = computed<Book[]>(() => {
   const list: Book[] = Array.isArray(showcaseBooks.value)
     ? showcaseBooks.value
@@ -335,7 +306,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Bestsellers of the Week (Scrollable with 4 in place on desktop, 2 on mobile) -->
+    <!-- Bestsellers of the Week (DealsWeek) -->
     <DealsWeek :books="bestsellersOfWeek" @request-seed="handleRequestSeed" />
 
     <!-- Complete Bookstore Catalogue Archive -->
@@ -343,7 +314,7 @@ onUnmounted(() => {
       id="catalog-results"
       class="pt-10 sm:pt-14 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6"
     >
-      <!-- Unified Section Title & Dynamic Filter Row -->
+      <!-- Section Title & Dynamic Filter Row -->
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-slate-200">
         <div class="space-y-1">
           <div class="flex items-center gap-2">
@@ -421,14 +392,14 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- FUZZY TYPO MATCH NOTICE BANNER -->
+      <!-- Typo Hit Notice: Informs shopper that closest matches are shown -->
       <div
-        v-if="isFuzzyFallbackActive"
+        v-if="isTypoCorrectionActive"
         class="p-3.5 bg-[#FFF7ED] border border-orange-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-[#C25E00]"
       >
         <div class="flex items-center gap-2">
           <Zap :size="16" class="text-[#E8750D] flex-shrink-0" />
-          <span>No exact title found for "<strong>{{ debouncedSearch }}</strong>". Displaying closest matching books below:</span>
+          <span>Showing closest matching titles for "<strong>{{ debouncedSearch }}</strong>":</span>
         </div>
         <button
           type="button"
@@ -439,7 +410,7 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- SKELETON LOADING GRID: 4 columns matching DealsWeek card dimensions -->
+      <!-- SKELETON LOADING GRID -->
       <div
         v-if="booksStatus === 'pending'"
         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full"
@@ -464,22 +435,21 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- REAL BOOKS GRID: Uniform 4-column desktop layout identical to DealsWeek -->
-      <!-- REAL BOOKS GRID: Uniform 4-column desktop layout identical to DealsWeek -->
-<div
-  v-else-if="displayBooks.length > 0"
-  class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300"
->
-  <BookCard
-    v-for="book in displayBooks"
-    :key="book.id"
-    :book="book"
-    class="h-full"
-    @request-seed="handleRequestSeed"
-  />
-</div>
+      <!-- REAL BOOKS GRID -->
+      <div
+        v-else-if="displayBooks.length > 0"
+        class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300"
+      >
+        <BookCard
+          v-for="book in displayBooks"
+          :key="book.id"
+          :book="book"
+          class="h-full"
+          @request-seed="handleRequestSeed"
+        />
+      </div>
 
-      <!-- TRUE EMPTY STATE -->
+      <!-- EMPTY STATE -->
       <div
         v-else
         class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm animate-in fade-in duration-200"
@@ -538,4 +508,4 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-6px);
 }
-</style>
+	</style>
