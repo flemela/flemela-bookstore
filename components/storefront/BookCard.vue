@@ -263,14 +263,14 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <!-- Unified Card Container: Elevates and scales as a single solid unit -->
+  <!-- Unified Card: The entire card elevates and scales as a single solid unit -->
   <div class="w-full h-full bg-white text-theme-ink rounded-2xl p-3.5 sm:p-4 shadow-card hover:shadow-xl hover:-translate-y-1.5 hover:scale-[1.01] hover:border-[#E8750D]/60 transition-all duration-200 flex flex-col justify-between group select-none text-left border border-theme-border relative">
     <div class="flex flex-col flex-1">
       
-      <!-- Stage Alcove (Preserves exact bounding box; NO overflow: hidden) -->
+      <!-- Stage Alcove (Exact bounding dimension preserved: aspect-[1/1.37], mb-3; NO overflow: hidden) -->
       <div class="sunrise-book-stage relative mb-3 w-full aspect-[1/1.37] rounded-xl flex items-center justify-center p-4 sm:p-5">
         
-        <!-- True 3D Physical Book Assembly (Rotated -26° with true Z-axis planes) -->
+        <!-- Multi-Planar 3D Physical Book Assembly (Rotated -24° with true 14px thickness) -->
         <NuxtLink
           :to="book.isSeed ? '#' : `/book/${book.slug}`"
           class="sunrise-3d-book-assembly block cursor-pointer"
@@ -280,13 +280,13 @@ function handleAddToCart(event: Event): void {
           <!-- 1. Directional Perspective Ground Shadow -->
           <div class="sunrise-3d-cast-shadow" aria-hidden="true" />
 
-          <!-- 2. Back Cover Board (translateZ(-12px)) -->
+          <!-- 2. Back Cover Board (translateZ(-7px)) -->
           <div class="sunrise-3d-back-board" aria-hidden="true" />
 
-          <!-- 3. Fore-Edge Page Block (Right side ONLY, rotateY(90deg)) -->
+          <!-- 3. Fore-Edge Page Block (Natural compressed paper block, rotateY(90deg)) -->
           <div class="sunrise-3d-pages-side" aria-hidden="true" />
 
-          <!-- 4. Front Cover Board (translateZ(12px)) -->
+          <!-- 4. Front Cover Board (translateZ(7px) with board bevel & overhang shadow) -->
           <div class="sunrise-3d-front bg-stone-100">
             <!-- Missing Cover Fallback -->
             <div
@@ -313,8 +313,8 @@ function handleAddToCart(event: Event): void {
               :alt="`Cover for ${book.name}`"
               class="w-full h-full object-cover"
               loading="lazy"
-              width="125"
-              height="181"
+              width="128"
+              height="186"
               referrerpolicy="no-referrer"
               @error="handleImageError"
             />
@@ -322,7 +322,7 @@ function handleAddToCart(event: Event): void {
             <!-- Spine Roll & Debossed Joint Hinge Crease -->
             <div class="sunrise-3d-spine-crease" aria-hidden="true" />
 
-            <!-- Laminate Gloss Sheen Reflection -->
+            <!-- Laminate Sheen Reflection -->
             <div class="sunrise-3d-sheen" aria-hidden="true" />
           </div>
 
