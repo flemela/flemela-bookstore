@@ -21,7 +21,7 @@ const { push: pushToast } = useToast();
 const imageFailed = ref(false);
 const selectedFormatId = ref<string>('');
 
-// Deterministic rating between 4.0 and 5.0 (zero SSR hydration mismatch)
+// Deterministic rating between 4.0 and 5.0
 const bookRating = computed(() => {
   const str = props.book.id || props.book.name || 'book';
   let hash = 0;
@@ -263,27 +263,31 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <div class="w-full h-full bg-white text-theme-ink rounded-xl p-3.5 sm:p-4 shadow-card hover:shadow-medium transition-all flex flex-col justify-between group select-none text-left border border-theme-border hover:border-theme-border-strong relative">
+  <!-- Unified Card Container: Elevates and scales as a single solid unit -->
+  <div class="w-full h-full bg-white text-theme-ink rounded-2xl p-3.5 sm:p-4 shadow-card hover:shadow-xl hover:-translate-y-1.5 hover:scale-[1.01] hover:border-[#E8750D]/60 transition-all duration-200 flex flex-col justify-between group select-none text-left border border-theme-border relative">
     <div class="flex flex-col flex-1">
       
-      <!-- Stage Alcove (Exact bounding dimension preserved: aspect-[1/1.37], mb-3) -->
-      <div class="sunrise-book-stage relative mb-3 w-full aspect-[1/1.37] rounded-xl flex items-center justify-center p-3.5 sm:p-4 overflow-hidden">
+      <!-- Stage Alcove (Preserves exact bounding box; NO overflow: hidden) -->
+      <div class="sunrise-book-stage relative mb-3 w-full aspect-[1/1.37] rounded-xl flex items-center justify-center p-4 sm:p-5">
         
-        <!-- Physical 3D Book Construction (~74% scaled with generous surrounding padding) -->
+        <!-- True 3D Physical Book Assembly (Rotated -26° with true Z-axis planes) -->
         <NuxtLink
           :to="book.isSeed ? '#' : `/book/${book.slug}`"
-          class="sunrise-book-physical block relative w-[74%] max-w-[140px] aspect-[1/1.44] cursor-pointer"
+          class="sunrise-3d-book-assembly block cursor-pointer"
           :aria-label="`View details for ${book.name}`"
           @click="handleCardClick"
         >
-          <!-- Ground Shadow underneath the book base -->
-          <div class="sunrise-book-shadow" aria-hidden="true" />
+          <!-- 1. Directional Perspective Ground Shadow -->
+          <div class="sunrise-3d-cast-shadow" aria-hidden="true" />
 
-          <!-- Page Block Fore-Edge Thickness (Right and Bottom stack depth) -->
-          <div class="sunrise-book-pages" aria-hidden="true" />
+          <!-- 2. Back Cover Board (translateZ(-12px)) -->
+          <div class="sunrise-3d-back-board" aria-hidden="true" />
 
-          <!-- Book Jacket Cover Board -->
-          <div class="sunrise-book-jacket relative w-full h-full overflow-hidden bg-stone-100">
+          <!-- 3. Fore-Edge Page Block (Right side ONLY, rotateY(90deg)) -->
+          <div class="sunrise-3d-pages-side" aria-hidden="true" />
+
+          <!-- 4. Front Cover Board (translateZ(12px)) -->
+          <div class="sunrise-3d-front bg-stone-100">
             <!-- Missing Cover Fallback -->
             <div
               v-if="imageFailed || !coverImage"
@@ -307,22 +311,22 @@ function handleAddToCart(event: Event): void {
               v-else
               :src="coverImage"
               :alt="`Cover for ${book.name}`"
-              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+              class="w-full h-full object-cover"
               loading="lazy"
-              width="150"
-              height="216"
+              width="125"
+              height="181"
               referrerpolicy="no-referrer"
               @error="handleImageError"
             />
 
             <!-- Spine Roll & Debossed Joint Hinge Crease -->
-            <div class="sunrise-book-spine" aria-hidden="true" />
+            <div class="sunrise-3d-spine-crease" aria-hidden="true" />
 
-            <!-- Laminate Sheen Reflection & Board Bevel -->
-            <div class="sunrise-book-sheen" aria-hidden="true" />
+            <!-- Laminate Gloss Sheen Reflection -->
+            <div class="sunrise-3d-sheen" aria-hidden="true" />
           </div>
 
-          <!-- Identity Badge (Top Left of Book Jacket) -->
+          <!-- Identity Badge (Top Left of Front Cover) -->
           <span
             v-if="badgeInfo"
             class="absolute top-1.5 left-2 bg-[#052219]/95 text-theme-turquoise font-mono font-bold text-[9px] px-1.5 py-0.5 rounded uppercase z-20 flex items-center gap-1 shadow-xs border border-theme-turquoise/20 pointer-events-none"
@@ -332,10 +336,10 @@ function handleAddToCart(event: Event): void {
           </span>
         </NuxtLink>
 
-        <!-- Discount Starburst Medallion (Anchored to Stage Corner) -->
+        <!-- Discount Starburst Medallion (Anchored cleanly to Stage Top-Right) -->
         <div
           v-if="discountPercentage > 0"
-          class="absolute top-2 right-2 z-20 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center pointer-events-none drop-shadow-[0_3px_8px_rgba(232,117,13,0.45)] transition-transform duration-300 group-hover:scale-110"
+          class="absolute top-2.5 right-2.5 z-20 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center pointer-events-none drop-shadow-[0_3px_8px_rgba(232,117,13,0.45)]"
           aria-hidden="true"
         >
           <svg viewBox="0 0 100 100" class="w-full h-full text-[#E8750D] fill-current">

@@ -1,6 +1,6 @@
 /* =============================================================================
    flemela/assets/css/main.css
-   Full-Stack Editorial Design System & Unified Typography
+   The Sunrise Bookstore — Full-Stack Design System & 3D Physical Book Shader
    ============================================================================= */
 
 /* 1. Unified Typography Imports */
@@ -80,104 +80,87 @@
 
   /* Selection Highlight */
   ::selection {
-    background-color: rgba(240, 90, 54, 0.2);
+    background-color: rgba(232, 117, 13, 0.22);
     color: var(--theme-dark);
   }
 }
 
-/* 5. Custom 3D Book Cover Treatment */
-.book-cover-3d {
+/* =============================================================================
+   The Sunrise Bookstore — True 3D Extruded Book Shader & Display Stage
+   ============================================================================= */
+
+/* 1. Display Stage: Defines 3D perspective space (NO overflow: hidden) */
+.sunrise-book-stage {
   position: relative;
-  border-radius: 2px 8px 8px 2px;
-  box-shadow: -2px 0 6px -1px rgba(0, 0, 0, 0.08), 3px 6px 18px -2px rgba(8, 37, 27, 0.10);
-  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  background: radial-gradient(circle at 45% 25%, #FFFFFF 0%, #F5F2EB 100%);
+  border: 1px solid rgba(8, 37, 27, 0.08);
+  box-shadow: inset 0 1px 3px rgba(8, 37, 27, 0.04), inset 0 -1px 2px rgba(8, 37, 27, 0.02);
+  perspective: 750px;
 }
 
-.book-cover-3d::after {
-  content: '';
+/* 2. 3D Book Assembly: Rotated on the Y-axis with preserve-3d */
+.sunrise-3d-book-assembly {
+  position: relative;
+  width: 66%;
+  max-width: 125px;
+  aspect-ratio: 1 / 1.45;
+  transform-style: preserve-3d;
+  transform: rotateY(-26deg);
+  transform-origin: left center;
+  user-select: none;
+}
+
+/* 3. True 3D Fore-Edge Page Block (Right side ONLY, rotated 90 degrees) */
+.sunrise-3d-pages-side {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 4px;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.16) 0%, rgba(255, 255, 255, 0.14) 50%, rgba(0, 0, 0, 0.05) 100%);
+  top: 3px;
+  bottom: 3px;
+  right: 0;
+  width: 24px; /* Real physical book thickness */
+  transform-origin: right center;
+  transform: rotateY(90deg);
+  background: 
+    /* Ambient light falloff: deep shadow receding from the front cover */
+    linear-gradient(to right, rgba(5, 34, 25, 0.40) 0%, rgba(5, 34, 25, 0.18) 30%, rgba(5, 34, 25, 0.08) 70%, rgba(5, 34, 25, 0.28) 100%),
+    /* Authentic stacked paper strata lines */
+    repeating-linear-gradient(
+      to bottom,
+      #FAF7F0 0px,
+      #FAF7F0 1.5px,
+      #E0D9C7 2px
+    );
+  box-shadow: inset 0 0 2px rgba(5, 34, 25, 0.25);
   pointer-events: none;
 }
 
-.book-hover-lift {
-  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.book-hover-lift:hover {
-  transform: translateY(-4px);
-  box-shadow: -3px 0 10px -1px rgba(0, 0, 0, 0.10), 6px 16px 30px -3px rgba(8, 37, 27, 0.14);
-}
-
-/* 6. Hero Staggered Book Stack Top-Gradient Fade Mask */
-.hero-faded-stack {
-  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 15%, black 35%, black 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 15%, black 35%, black 100%);
-}
-
-/* 7. Deep 50/50 Overlapping Pill Drop Shadow */
-.shadow-search-pill {
-  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04);
-}
-
-/* 8. Cross-Browser Invisible Scrollbar Utility */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* 9. Prevent Form Autofill Color Shifts */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-textarea:-webkit-autofill,
-textarea:-webkit-autofill:hover,
-textarea:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--theme-ink);
-  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
-  transition: background-color 5000s ease-in-out 0s;
-}
-.sunrise-book-stage {
-  position: relative;
-  background: radial-gradient(circle at 50% 30%, #FAF8F5 0%, #F1EDE4 100%);
-  border: 1px solid rgba(8, 37, 27, 0.08);
-  box-shadow: inset 0 1px 3px rgba(8, 37, 27, 0.03), inset 0 -1px 2px rgba(8, 37, 27, 0.02);
-  perspective: 900px;
-}
-
-/* 2. Physical 3D Book Shell: Micro-perspective tilt & physical lift on hover */
-.sunrise-book-physical {
-  position: relative;
-  border-radius: 2px 5px 5px 2px;
-  transform: rotateY(-3.5deg) rotateX(1.5deg);
-  transform-origin: left center;
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), filter 320ms cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform;
-}
-
-.group:hover .sunrise-book-physical {
-  transform: translateY(-5px) rotateY(-1deg) rotateX(0deg);
-}
-
-/* 3. Book Jacket Board: Asymmetric trim & board edge bevel */
-.sunrise-book-jacket {
-  position: relative;
-  border-radius: 2px 5px 5px 2px;
+/* 4. True 3D Back Cover Board: Pushed backward along Z-axis */
+.sunrise-3d-back-board {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(-12px);
+  border-radius: 2px 4px 4px 2px;
+  background: linear-gradient(135deg, #1C221F 0%, #0B120E 100%);
   box-shadow: 
-    -1px 0 2px rgba(5, 34, 25, 0.30),
-    1px 1px 3px rgba(5, 34, 25, 0.12);
+    1px 0 3px rgba(5, 34, 25, 0.35),
+    -1px 0 2px rgba(0, 0, 0, 0.20);
+  pointer-events: none;
 }
 
-/* 4. Cylindrical Spine Roll & Debossed Joint Hinge Crease */
-.sunrise-book-spine {
+/* 5. True 3D Front Cover Board: Pushed forward along Z-axis */
+.sunrise-3d-front {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform: translateZ(12px);
+  border-radius: 2px 4px 4px 2px;
+  overflow: hidden;
+  box-shadow: 
+    -2px 0 3px rgba(5, 34, 25, 0.25),
+    1px 0 2px rgba(5, 34, 25, 0.12);
+}
+
+/* Cylindrical Spine Apex Roll & Debossed Joint Hinge Crease */
+.sunrise-3d-spine-crease {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -186,34 +169,34 @@ textarea:-webkit-autofill:focus {
   pointer-events: none;
   z-index: 15;
   background: 
-    /* Spine roll highlight on the bound apex */
+    /* Spine apex roll highlight */
     linear-gradient(to right, 
-      rgba(5, 34, 25, 0.35) 0%, 
-      rgba(255, 255, 255, 0.35) 6%, 
+      rgba(5, 34, 25, 0.38) 0%, 
+      rgba(255, 255, 255, 0.40) 6%, 
       rgba(255, 255, 255, 0.12) 16%, 
-      rgba(5, 34, 25, 0.15) 36%, 
+      rgba(5, 34, 25, 0.18) 36%, 
       transparent 50%
     ),
-    /* Debossed hinge indentation where the front board flexes open */
+    /* Debossed joint hinge crease groove */
     linear-gradient(to right, 
       transparent 0px, 
       transparent 12px, 
-      rgba(5, 34, 25, 0.28) 13px, 
-      rgba(255, 255, 255, 0.40) 14px, 
-      rgba(5, 34, 25, 0.12) 15px, 
+      rgba(5, 34, 25, 0.30) 13px, 
+      rgba(255, 255, 255, 0.42) 14px, 
+      rgba(5, 34, 25, 0.14) 15px, 
       transparent 18px
     );
 }
 
-/* 5. Jacket Laminate Sheen & Board Overhang ("Squares") */
-.sunrise-book-sheen {
+/* Laminate Gloss Sheen Reflection */
+.sunrise-3d-sheen {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 16;
-  border-radius: 2px 5px 5px 2px;
+  border-radius: 2px 4px 4px 2px;
   background: linear-gradient(118deg, 
-    rgba(255, 255, 255, 0.24) 0%, 
+    rgba(255, 255, 255, 0.22) 0%, 
     rgba(255, 255, 255, 0.08) 26%, 
     transparent 45%, 
     rgba(5, 34, 25, 0.05) 100%
@@ -224,55 +207,52 @@ textarea:-webkit-autofill:focus {
     inset 0 -1px 1px rgba(5, 34, 25, 0.20);
 }
 
-/* 6. Antique Ivory Page Block Fore-Edge Thickness */
-.sunrise-book-pages {
+/* 6. Directional Perspective Ground Shadow (Anchored at base) */
+.sunrise-3d-cast-shadow {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
-  right: -5px;
-  width: 6px;
-  border-radius: 0 2px 2px 0;
-  background: 
-    repeating-linear-gradient(
-      to bottom,
-      #FAF7F0 0px,
-      #FAF7F0 1.5px,
-      #E5DFD1 2px
-    );
-  box-shadow: 
-    inset 1px 0 2px rgba(5, 34, 25, 0.18),
-    1px 0 2px rgba(5, 34, 25, 0.10);
-  z-index: 2;
+  bottom: -14px;
+  left: -4px;
+  right: -28px;
+  height: 20px;
+  z-index: 0;
+  background: radial-gradient(ellipse at 35% 50%, rgba(5, 34, 25, 0.48) 0%, rgba(5, 34, 25, 0.18) 55%, transparent 75%);
+  filter: blur(5px);
+  transform: rotateX(80deg) translateZ(-6px);
   pointer-events: none;
 }
 
-.sunrise-book-pages::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 2px;
-  right: 0;
-  height: 4px;
-  background: #E8E2D4;
-  border-radius: 0 0 2px 1px;
-  box-shadow: inset 0 1px 1px rgba(5, 34, 25, 0.20);
+/* =============================================================================
+   Storefront Functional & Atmospheric Utilities
+   ============================================================================= */
+
+/* Hero Staggered Book Stack Top-Gradient Fade Mask */
+.hero-faded-stack {
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 15%, black 35%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 15%, black 35%, black 100%);
 }
 
-/* 7. Deep Forest-Toned Contact Ground Shadow */
-.sunrise-book-shadow {
-  position: absolute;
-  bottom: -9px;
-  left: 4%;
-  width: 96%;
-  height: 14px;
-  background: radial-gradient(ellipse at center, rgba(5, 34, 25, 0.38) 0%, rgba(5, 34, 25, 0.12) 50%, transparent 75%);
-  filter: blur(4px);
-  z-index: 1;
-  pointer-events: none;
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), opacity 320ms cubic-bezier(0.16, 1, 0.3, 1);
+/* Deep 50/50 Overlapping Floating Search Pill Shadow */
+.shadow-search-pill {
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
-.group:hover .sunrise-book-shadow {
-  transform: translateY(3px) scale(0.96);
-  opacity: 0.75;
+/* Invisible Scrollbar Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Prevent Browser Autofill Background Discoloration */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--theme-ink);
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+  transition: background-color 5000s ease-in-out 0s;
 }
