@@ -1,6 +1,6 @@
 // data/seeds.ts
 // =============================================================================
-// Permanent Seed Collection with Proportional Digital Strikethrough Pricing
+// Permanent Seed Collection with Real Catalog Prioritization & Fuzzy Suppression
 // =============================================================================
 
 import type { Book } from '~/types';
@@ -231,29 +231,65 @@ export const DEALS_SEEDS: SeedBook[] = [
   },
 ];
 
+function normalizeTitleForComparison(title?: string | null): string {
+  if (!title) return '';
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function titlesMatch(a: string, b: string): boolean {
+  const normA = normalizeTitleForComparison(a);
+  const normB = normalizeTitleForComparison(b);
+  if (!normA || !normB) return false;
+  if (normA === normB) return true;
+  if (normA.length >= 4 && normB.length >= 4) {
+    if (normA.includes(normB) || normB.includes(normA)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function mergeWithSeeds(
   realBooks: Book[] | null | undefined,
   seedCollection: SeedBook[],
-  targetCount = 4
+  targetCount = 4,
+  fullStoreCatalog: Book[] = []
 ): Book[] {
-  const real = realBooks || [];
+  const real = Array.isArray(realBooks) ? [...realBooks] : [];
 
   if (real.length >= targetCount) {
     return real;
   }
 
-  const realSlugs = new Set(
-    real.map((b) => (b?.slug ? b.slug.toLowerCase() : ''))
-  );
-  const realNames = new Set(
-    real.map((b) => (b?.name ? b.name.toLowerCase() : ''))
-  );
+  const allKnownRealBooks = [...real, ...fullStoreCatalog];
+  const knownSlugs = new Set(allKnownRealBooks.map((b) => (b?.slug || '').toLowerCase().trim()));
+  const knownNames = allKnownRealBooks.map((b) => b?.name || '');
 
-  const eligibleSeeds = seedCollection.filter(
-    (s) =>
-      !realSlugs.has((s.slug || '').toLowerCase()) &&
-      !realNames.has((s.name || '').toLowerCase())
-  );
+  // Backfill with real published catalog books first
+  if (fullStoreCatalog.length > 0) {
+    const existingIds = new Set(real.map((b) => b.id));
+    for (const storeBook of fullStoreCatalog) {
+      if (real.length >= targetCount) break;
+      if (!existingIds.has(storeBook.id) && storeBook.status !== 'archived') {
+        real.push(storeBook);
+        existingIds.add(storeBook.id);
+      }
+    }
+  }
+
+  if (real.length >= targetCount) {
+    return real;
+  }
+
+  const eligibleSeeds = seedCollection.filter((seed) => {
+    const seedSlug = (seed.slug || '').toLowerCase().trim();
+    if (knownSlugs.has(seedSlug)) return false;
+
+    return !knownNames.some((realName) => titlesMatch(realName, seed.name));
+  });
 
   const needed = targetCount - real.length;
   return [...real, ...eligibleSeeds.slice(0, needed)];

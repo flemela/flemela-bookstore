@@ -132,14 +132,13 @@ const flashSaleBooks = computed<Book[]>(() => {
   });
 });
 
-// Provide at least 8 items for DealsWeek scrolling (4 in view on desktop, 2 on mobile)
 const bestsellersOfWeek = computed<Book[]>(() => {
   const list: Book[] = Array.isArray(showcaseBooks.value)
     ? showcaseBooks.value
     : showcaseBooks.value?.products || [];
   const tagged = list.filter((b) => b.badge === 'BESTSELLER' || b.badge === 'DEAL_OF_WEEK');
   const combinedSeeds = [...MONTHLY_TOP_SEEDS, ...DEALS_SEEDS];
-  return mergeWithSeeds(tagged, combinedSeeds, 8);
+  return mergeWithSeeds(tagged, combinedSeeds, 8, list);
 });
 
 const catalogueCategories = computed<string[]>(() => {
