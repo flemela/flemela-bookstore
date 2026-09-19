@@ -1,6 +1,6 @@
 // =============================================================================
-// flemela/server/api/admin/books/[id].get.ts
-// Single Book Getter (Explicitly rejects 'upload-url' to prevent router collision)
+// server/api/admin/books/[id].get.ts
+// Single Book Getter — Merges Base Product Data with Formats
 // =============================================================================
 
 import { defineEventHandler, getCookie, getHeader, createError } from 'h3';
@@ -41,6 +41,7 @@ export default defineEventHandler(async (event) => {
   const baseApiUrl = resolveApiBaseUrl(config.sokoApiBaseUrl);
 
   try {
+    // 1. Fetch the base product record
     const res = await ofetch<{ success: boolean; data?: any }>(
       `${baseApiUrl}/products/${id}`,
       {
@@ -49,7 +50,25 @@ export default defineEventHandler(async (event) => {
       }
     );
 
-    return res.data || res;
+    const book = res.data || res;
+
+    // 2. Fetch formats if not returned inline by Soko
+    if (!book.formats || book.formats.length === 0) {
+      try {
+        const formatsRes = await ofetch<{ success: boolean; data?: any }>(
+          `${baseApiUrl}/products/${id}/formats`,
+          {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        book.formats = Array.isArray(formatsRes) ? formatsRes : formatsRes?.data || [];
+      } catch {
+        book.formats = [];
+      }
+    }
+
+    return book;
   } catch (err: any) {
     throw createError({
       statusCode: err.statusCode || 404,
