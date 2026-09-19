@@ -1,6 +1,6 @@
 <!-- pages/admin/books/[id]/edit.vue -->
 <template>
-  <div class="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8 font-sans">
+  <div class="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8 font-sans text-gray-900">
     <div class="max-w-4xl mx-auto">
 
       <!-- Loading Skeleton -->
@@ -49,6 +49,7 @@
           </div>
         </div>
 
+        <!-- pages/admin/books/[id]/edit.vue (continued) -->
         <form @submit.prevent="handleUpdate" class="space-y-6">
 
           <!-- Success Alert -->
@@ -161,7 +162,7 @@
                       class="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-xs font-mono font-bold uppercase text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                       maxlength="30"
                     />
-                    <p class="text-[10px] text-gray-500">Appears as an editorial badge on the book card.</p>
+                    <p class="text-[10px] text-gray-500">Appears as an editorial promotional badge on the book card.</p>
                   </div>
                 </div>
               </div>
@@ -363,7 +364,7 @@
                 </div>
               </div>
 
-              <!-- SINGLE PDF UPLOADER -->
+              <!-- Single PDF Uploader Component -->
               <div>
                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">
                   eBook PDF Document
@@ -455,6 +456,7 @@ const form = reactive({
   pdfFileSize: 0,
   pdfFileName: '',
 });
+
 const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME'];
 
 async function loadBookData() {
@@ -474,7 +476,7 @@ async function loadBookData() {
 
     form.name = book.name || '';
     
-    // Robust category hydration supporting all backend response formats
+    // Multi-casing category hydration
     form.category_id = book.category_id || book.categoryId || book.category?.id || '';
     
     form.sku = book.sku || '';
@@ -485,7 +487,7 @@ async function loadBookData() {
       : null;
     form.hardcopyStock = book.stock ?? 10;
 
-    // Robust Badge Hydration
+    // Badge Hydration: Presets vs Custom
     if (book.badge) {
       if (STANDARD_BADGES.includes(book.badge)) {
         badgeSelectValue.value = book.badge;
@@ -609,8 +611,9 @@ async function handleAutoFindCover() {
   } finally {
     isFindingCover.value = false;
   }
-	}
-	async function handleCoverFileSelected(e: Event) {
+}
+
+async function handleCoverFileSelected(e: Event) {
   const target = e.target as HTMLInputElement;
   const file = target.files?.[0];
   if (!file) return;
@@ -635,9 +638,8 @@ async function handleAutoFindCover() {
     isUploadingCover.value = false;
     target.value = '';
   }
-}
-
-function handlePdfReplaced(payload: { key: string; fileUrl: string; sizeBytes: number; fileName: string }) {
+	}
+	function handlePdfReplaced(payload: { key: string; fileUrl: string; sizeBytes: number; fileName: string }) {
   form.pdfKey = payload.key;
   form.pdfFileUrl = payload.fileUrl;
   form.pdfFileSize = payload.sizeBytes;
@@ -685,7 +687,7 @@ async function handleUpdate() {
       ? Math.max(0, Number(form.pdfCompareAtPrice)) 
       : null;
 
-    // 1. Update Base Product (providing dual camelCase & snake_case for DTO compatibility)
+    // 1. Update Base Product with dual-casing to guarantee DTO compatibility
     await ofetch(`/api/admin/books/${productId}`, {
       method: 'PATCH',
       body: {
@@ -773,7 +775,7 @@ async function handleUpdate() {
     successToast.value = 'Book details, discounts, badges, and formats saved successfully!';
     pushToast({ message: successToast.value, variant: 'success' });
 
-    // Reload book data to ensure live synchronized state
+    // 4. Re-hydrate fresh database record to ensure UI stays perfectly synchronized
     await loadBookData();
   } catch (err: any) {
     formError.value =
@@ -786,5 +788,5 @@ async function handleUpdate() {
   } finally {
     isSubmitting.value = false;
   }
-}
+											 }
 </script>

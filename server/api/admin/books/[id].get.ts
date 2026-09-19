@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
   const baseApiUrl = resolveApiBaseUrl(config.sokoApiBaseUrl);
 
   try {
-    // 1. Fetch the base product record
+    // 1. Fetch base product record
     const res = await ofetch<{ success: boolean; data?: any }>(
       `${baseApiUrl}/products/${id}`,
       {
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
 
     const book = res.data || res;
 
-    // 2. Fetch formats if not returned inline by Soko
+    // 2. Fetch formats in parallel/fallback so format IDs, files, and prices are available
     if (!book.formats || book.formats.length === 0) {
       try {
         const formatsRes = await ofetch<{ success: boolean; data?: any }>(
