@@ -46,8 +46,7 @@ const mode = ref<Mode>('pdf');
 const defaultPdfPrice = ref(100);
 const concurrency = 3;
 
-const index = ref<Map<string, BookRef> | null>(null);
-const indexing = ref(false);
+const lookupCache = new Map<string, BookRef | null>();
 const indexProgress = ref('');
 
 const jobs = ref<Job[]>([]);
@@ -90,42 +89,19 @@ function forgetProgress(): void {
   pushToast({ message: 'Remembered progress cleared for this mode', variant: 'info' });
 }
 
-// ---------- SKU -> book index ----------
-async function buildIndex(): Promise<void> {
-  indexing.value = true;
-  const map = new Map<string, BookRef>();
-  try {
-    let page = 1;
-    let totalPages = 1;
-    do {
-      const res = await ofetch<{ products: any[]; totalPages: number; total: number }>('/api/admin/books', {
-        query: { page, limit: 200 },
-      });
-      for (const b of res.products || []) {
-        if (!b.sku) continue;
-        const pdf = (b.formats || []).find((f: any) => f.format === 'pdf');
-        map.set(String(b.sku).toUpperCase(), {
-          id: b.id,
-          name: b.name,
-          pdfFormatId: pdf?.id || null,
-          pdfPrice: pdf ? Number(pdf.price) : null,
-        });
-      }
-      totalPages = Number(res.totalPages || 1);
-      indexProgress.value = `Reading catalog: page ${page} of ${totalPages} (${map.size} books)`;
-      page++;
-    } while (page <= totalPages);
-    index.value = map;
-    indexProgress.value = `Catalog ready: ${map.size} books with a SKU`;
-  } catch (err: any) {
-    indexProgress.value = '';
-    pushToast({
-      message: err?.response?.status === 401 ? 'Session expired - log in again, then retry' : 'Could not read the catalog',
-      variant: 'error',
-    });
-  } finally {
-    indexing.value = false;
-  }
+// ---------- SKU -> book ----------
+// Looked up one SKU at a time: the catalog search puts an exact SKU match first.
+// (Reading the whole catalog up front meant 400+ requests, and one failed page lost the lot.)
+async function lookupBySku(sku: string): Promise<BookRef | null> {
+  if (lookupCache.has(sku)) return lookupCache.get(sku)!;
+  const res = await ofetch<{ products: any[] }>('/api/admin/books', { query: { q: sku, limit: 5 } });
+  const b = (res.products || []).find((p: any) => String(p.sku || '').toUpperCase() === sku);
+  const pdf = b ? (b.formats || []).find((f: any) => f.format === 'pdf') : null;
+  const found = b
+    ? { id: b.id, name: b.name, pdfFormatId: pdf?.id || null, pdfPrice: pdf ? Number(pdf.price) : null }
+    : null;
+  lookupCache.set(sku, found);
+  return found;
 }
 
 // ---------- choosing files ----------
@@ -245,13 +221,13 @@ async function runJob(job: Job, done: Set<string>): Promise<void> {
     log.value.push({ sku: job.sku, status: 'skipped', detail: 'already done in an earlier run' });
     return;
   }
-  const book = index.value?.get(job.sku);
-  if (!book) {
-    log.value.push({ sku: job.sku, status: 'failed', detail: 'no book with this SKU in the store' });
-    return;
-  }
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
+      const book = await lookupBySku(job.sku);
+      if (!book) {
+        log.value.push({ sku: job.sku, status: 'failed', detail: 'no book with this SKU in the store' });
+        return;
+      }
       let detail = '';
       if (mode.value === 'pdf') detail = await attachPdf(book, job.file!);
       else if (mode.value === 'cover') detail = await attachCoverFile(book, job.file!);
@@ -272,8 +248,7 @@ async function runJob(job: Job, done: Set<string>): Promise<void> {
 }
 
 async function start(testOne = false): Promise<void> {
-  if (!index.value) await buildIndex();
-  if (!index.value || !jobs.value.length) return;
+  if (!jobs.value.length) return;
 
   running.value = true;
   pausedForLogin.value = false;
@@ -382,19 +357,19 @@ function downloadLog(): void {
           <label class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono block">3. Run</label>
           <div class="flex flex-wrap gap-2">
             <button type="button" class="bg-white border border-paper-border text-forest-950 text-xs font-bold px-4 py-2.5 rounded-xl disabled:opacity-50"
-              :disabled="running || indexing || !jobs.length" @click="start(true)">
+              :disabled="running || !jobs.length" @click="start(true)">
               Test with 1 file first
             </button>
             <button type="button" class="bg-forest-950 text-paper text-xs font-bold px-4 py-2.5 rounded-xl inline-flex items-center gap-1.5 disabled:opacity-50"
-              :disabled="running || indexing || !jobs.length" @click="start(false)">
+              :disabled="running || !jobs.length" @click="start(false)">
               <Play :size="13" /> {{ pausedForLogin ? 'Resume' : 'Run all' }}
             </button>
             <button v-if="running" type="button" class="bg-white border border-paper-border text-forest-950 text-xs font-bold px-4 py-2.5 rounded-xl inline-flex items-center gap-1.5" @click="stop">
               <Pause :size="13" /> Stop
             </button>
-            <button type="button" class="text-xs font-semibold text-ink-muted px-3 py-2.5 inline-flex items-center gap-1.5 disabled:opacity-50" :disabled="running || indexing" @click="buildIndex">
-              <RefreshCw :size="13" :class="indexing ? 'animate-spin' : ''" /> Re-read catalog
-            </button>
+            <span v-if="running" class="text-xs text-ink-muted px-3 py-2.5 inline-flex items-center gap-1.5">
+              <RefreshCw :size="13" class="animate-spin" /> working…
+            </span>
           </div>
 
           <div v-if="pausedForLogin" class="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-start gap-2">
