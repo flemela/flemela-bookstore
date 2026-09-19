@@ -7,6 +7,7 @@ import {
   BookOpen,
   PlusCircle,
   FileSpreadsheet,
+  UploadCloud,
   Images,
   MapPin,
   Zap,
@@ -91,7 +92,8 @@ const navSections: NavSection[] = [
         label: 'Books Catalog',
         to: '/admin/books',
         icon: BookOpen,
-        activeMatch: (p) => p.startsWith('/admin/books') && !p.includes('new') && !p.includes('import'),
+        activeMatch: (p) =>
+          p.startsWith('/admin/books') && !p.includes('new') && !p.includes('import') && !p.includes('bulk-files'),
       },
       {
         label: 'Add New Book',
@@ -104,6 +106,12 @@ const navSections: NavSection[] = [
         to: '/admin/books/import',
         icon: FileSpreadsheet,
         activeMatch: (p) => p.includes('/admin/books/import'),
+      },
+      {
+        label: 'Bulk eBooks & Covers',
+        to: '/admin/books/bulk-files',
+        icon: UploadCloud,
+        activeMatch: (p) => p.includes('/admin/books/bulk-files'),
       },
       {
         label: 'Hero Banners',
