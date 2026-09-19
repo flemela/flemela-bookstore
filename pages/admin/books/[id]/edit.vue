@@ -1,8 +1,4 @@
-<!-- =============================================================================
-     flemela/pages/admin/books/[id]/edit.vue
-     Edit Book: Pre-hydrated with Category Creation, Badges & Cover Suite
-     ============================================================================= -->
-
+<!-- pages/admin/books/[id]/edit.vue -->
 <template>
   <div class="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8 font-sans">
     <div class="max-w-4xl mx-auto">
@@ -19,7 +15,7 @@
           <div class="flex items-center space-x-3">
             <NuxtLink
               to="/admin/books"
-              class="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors shadow-sm"
+              class="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors shadow-sm cursor-pointer"
             >
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -27,14 +23,14 @@
             </NuxtLink>
             <div>
               <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Edit Book</h1>
-              <p class="text-xs text-gray-500 mt-0.5">Manage pricing, stock, categories, badges, and formats</p>
+              <p class="text-xs text-gray-500 mt-0.5">Manage pricing, discounts, stock, categories, badges, and formats</p>
             </div>
           </div>
 
           <div class="flex items-center space-x-3">
             <NuxtLink
               to="/admin/books"
-              class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm"
+              class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm transition-colors"
             >
               Cancel
             </NuxtLink>
@@ -42,7 +38,7 @@
               type="button"
               :disabled="isSubmitting"
               @click="handleUpdate"
-              class="inline-flex items-center space-x-2 px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-lg shadow-sm transition-all"
+              class="inline-flex items-center space-x-2 px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-lg shadow-sm transition-all cursor-pointer"
             >
               <svg v-if="isSubmitting" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -63,7 +59,7 @@
               </svg>
               <p class="text-xs font-bold text-emerald-900">{{ successToast }}</p>
             </div>
-            <button type="button" @click="successToast = ''" class="text-xs text-emerald-700 font-bold">Dismiss</button>
+            <button type="button" @click="successToast = ''" class="text-xs text-emerald-700 font-bold cursor-pointer">Dismiss</button>
           </div>
 
           <!-- Error Alert -->
@@ -89,6 +85,7 @@
                 <input
                   v-model="form.name"
                   type="text"
+                  placeholder="e.g. The Psychology of Money"
                   class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all"
                   required
                 />
@@ -99,6 +96,7 @@
                 <input
                   v-model="form.author"
                   type="text"
+                  placeholder="e.g. Morgan Housel"
                   class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all"
                 />
               </div>
@@ -109,17 +107,18 @@
                   <label class="block text-xs font-bold text-gray-700">Category *</label>
                   <button
                     type="button"
-                    class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer"
+                    class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer flex items-center gap-1"
                     @click="isCategoryModalOpen = true"
                   >
-                    + New Category
+                    <span>+ New Category</span>
                   </button>
                 </div>
                 <select
                   v-model="form.category_id"
-                  class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all"
+                  class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all cursor-pointer"
                   required
                 >
+                  <option value="" disabled>Select a category</option>
                   <option v-for="cat in categories" :key="cat.id" :value="cat.id">
                     {{ cat.name }}
                   </option>
@@ -131,24 +130,41 @@
                 <input
                   v-model="form.sku"
                   type="text"
+                  placeholder="e.g. 978-0857197689"
                   class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all"
                 />
               </div>
 
-              <!-- Promotional Badge Selector -->
-              <div>
-                <label class="block text-xs font-bold text-gray-700 mb-1.5">Promotional Badge</label>
-                <select
-                  v-model="form.badge"
-                  class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all"
-                >
-                  <option :value="null">None (Standard)</option>
-                  <option value="BESTSELLER">Bestseller</option>
-                  <option value="FLASH_SALE">Flash Sale</option>
-                  <option value="NO1_PICK">#1 Staff Pick</option>
-                  <option value="DEAL_OF_WEEK">Deal of the Week</option>
-                  <option value="LIMITED_TIME">Limited Time</option>
-                </select>
+              <!-- Promotional Badge (Standard Presets or Custom Badge) -->
+              <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-gray-700">Promotional Badge</label>
+                <div class="space-y-2">
+                  <select
+                    v-model="badgeSelectValue"
+                    class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all cursor-pointer"
+                    @change="handleBadgeSelectChange"
+                  >
+                    <option value="">None (Standard)</option>
+                    <option value="BESTSELLER">Bestseller (BESTSELLER)</option>
+                    <option value="FLASH_SALE">Flash Sale (FLASH_SALE)</option>
+                    <option value="NO1_PICK">#1 Staff Pick (NO1_PICK)</option>
+                    <option value="DEAL_OF_WEEK">Deal of the Week (DEAL_OF_WEEK)</option>
+                    <option value="LIMITED_TIME">Limited Time (LIMITED_TIME)</option>
+                    <option value="__CUSTOM__">✨ Custom Badge...</option>
+                  </select>
+
+                  <!-- Custom Badge Input (Revealed if Custom is chosen or existing book has custom tag) -->
+                  <div v-if="badgeSelectValue === '__CUSTOM__'" class="space-y-1 animate-in fade-in duration-200">
+                    <input
+                      v-model="form.customBadgeText"
+                      type="text"
+                      placeholder="Type custom badge (e.g. EDITOR'S CHOICE, 20% DISCOUNT)"
+                      class="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-xs font-mono font-bold uppercase text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                      maxlength="30"
+                    />
+                    <p class="text-[10px] text-gray-500">Appears as an editorial badge on the book card.</p>
+                  </div>
+                </div>
               </div>
 
               <div class="sm:col-span-2">
@@ -156,13 +172,14 @@
                 <textarea
                   v-model="form.description"
                   rows="3"
-                  class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all"
+                  placeholder="Summary of the book..."
+                  class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all resize-none"
                 ></textarea>
               </div>
             </div>
           </div>
 
-          <!-- Section 2: Book Cover Art with Auto-Find & Upload -->
+          <!-- Section 2: Book Cover Art -->
           <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-5">
             <div class="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
@@ -173,7 +190,7 @@
                 type="button"
                 :disabled="isFindingCover || !form.name.trim()"
                 @click="handleAutoFindCover"
-                class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
               >
                 <svg v-if="isFindingCover" class="animate-spin w-3.5 h-3.5 text-amber-900" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -216,7 +233,7 @@
                     type="button"
                     :disabled="isUploadingCover"
                     @click="coverFileInputRef?.click()"
-                    class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm disabled:opacity-50"
+                    class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
                   >
                     <svg v-if="isUploadingCover" class="animate-spin w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -229,7 +246,7 @@
                     v-if="form.cover_image_url"
                     type="button"
                     @click="form.cover_image_url = ''"
-                    class="px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    class="px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                   >
                     Remove
                   </button>
@@ -248,32 +265,60 @@
             </div>
           </div>
 
-          <!-- Section 3: Formats & Single PDF Management -->
+          <!-- Section 3: Format Management with Strikethrough Pricing -->
           <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
             <h2 class="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-3">
-              Format Management
+              Format &amp; Pricing Management
             </h2>
 
-            <!-- A. Hardcopy Format -->
+            <!-- A. Physical Hardcopy Format -->
             <div class="p-5 rounded-xl border border-gray-200 bg-gray-50/30 space-y-4">
-              <h3 class="text-sm font-bold text-gray-900">Physical Hardcopy Edition</h3>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                  <span>Physical Hardcopy Edition</span>
+                  <span class="text-[10px] font-mono text-gray-500 uppercase">(Doorstep Delivery / Pickup)</span>
+                </h3>
+                <span v-if="hardcopyFormatId" class="text-xs text-gray-600 font-mono bg-gray-100 px-2 py-0.5 rounded">
+                  Format ID: {{ hardcopyFormatId.slice(0, 8) }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- Hardcopy Selling Price -->
                 <div>
-                  <label class="block text-xs font-semibold text-gray-700 mb-1">Selling Price (KSh)</label>
+                  <label class="block text-xs font-semibold text-gray-700 mb-1">Selling Price (KSh) *</label>
                   <input
                     v-model.number="form.hardcopyPrice"
                     type="number"
                     min="0"
-                    class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                    placeholder="e.g. 999"
+                    class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono font-bold"
                   />
                 </div>
+
+                <!-- Hardcopy Strikethrough Price -->
+                <div>
+                  <label class="block text-xs font-semibold text-gray-700 mb-1">
+                    Original Price (KSh)
+                    <span class="text-[10px] text-gray-400 font-normal">Strikethrough</span>
+                  </label>
+                  <input
+                    v-model.number="form.hardcopyCompareAtPrice"
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 1499 (Optional)"
+                    class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono"
+                  />
+                </div>
+
+                <!-- Hardcopy Stock Count -->
                 <div>
                   <label class="block text-xs font-semibold text-gray-700 mb-1">Current Stock Count</label>
                   <input
                     v-model.number="form.hardcopyStock"
                     type="number"
                     min="0"
-                    class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                    class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono"
                   />
                 </div>
               </div>
@@ -291,14 +336,33 @@
                 </span>
               </div>
 
-              <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1">eBook Price (KSh)</label>
-                <input
-                  v-model.number="form.pdfPrice"
-                  type="number"
-                  min="0"
-                  class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm max-w-xs"
-                />
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- PDF Selling Price -->
+                <div>
+                  <label class="block text-xs font-semibold text-gray-700 mb-1">eBook Price (KSh)</label>
+                  <input
+                    v-model.number="form.pdfPrice"
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 149"
+                    class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono font-bold"
+                  />
+                </div>
+
+                <!-- PDF Strikethrough Price -->
+                <div>
+                  <label class="block text-xs font-semibold text-gray-700 mb-1">
+                    eBook Original Price (KSh)
+                    <span class="text-[10px] text-gray-400 font-normal">Strikethrough</span>
+                  </label>
+                  <input
+                    v-model.number="form.pdfCompareAtPrice"
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 299 (Optional)"
+                    class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono"
+                  />
+                </div>
               </div>
 
               <!-- MOUNTED SINGLE PDF UPLOADER -->
@@ -321,7 +385,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p class="text-[11px] text-amber-800 font-medium">
-                  New PDF staged in R2. Click <strong>Save Changes</strong> to update customer delivery links.
+                  New PDF staged in Cloudflare R2. Click <strong>Save Changes</strong> to update customer download streams.
                 </p>
               </div>
             </div>
@@ -350,6 +414,10 @@ import SinglePdfUploader from '~/components/admin/SinglePdfUploader.vue';
 import AddCategoryModal from '~/components/admin/AddCategoryModal.vue';
 import { useToast } from '~/composables/useToast';
 
+definePageMeta({
+  middleware: 'admin-auth',
+});
+
 const route = useRoute();
 const productId = route.params.id as string;
 const { push: pushToast } = useToast();
@@ -368,22 +436,29 @@ const categories = ref<Array<{ id: string; name: string; slug?: string }>>([]);
 const hardcopyFormatId = ref<string | null>(null);
 const pdfFormatId = ref<string | null>(null);
 
+// Badge Selector Mode: standard preset or custom
+const badgeSelectValue = ref<string>('');
+
 const form = reactive({
   name: '',
   author: '',
   category_id: '',
   sku: '',
   badge: null as string | null,
+  customBadgeText: '',
   description: '',
   cover_image_url: '',
   hardcopyPrice: 999,
+  hardcopyCompareAtPrice: null as number | null,
   hardcopyStock: 10,
   pdfPrice: 149,
+  pdfCompareAtPrice: null as number | null,
   pdfKey: null as string | null,
   pdfFileUrl: null as string | null,
   pdfFileSize: 0,
   pdfFileName: '',
 });
+const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME'];
 
 onMounted(async () => {
   try {
@@ -392,7 +467,7 @@ onMounted(async () => {
     const catList = catRaw?.data || catRaw;
     if (Array.isArray(catList)) categories.value = catList;
 
-    // 2. Fetch Book Details
+    // 2. Fetch Book Record
     const bookRaw = await ofetch<any>(`/api/admin/books/${productId}`);
     const book = bookRaw?.data || bookRaw;
 
@@ -403,10 +478,26 @@ onMounted(async () => {
     form.name = book.name || '';
     form.category_id = book.category_id || '';
     form.sku = book.sku || '';
-    form.badge = book.badge || null;
     form.description = book.description || '';
     form.hardcopyPrice = Number(book.price) || 999;
+    form.hardcopyCompareAtPrice = book.compare_at_price ? Number(book.compare_at_price) : null;
     form.hardcopyStock = book.stock ?? 10;
+
+    // Badge Hydration: Check if preset or custom string
+    if (book.badge) {
+      if (STANDARD_BADGES.includes(book.badge)) {
+        badgeSelectValue.value = book.badge;
+        form.badge = book.badge;
+      } else {
+        badgeSelectValue.value = '__CUSTOM__';
+        form.badge = book.badge;
+        form.customBadgeText = book.badge;
+      }
+    } else {
+      badgeSelectValue.value = '';
+      form.badge = null;
+      form.customBadgeText = '';
+    }
 
     // Prefill author from description if prefixed "By ..."
     if (book.description && book.description.startsWith('By ')) {
@@ -429,19 +520,24 @@ onMounted(async () => {
       form.cover_image_url = book.cover_image_url;
     }
 
+    // Formats Hydration
     const formats: any[] = book.formats || [];
 
     const hardcopy = formats.find((f) => f.format === 'hardcopy');
     if (hardcopy) {
       hardcopyFormatId.value = hardcopy.id;
       form.hardcopyPrice = Number(hardcopy.price) || form.hardcopyPrice;
+      form.hardcopyCompareAtPrice = hardcopy.compare_at_price
+        ? Number(hardcopy.compare_at_price)
+        : form.hardcopyCompareAtPrice;
       form.hardcopyStock = hardcopy.stock ?? form.hardcopyStock;
     }
 
-    const pdf = formats.find((f) => f.format === 'pdf');
+    const pdf = formats.find((f) => f.format === 'pdf') || formats.find((f) => f.format === 'epub');
     if (pdf) {
       pdfFormatId.value = pdf.id;
       form.pdfPrice = Number(pdf.price) || 149;
+      form.pdfCompareAtPrice = pdf.compare_at_price ? Number(pdf.compare_at_price) : null;
       form.pdfKey = pdf.file_public_id || pdf.file_url || null;
       form.pdfFileUrl = pdf.file_url || null;
       form.pdfFileSize = pdf.file_size_bytes ? Number(pdf.file_size_bytes) : 0;
@@ -456,6 +552,18 @@ onMounted(async () => {
     isLoadingInitial.value = false;
   }
 });
+
+function handleBadgeSelectChange() {
+  if (badgeSelectValue.value === '__CUSTOM__') {
+    // Keep customBadgeText if previously typed
+    form.badge = form.customBadgeText.trim() || null;
+  } else if (badgeSelectValue.value === '') {
+    form.badge = null;
+    form.customBadgeText = '';
+  } else {
+    form.badge = badgeSelectValue.value;
+  }
+}
 
 function handleCategoryCreated(newCat: { id: string; name: string; slug: string }) {
   if (!categories.value.some((c) => c.id === newCat.id)) {
@@ -558,14 +666,24 @@ async function handleUpdate() {
   isSubmitting.value = true;
 
   try {
-    // 1. Update Base Product, Badge & Cover Image
+    // Resolve final badge string
+    let resolvedBadge: string | null = null;
+    if (badgeSelectValue.value === '__CUSTOM__') {
+      resolvedBadge = form.customBadgeText.trim() || null;
+    } else if (badgeSelectValue.value) {
+      resolvedBadge = badgeSelectValue.value;
+    }
+
+    // 1. Update Base Product with Strikethrough & Resolved Badge
     await ofetch(`/api/admin/books/${productId}`, {
       method: 'PATCH',
       body: {
         name: form.name.trim(),
         category_id: form.category_id,
+        price: Math.max(0, Number(form.hardcopyPrice) || 0),
+        compare_at_price: form.hardcopyCompareAtPrice ? Math.max(0, Number(form.hardcopyCompareAtPrice)) : null,
         sku: form.sku.trim() || null,
-        badge: form.badge || null,
+        badge: resolvedBadge,
         description: form.author ? `By ${form.author.trim()}. ${form.description}` : form.description,
         images: form.cover_image_url
           ? [{ image_url: form.cover_image_url, image_public_id: 'cover_img' }]
@@ -575,26 +693,28 @@ async function handleUpdate() {
 
     const formatPromises: Promise<any>[] = [];
 
-    // 2. Update Hardcopy Format
+    // 2. Update Hardcopy Format with Strikethrough Price
     if (hardcopyFormatId.value) {
       formatPromises.push(
         ofetch(`/api/admin/products/${productId}/formats/${hardcopyFormatId.value}`, {
           method: 'PATCH',
           body: {
             price: Math.max(0, Number(form.hardcopyPrice) || 0),
+            compare_at_price: form.hardcopyCompareAtPrice ? Math.max(0, Number(form.hardcopyCompareAtPrice)) : null,
             stock: Math.max(0, Number(form.hardcopyStock) || 0),
           },
         })
       );
     }
 
-    // 3. Update or Create PDF Format
+    // 3. Update or Create PDF Format with Strikethrough Price
     if (pdfFormatId.value) {
       formatPromises.push(
         ofetch(`/api/admin/products/${productId}/formats/${pdfFormatId.value}`, {
           method: 'PATCH',
           body: {
             price: Math.max(0, Number(form.pdfPrice) || 0),
+            compare_at_price: form.pdfCompareAtPrice ? Math.max(0, Number(form.pdfCompareAtPrice)) : null,
             file_url: form.pdfFileUrl || form.pdfKey,
             file_public_id: form.pdfKey,
             file_size_bytes: form.pdfFileSize ? Number(form.pdfFileSize) : null,
@@ -608,6 +728,7 @@ async function handleUpdate() {
           body: {
             format: 'pdf',
             price: Math.max(0, Number(form.pdfPrice) || 0),
+            compare_at_price: form.pdfCompareAtPrice ? Math.max(0, Number(form.pdfCompareAtPrice)) : null,
             file_url: form.pdfFileUrl || form.pdfKey,
             file_public_id: form.pdfKey,
             file_size_bytes: form.pdfFileSize ? Number(form.pdfFileSize) : null,
@@ -621,7 +742,7 @@ async function handleUpdate() {
     await Promise.all(formatPromises);
 
     isPdfDirty.value = false;
-    successToast.value = 'Book details, badges, cover art, and formats saved successfully!';
+    successToast.value = 'Book details, discounts, badges, and formats saved successfully!';
     pushToast({ message: successToast.value, variant: 'success' });
   } catch (err: any) {
     formError.value =
@@ -634,5 +755,5 @@ async function handleUpdate() {
   } finally {
     isSubmitting.value = false;
   }
-  }
+}
 </script>
