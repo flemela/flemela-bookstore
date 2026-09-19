@@ -1,5 +1,6 @@
 <!-- pages/admin/books/[id]/edit.vue -->
 <template>
+<AdminLayout>
   <div class="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8 font-sans text-gray-900">
     <div class="max-w-4xl mx-auto">
 
@@ -403,6 +404,7 @@
 
     </div>
   </div>
+</AdminLayout>
 </template>
 
 <script setup lang="ts">
