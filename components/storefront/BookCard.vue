@@ -263,14 +263,14 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-  <!-- Unified Card: The entire card elevates and scales as a single solid unit -->
+  <!-- Unified Card: The whole card elevates and scales together on hover -->
   <div class="w-full h-full bg-white text-theme-ink rounded-2xl p-3.5 sm:p-4 shadow-card hover:shadow-xl hover:-translate-y-1.5 hover:scale-[1.01] hover:border-[#E8750D]/60 transition-all duration-200 flex flex-col justify-between group select-none text-left border border-theme-border relative">
     <div class="flex flex-col flex-1">
       
-      <!-- Stage Alcove (Exact bounding dimension preserved: aspect-[1/1.37], mb-3; NO overflow: hidden) -->
+      <!-- Stage Alcove (Exact bounding dimension: aspect-[1/1.37], mb-3) -->
       <div class="sunrise-book-stage relative mb-3 w-full aspect-[1/1.37] rounded-xl flex items-center justify-center p-4 sm:p-5">
         
-        <!-- Multi-Planar 3D Physical Book Assembly (Rotated -24° with true 14px thickness) -->
+        <!-- Multi-Planar 3D Physical Book Assembly (Rotated -24°) -->
         <NuxtLink
           :to="book.isSeed ? '#' : `/book/${book.slug}`"
           class="sunrise-3d-book-assembly block cursor-pointer"
@@ -280,13 +280,13 @@ function handleAddToCart(event: Event): void {
           <!-- 1. Directional Perspective Ground Shadow -->
           <div class="sunrise-3d-cast-shadow" aria-hidden="true" />
 
-          <!-- 2. Back Cover Board (translateZ(-7px)) -->
+          <!-- 2. Back Cover Board (translateZ(-7.5px)) -->
           <div class="sunrise-3d-back-board" aria-hidden="true" />
 
-          <!-- 3. Fore-Edge Page Block (Natural compressed paper block, rotateY(90deg)) -->
+          <!-- 3. Fore-Edge Page Block (Tucked between -7px and +7px) -->
           <div class="sunrise-3d-pages-side" aria-hidden="true" />
 
-          <!-- 4. Front Cover Board (translateZ(7px) with board bevel & overhang shadow) -->
+          <!-- 4. Front Cover Board (translateZ(7.5px)) -->
           <div class="sunrise-3d-front bg-stone-100">
             <!-- Missing Cover Fallback -->
             <div
@@ -336,7 +336,7 @@ function handleAddToCart(event: Event): void {
           </span>
         </NuxtLink>
 
-        <!-- Discount Starburst Medallion (Anchored cleanly to Stage Top-Right) -->
+        <!-- Discount Starburst Medallion (Anchored to Stage Top-Right) -->
         <div
           v-if="discountPercentage > 0"
           class="absolute top-2.5 right-2.5 z-20 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center pointer-events-none drop-shadow-[0_3px_8px_rgba(232,117,13,0.45)]"
