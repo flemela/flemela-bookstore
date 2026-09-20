@@ -44,7 +44,12 @@ interface LogRow {
 
 const mode = ref<Mode>('pdf');
 const defaultPdfPrice = ref(100);
-const concurrency = 3;
+// The store refuses bursts, so work one book at a time with a gap between them.
+const concurrency = 1;
+const gapMs = 400;
+const throttleWaits = [15000, 30000, 60000, 120000];
+const throttledUntil = ref(0);
+const throttleNotice = ref('');
 
 const lookupCache = new Map<string, BookRef | null>();
 const indexProgress = ref('');
@@ -179,6 +184,22 @@ function isAuthError(err: any): boolean {
   return status === 401 || status === 403;
 }
 
+// The store answers 429 when asked for too much at once. Waiting and retrying the same
+// book is right here; giving up on it (as this page first did) loses work for no reason.
+function isThrottled(err: any): boolean {
+  const status = err?.response?.status || err?.statusCode;
+  const message = err?.data?.message || err?.statusMessage || err?.message || '';
+  return status === 429 || /too many requests/i.test(message);
+}
+
+async function waitOutThrottle(level: number): Promise<void> {
+  const ms = throttleWaits[Math.min(level, throttleWaits.length - 1)];
+  throttledUntil.value = Date.now() + ms;
+  throttleNotice.value = `Store asked us to slow down - waiting ${Math.round(ms / 1000)}s before retrying`;
+  await new Promise((r) => setTimeout(r, ms));
+  throttleNotice.value = '';
+}
+
 function putToR2(uploadUrl: string, file: File): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -259,7 +280,9 @@ async function runJob(job: Job, done: Set<string>): Promise<void> {
     log.value.push({ sku: job.sku, status: 'skipped', detail: 'already done in an earlier run' });
     return;
   }
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let attempt = 0;
+  let throttles = 0;
+  while (attempt < 3 && throttles <= throttleWaits.length + 2) {
     try {
       const book = await lookupBySku(job.sku);
       if (!book) {
@@ -278,10 +301,18 @@ async function runJob(job: Job, done: Set<string>): Promise<void> {
       return;
     } catch (err: any) {
       if (isAuthError(err)) throw new SessionExpired();
-      if (attempt === 1) {
+      if (isThrottled(err)) {
+        await waitOutThrottle(throttles++);     // a refusal to serve is not this book's fault
+        if (stopRequested.value) return;
+        continue;
+      }
+      if (++attempt >= 3) {
         log.value.push({ sku: job.sku, status: 'failed', detail: err?.data?.message || err?.message || 'failed' });
       }
     }
+  }
+  if (throttles > throttleWaits.length + 2) {
+    log.value.push({ sku: job.sku, status: 'failed', detail: 'store kept refusing requests - try again later' });
   }
 }
 
@@ -300,6 +331,7 @@ async function start(testOne = false): Promise<void> {
       Array.from({ length: testOne ? 1 : concurrency }, async () => {
         while (!stopRequested.value && next < queue.length) {
           await runJob(queue[next++], done);
+          if (gapMs) await new Promise((r) => setTimeout(r, gapMs));   // keep under the store's rate limit
         }
       })
     );
@@ -430,6 +462,11 @@ function downloadLog(): void {
             <span v-if="running" class="text-xs text-ink-muted px-3 py-2.5 inline-flex items-center gap-1.5">
               <RefreshCw :size="13" class="animate-spin" /> working…
             </span>
+          </div>
+
+          <div v-if="throttleNotice" class="p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 flex items-start gap-2">
+            <RefreshCw :size="14" class="mt-0.5 flex-shrink-0 animate-spin" />
+            {{ throttleNotice }} - nothing is lost, the same book is retried.
           </div>
 
           <div v-if="pausedForLogin" class="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-start gap-2">
