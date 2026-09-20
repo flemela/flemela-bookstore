@@ -9,7 +9,7 @@
   re-run (e.g. after logging in again) skips them.
 -->
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ofetch } from 'ofetch';
 import { UploadCloud, Play, Pause, RefreshCw, Download, AlertTriangle, CheckCircle2 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
@@ -141,19 +141,84 @@ function acceptFiles(files: File[]): void {
 
 // Chrome can hand over a whole folder in one click, with no file dialog to navigate.
 const canPickFolder = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+const savedFolderName = ref('');
+
+// The chosen folder is kept in IndexedDB so a reload (or a deploy) doesn't cost the
+// admin another trip through File Explorer.
+function handleStore(mode: IDBTransactionMode): Promise<IDBObjectStore> {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open('bulk-files', 1);
+    open.onupgradeneeded = () => open.result.createObjectStore('handles');
+    open.onsuccess = () => resolve(open.result.transaction('handles', mode).objectStore('handles'));
+    open.onerror = () => reject(open.error);
+  });
+}
+
+async function rememberFolder(dir: any): Promise<void> {
+  try {
+    const store = await handleStore('readwrite');
+    store.put(dir, 'folder');
+    savedFolderName.value = dir.name;
+  } catch {
+    // Without storage the page still works; the folder just has to be chosen again.
+  }
+}
+
+async function savedFolder(): Promise<any | null> {
+  try {
+    const store = await handleStore('readonly');
+    return await new Promise((resolve) => {
+      const req = store.get('folder');
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function readFolder(dir: any): Promise<void> {
+  const files: File[] = [];
+  for await (const entry of dir.values()) {
+    if (entry.kind === 'file') files.push(await entry.getFile());
+  }
+  acceptFiles(files);
+}
 
 async function pickFolder(): Promise<void> {
   try {
     const dir = await (window as any).showDirectoryPicker();
-    const files: File[] = [];
-    for await (const entry of dir.values()) {
-      if (entry.kind === 'file') files.push(await entry.getFile());
-    }
-    acceptFiles(files);
+    await rememberFolder(dir);
+    await readFolder(dir);
   } catch {
     // The picker was closed without choosing anything.
   }
 }
+
+async function useSavedFolder(): Promise<void> {
+  const dir = await savedFolder();
+  if (!dir) return;
+  try {
+    const opts = { mode: 'read' as const };
+    let permission = await dir.queryPermission(opts);
+    if (permission !== 'granted') permission = await dir.requestPermission(opts);
+    if (permission !== 'granted') return;
+    await readFolder(dir);
+  } catch {
+    pushToast({ message: 'That folder could not be reopened - choose it again', variant: 'error' });
+  }
+}
+
+onMounted(async () => {
+  const dir = await savedFolder();
+  if (!dir) return;
+  savedFolderName.value = dir.name;
+  try {
+    if ((await dir.queryPermission({ mode: 'read' })) === 'granted') await readFolder(dir);
+  } catch {
+    // Permission lapsed: the "Use saved folder" button asks for it back with one click.
+  }
+});
 
 async function onDrop(e: DragEvent): Promise<void> {
   isDragging.value = false;
@@ -345,6 +410,8 @@ async function start(testOne = false): Promise<void> {
     if (err instanceof SessionExpired) {
       stopRequested.value = true;
       pausedForLogin.value = true;
+      running.value = false;
+      watchForLogin(testOne);        // carry on by itself once the admin logs back in
     } else {
       throw err;
     }
@@ -352,6 +419,29 @@ async function start(testOne = false): Promise<void> {
     running.value = false;
   }
 }
+
+// After a session lapse there is nothing to decide: keep checking, and pick the run back
+// up the moment the login works again.
+let loginWatch: ReturnType<typeof setInterval> | undefined;
+
+function watchForLogin(testOne: boolean): void {
+  clearInterval(loginWatch);
+  loginWatch = setInterval(async () => {
+    if (!pausedForLogin.value) return clearInterval(loginWatch);
+    try {
+      const res = await fetch('/api/admin/books?q=SR-B1&limit=1', { credentials: 'include' });
+      if (res.status !== 200) return;
+      clearInterval(loginWatch);
+      pausedForLogin.value = false;
+      pushToast({ message: 'Signed in again - carrying on', variant: 'success' });
+      start(testOne);
+    } catch {
+      // Still offline or still logged out; try again on the next tick.
+    }
+  }, 10000);
+}
+
+onUnmounted(() => clearInterval(loginWatch));
 
 function stop(): void {
   stopRequested.value = true;
@@ -430,6 +520,15 @@ function downloadLog(): void {
                 @click="pickFolder"
               >
                 <UploadCloud :size="14" /> Choose a folder
+              </button>
+              <button
+                v-if="savedFolderName && !jobs.length"
+                type="button"
+                class="bg-white border border-gold-400 text-forest-950 text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer inline-flex items-center gap-1.5"
+                :disabled="running"
+                @click="useSavedFolder"
+              >
+                <RefreshCw :size="13" /> Use saved folder ({{ savedFolderName }})
               </button>
               <label class="bg-white border border-paper-border text-forest-950 text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer">
                 …or select files
