@@ -50,6 +50,7 @@ const lookupCache = new Map<string, BookRef | null>();
 const indexProgress = ref('');
 
 const jobs = ref<Job[]>([]);
+const isDragging = ref(false);
 const running = ref(false);
 const pausedForLogin = ref(false);
 const stopRequested = ref(false);
@@ -116,6 +117,43 @@ function onFilesChosen(e: Event): void {
   log.value = [];
   input.value = '';
   pushToast({ message: `${jobs.value.length} files matched a SKU`, variant: 'info' });
+}
+
+function acceptFiles(files: File[]): void {
+  const wanted = mode.value === 'pdf' ? /\.pdf$/i : /\.(jpe?g|png|webp)$/i;
+  jobs.value = files
+    .filter((f) => wanted.test(f.name))
+    .map((f) => ({ sku: (SKU_RE.exec(f.name)?.[1] || '').toUpperCase(), file: f }))
+    .filter((j) => j.sku);
+  log.value = [];
+  pushToast({
+    message: jobs.value.length
+      ? `${jobs.value.length} files matched a SKU`
+      : 'No files here are named by SKU (e.g. SR-B2534.pdf)',
+    variant: jobs.value.length ? 'info' : 'error',
+  });
+}
+
+// Chrome can hand over a whole folder in one click, with no file dialog to navigate.
+const canPickFolder = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+
+async function pickFolder(): Promise<void> {
+  try {
+    const dir = await (window as any).showDirectoryPicker();
+    const files: File[] = [];
+    for await (const entry of dir.values()) {
+      if (entry.kind === 'file') files.push(await entry.getFile());
+    }
+    acceptFiles(files);
+  } catch {
+    // The picker was closed without choosing anything.
+  }
+}
+
+async function onDrop(e: DragEvent): Promise<void> {
+  isDragging.value = false;
+  const files = [...(e.dataTransfer?.files || [])];
+  if (files.length) acceptFiles(files);
 }
 
 async function onLinksCsvChosen(e: Event): Promise<void> {
@@ -335,15 +373,37 @@ function downloadLog(): void {
         <!-- 2. Files -->
         <div class="space-y-2">
           <label class="text-xs font-bold uppercase text-forest-950 tracking-wider font-mono block">2. Choose files</label>
-          <div v-if="mode !== 'cover-links'" class="flex flex-wrap gap-2">
-            <label class="bg-forest-950 text-paper text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer inline-flex items-center gap-1.5">
-              <UploadCloud :size="14" /> Select a folder
-              <input type="file" class="hidden" webkitdirectory multiple :disabled="running" @change="onFilesChosen" />
-            </label>
-            <label class="bg-white border border-paper-border text-forest-950 text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer">
-              …or select files
-              <input type="file" class="hidden" multiple :accept="mode === 'pdf' ? '.pdf' : 'image/*'" :disabled="running" @change="onFilesChosen" />
-            </label>
+          <div v-if="mode !== 'cover-links'" class="space-y-2">
+            <div
+              class="border-2 border-dashed rounded-2xl p-6 text-center transition-all"
+              :class="isDragging ? 'border-forest-900 bg-emerald-50/60' : 'border-paper-border bg-paper-canvas/40'"
+              @dragover.prevent="isDragging = true"
+              @dragleave.prevent="isDragging = false"
+              @drop.prevent="onDrop"
+            >
+              <p class="text-xs font-bold text-forest-950">
+                Drag the {{ mode === 'pdf' ? 'PDFs' : 'cover images' }} here from File Explorer
+              </p>
+              <p class="text-[11px] text-ink-muted mt-1">
+                Open the folder, press Ctrl+A to select everything, then drag it onto this box.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-if="canPickFolder"
+                type="button"
+                class="bg-forest-950 text-paper text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50"
+                :disabled="running"
+                @click="pickFolder"
+              >
+                <UploadCloud :size="14" /> Choose a folder
+              </button>
+              <label class="bg-white border border-paper-border text-forest-950 text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer">
+                …or select files
+                <input type="file" class="hidden" multiple :accept="mode === 'pdf' ? '.pdf' : 'image/*'" :disabled="running" @change="onFilesChosen" />
+              </label>
+            </div>
           </div>
           <label v-else class="bg-forest-950 text-paper text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer inline-flex items-center gap-1.5">
             <UploadCloud :size="14" /> Select links CSV
