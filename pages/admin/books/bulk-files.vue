@@ -382,7 +382,10 @@ async function runJob(job: Job, done: Set<string>): Promise<void> {
 }
 
 async function start(testOne = false): Promise<void> {
-  if (!jobs.value.length) return;
+  // One run at a time: a second one (e.g. auto-resume firing while a run is still going)
+  // would snapshot the same "done" list and could upload the same book twice.
+  if (running.value || !jobs.value.length) return;
+  log.value = [];
 
   running.value = true;
   pausedForLogin.value = false;
