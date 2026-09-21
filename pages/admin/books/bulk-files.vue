@@ -100,7 +100,7 @@ function forgetProgress(): void {
 // (Reading the whole catalog up front meant 400+ requests, and one failed page lost the lot.)
 async function lookupBySku(sku: string): Promise<BookRef | null> {
   if (lookupCache.has(sku)) return lookupCache.get(sku)!;
-  const res = await ofetch<{ products: any[] }>('/api/admin/books', { query: { q: sku, limit: 5 } });
+  const res = await api<{ products: any[] }>('/api/admin/books', { query: { q: sku, limit: 5 } });
   const b = (res.products || []).find((p: any) => String(p.sku || '').toUpperCase() === sku);
   const pdf = b ? (b.formats || []).find((f: any) => f.format === 'pdf') : null;
   const found = b
@@ -265,19 +265,26 @@ async function waitOutThrottle(level: number): Promise<void> {
   throttleNotice.value = '';
 }
 
+// A stalled connection must fail (and be retried) rather than freeze the whole run.
+const REQUEST_TIMEOUT_MS = 60000;
+const UPLOAD_TIMEOUT_MS = 180000;
+const api = ofetch.create({ timeout: REQUEST_TIMEOUT_MS });
+
 function putToR2(uploadUrl: string, file: File): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', uploadUrl, true);
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
     xhr.setRequestHeader('Content-Type', 'application/pdf');
     xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`R2 returned HTTP ${xhr.status}`)));
     xhr.onerror = () => reject(new Error('Network error uploading to R2'));
+    xhr.ontimeout = () => reject(new Error('Upload to R2 timed out'));
     xhr.send(file);
   });
 }
 
 async function attachPdf(book: BookRef, file: File): Promise<string> {
-  const slot = await ofetch<{ uploadUrl: string; key: string; fileUrl?: string }>('/api/admin/books/upload-url', {
+  const slot = await api<{ uploadUrl: string; key: string; fileUrl?: string }>('/api/admin/books/upload-url', {
     method: 'POST',
     body: { filename: file.name, format: 'pdf', contentType: 'application/pdf' },
   });
@@ -289,12 +296,12 @@ async function attachPdf(book: BookRef, file: File): Promise<string> {
     file_size_bytes: file.size,
   };
   if (book.pdfFormatId) {
-    await ofetch(`/api/admin/books/${book.id}/formats/${book.pdfFormatId}`, {
+    await api(`/api/admin/books/${book.id}/formats/${book.pdfFormatId}`, {
       method: 'PATCH',
       body: { price: book.pdfPrice ?? defaultPdfPrice.value, ...fileFields },
     });
   } else {
-    await ofetch(`/api/admin/books/${book.id}/formats`, {
+    await api(`/api/admin/books/${book.id}/formats`, {
       method: 'POST',
       body: { format: 'pdf', price: defaultPdfPrice.value, ...fileFields },
     });
@@ -308,7 +315,7 @@ async function cloudinarySignature(): Promise<any> {
   // Signatures last about an hour; refresh well before that.
   if (!signature || Date.now() - signature.fetchedAt > 45 * 60 * 1000) {
     signature = {
-      data: await ofetch('/api/admin/upload-signature', { method: 'POST' }),
+      data: await api('/api/admin/upload-signature', { method: 'POST' }),
       fetchedAt: Date.now(),
     };
   }
@@ -316,7 +323,7 @@ async function cloudinarySignature(): Promise<any> {
 }
 
 async function setCover(book: BookRef, imageUrl: string, publicId: string): Promise<void> {
-  await ofetch(`/api/admin/books/${book.id}`, {
+  await api(`/api/admin/books/${book.id}`, {
     method: 'PATCH',
     body: { images: [{ image_url: imageUrl, image_public_id: publicId }] },
   });
@@ -330,7 +337,11 @@ async function attachCoverFile(book: BookRef, file: File): Promise<string> {
   form.append('timestamp', String(sig.timestamp));
   form.append('signature', sig.signature);
   form.append('folder', sig.folder);
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, { method: 'POST', body: form });
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+  });
   const data = await res.json();
   if (!data.secure_url) {
     signature = null; // likely expired; the next attempt fetches a fresh one
