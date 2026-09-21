@@ -402,7 +402,12 @@ async function start(testOne = false): Promise<void> {
   pausedForLogin.value = false;
   stopRequested.value = false;
   const done = loadDone();
-  const queue = testOne ? jobs.value.filter((j) => !done.has(j.sku)).slice(0, 1) : [...jobs.value];
+  // Finished books are dropped up front: walking past them one by one (with the pause
+  // between books) cost minutes on every restart before any real work began.
+  const pending = jobs.value.filter((j) => !done.has(j.sku));
+  const alreadyDone = jobs.value.length - pending.length;
+  if (alreadyDone) log.value.push(...jobs.value.filter((j) => done.has(j.sku)).map((j) => ({ sku: j.sku, status: 'skipped' as const, detail: 'already done' })));
+  const queue = testOne ? pending.slice(0, 1) : pending;
   let next = 0;
 
   try {
