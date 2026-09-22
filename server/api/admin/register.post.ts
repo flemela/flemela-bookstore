@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import { sokoClient } from '../../utils/sokoClient';
+import { setAdminSession } from '../../utils/adminSession';
 
 const RegisterSchema = z.object({
   name: z.string().min(1, 'Full name is required').max(200),
@@ -41,13 +42,7 @@ export default defineEventHandler(async (event) => {
       },
     });
 
-    setCookie(event, 'flemela_admin_session', res.tokens.accessToken, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-      path: '/',
-    });
+    setAdminSession(event, res.tokens);
 
     return {
       success: true,
