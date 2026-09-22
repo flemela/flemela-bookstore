@@ -1,6 +1,6 @@
 <!-- components/storefront/BentoCategories.vue -->
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import {
   BookOpen,
   GraduationCap,
@@ -58,6 +58,24 @@ const CATEGORIES = [
   },
 ];
 
+// Resolves category images from public/images using categoryName.png convention
+function getCategoryImageUrl(name: string): string {
+  const clean = name.trim().toLowerCase();
+  if (clean === 'classic' || clean === 'classics') return '/images/classics.png';
+  if (clean === 'self help' || clean === 'self-help') return '/images/self help.png';
+  if (clean === 'non-fiction' || clean === 'nonfiction') return '/images/non-fiction.png';
+  if (clean === 'fiction') return '/images/fiction.png';
+  if (clean === 'technology' || clean === 'tech') return '/images/technology.png';
+  return `/images/${clean}.png`;
+}
+
+// Track image failures to gracefully apply fallback gradients without broken image icons
+const failedImages = ref<Set<string>>(new Set());
+
+function onImageError(catName: string): void {
+  failedImages.value.add(catName);
+}
+
 const countMap = computed(() => {
   const map = new Map<string, number>();
   const list: Book[] = Array.isArray(catalogResponse.value)
@@ -94,50 +112,69 @@ function handleCategoryClick(catQuery: string): void {
 </script>
 
 <template>
-  <section id="categories-grid" class="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-5 select-none">
-    <!-- Standardized Section Heading -->
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-slate-200">
-      <div class="space-y-1">
-        <span class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#E8750D] block">
-          CURATED GENRES
-        </span>
-        <h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
-          SHOP BY CATEGORY
-        </h2>
-      </div>
+	<section id="categories-grid"
+		class="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-5 select-none">
+		<!-- Section Heading -->
+		<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-slate-200">
+			<div class="space-y-1">
+				<span
+					class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#E8750D] block">
+					CURATED GENRES
+				</span>
+				<h2
+					class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
+					SHOP BY CATEGORY
+				</h2>
+			</div>
 
-      <button
-        type="button"
-        class="text-xs sm:text-sm font-bold text-[#E8750D] hover:underline flex items-center gap-1 transition-colors cursor-pointer self-start sm:self-auto"
-        @click="handleCategoryClick('General')"
-      >
-        <span>View all books</span>
-        <ArrowRight :size="14" />
-      </button>
-    </div>
+			<button type="button"
+				class="text-xs sm:text-sm font-bold text-[#E8750D] hover:underline flex items-center gap-1 transition-colors cursor-pointer self-start sm:self-auto"
+				@click="handleCategoryClick('General')">
+				<span>View all books</span>
+				<ArrowRight :size="14" />
+			</button>
+		</div>
 
-    <!-- Category Grid: 3 Icons on Mobile, 6 on Desktop -->
-    <div class="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
-      <button
-        v-for="cat in CATEGORIES"
-        :key="cat.name"
-        type="button"
-        class="bg-white hover:bg-orange-50/40 border border-slate-200 hover:border-[#E8750D] rounded-xl p-3 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center gap-1.5 sm:gap-2.5 transition-all duration-200 group cursor-pointer shadow-2xs hover:shadow-xs hover:-translate-y-0.5 min-h-[96px] sm:min-h-[114px]"
-        @click="handleCategoryClick(cat.query)"
-      >
-        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-100 group-hover:bg-[#FFF7ED] text-slate-800 group-hover:text-[#E8750D] flex items-center justify-center transition-colors flex-shrink-0">
-          <component :is="cat.icon" :size="18" class="sm:w-5 sm:h-5 stroke-[1.75]" />
-        </div>
+		<!-- Category Grid: 3 on Mobile, 6 on Desktop with Photographic Backgrounds -->
+		<div class="grid grid-cols-3 md:grid-cols-6 gap-2.5 sm:gap-3.5 md:gap-4">
+			<button v-for="cat in CATEGORIES" :key="cat.name" type="button"
+				class="relative overflow-hidden rounded-xl p-3.5 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center transition-all duration-300 group cursor-pointer shadow-md hover:shadow-xl hover:-translate-y-1 min-h-[110px] sm:min-h-[135px] md:min-h-[155px] border border-white/10 hover:border-emerald-400/70"
+				@click="handleCategoryClick(cat.query)">
+				<!-- Background Image with smooth zoom on hover -->
+				<img v-if="!failedImages.has(cat.name)" :src="getCategoryImageUrl(cat.name)" :alt="`${cat.name} Books`"
+					class="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-110 pointer-events-none"
+					loading="lazy" @error="onImageError(cat.name)" />
 
-        <div class="space-y-0.5 w-full min-w-0">
-          <h3 class="font-sans font-bold text-[11px] sm:text-xs md:text-sm text-slate-900 group-hover:text-[#E8750D] transition-colors leading-tight truncate">
-            {{ cat.name }}
-          </h3>
-          <p class="text-[9px] sm:text-[10px] md:text-[11px] text-slate-500 font-medium truncate">
-            {{ getDisplayCount(cat.query, cat.fallbackCount) }}
-          </p>
-        </div>
-      </button>
-    </div>
-  </section>
+				<!-- Fallback Atmospheric Gradient if Image is missing -->
+				<div v-else
+					class="absolute inset-0 w-full h-full bg-gradient-to-br from-[#052219] via-[#0C3A2B] to-[#145240] pointer-events-none" />
+
+				<!-- Dark Contrast Scrim (Ensures White Text and Icons are 100% Legible) -->
+				<div
+					class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/35 group-hover:from-black/95 group-hover:via-black/65 group-hover:to-black/40 transition-colors duration-300 pointer-events-none" />
+
+				<!-- Tile Foreground Content -->
+				<div
+					class="relative z-10 flex flex-col items-center justify-center text-center gap-2 sm:gap-2.5 w-full min-w-0">
+					<!-- Filled Icon inside Frosted Badge -->
+					<div
+						class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center shadow-xs flex-shrink-0 group-hover:bg-white/30 group-hover:scale-110 transition-all duration-300">
+						<component :is="cat.icon" :size="18" class="sm:w-5 sm:h-5 fill-white text-white stroke-[1.5]" />
+					</div>
+
+					<!-- Large Bold White Typography -->
+					<div class="space-y-0.5 w-full min-w-0 px-1">
+						<h3
+							class="font-sans font-extrabold text-xs sm:text-sm md:text-base text-white leading-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]">
+							{{ cat.name }}
+						</h3>
+						<p
+							class="text-[9px] sm:text-[10px] md:text-[11px] text-white/85 font-medium font-mono truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+							{{ getDisplayCount(cat.query, cat.fallbackCount) }}
+						</p>
+					</div>
+				</div>
+			</button>
+		</div>
+	</section>
 </template>

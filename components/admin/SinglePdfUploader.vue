@@ -1,175 +1,145 @@
 <!-- =============================================================================
      flemela/components/admin/SinglePdfUploader.vue
-     Hardened Single PDF Uploader: ofetch Implementation, Zero Auth Leakage to R2
+     Hardened Single PDF Uploader: ofetch Implementation, Zero Auth Leakage
      ============================================================================= -->
 
 <template>
-  <div class="w-full font-sans">
-    <!-- State 1: IDLE / DROPZONE -->
-    <div
-      v-if="currentState === 'idle'"
-      @dragover.prevent="isDragging = true"
-      @dragleave.prevent="isDragging = false"
-      @drop.prevent="handleFileDrop"
-      :class="[
+	<div class="w-full font-sans">
+		<!-- State 1: IDLE / DROPZONE -->
+		<div v-if="currentState === 'idle'" @dragover.prevent="isDragging = true"
+			@dragleave.prevent="isDragging = false" @drop.prevent="handleFileDrop" :class="[
         'relative border-2 border-dashed rounded-xl p-7 text-center transition-all duration-200 cursor-pointer',
         isDragging
           ? 'border-emerald-600 bg-emerald-50/60 scale-[0.99]'
           : 'border-gray-200 hover:border-emerald-700/40 bg-gray-50/50 hover:bg-gray-50'
-      ]"
-      @click="triggerFileInput"
-    >
-      <input
-        ref="fileInputRef"
-        type="file"
-        accept="application/pdf,.pdf"
-        class="hidden"
-        @change="handleFileSelect"
-      />
+      ]" @click="triggerFileInput">
+			<input ref="fileInputRef" type="file" accept="application/pdf,.pdf" class="hidden"
+				@change="handleFileSelect" />
 
-      <div class="flex flex-col items-center justify-center space-y-2.5">
-        <div class="w-11 h-11 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-emerald-700">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
-        </div>
-        <div>
-          <p class="text-sm font-semibold text-gray-900">
-            Click to upload PDF or drag and drop
-          </p>
-          <p class="text-xs text-gray-500 mt-0.5">
-            Single eBook file (PDF format, up to {{ maxFileSizeMb }}MB)
-          </p>
-        </div>
-      </div>
-    </div>
+			<div class="flex flex-col items-center justify-center space-y-2.5">
+				<div
+					class="w-11 h-11 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-emerald-700">
+					<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+							d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+					</svg>
+				</div>
+				<div>
+					<p class="text-sm font-semibold text-gray-900">
+						Click to upload PDF or drag and drop
+					</p>
+					<p class="text-xs text-gray-500 mt-0.5">
+						Single eBook file (PDF format, up to {{ maxFileSizeMb }}MB)
+					</p>
+				</div>
+			</div>
+		</div>
 
-    <!-- State 2 & 3: PREPARING / UPLOADING -->
-    <div
-      v-else-if="currentState === 'preparing' || currentState === 'uploading'"
-      class="border border-gray-200 rounded-xl p-5 bg-white shadow-sm"
-    >
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center space-x-3">
-          <div class="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-            <svg class="w-5 h-5 text-emerald-700 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <div>
-            <h4 class="text-xs font-bold text-gray-900 truncate max-w-xs sm:max-w-md">
-              {{ activeFile?.name || 'Uploading PDF eBook...' }}
-            </h4>
-            <p class="text-[11px] text-gray-500 mt-0.5">
-              {{ currentState === 'preparing' ? 'Negotiating storage slot...' : `${uploadProgress}% uploaded (${formatBytes(uploadedBytes)} of ${formatBytes(activeFile?.size || 0)})` }}
-            </p>
-          </div>
-        </div>
+		<!-- State 2 & 3: PREPARING / UPLOADING -->
+		<div v-else-if="currentState === 'preparing' || currentState === 'uploading'"
+			class="border border-gray-200 rounded-xl p-5 bg-white shadow-sm">
+			<div class="flex items-center justify-between mb-3">
+				<div class="flex items-center space-x-3">
+					<div
+						class="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+						<svg class="w-5 h-5 text-emerald-700 animate-pulse" fill="none" viewBox="0 0 24 24"
+							stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+								d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+						</svg>
+					</div>
+					<div>
+						<h4 class="text-xs font-bold text-gray-900 truncate max-w-xs sm:max-w-md">
+							{{ activeFile?.name || 'Uploading PDF eBook...' }}
+						</h4>
+						<p class="text-[11px] text-gray-500 mt-0.5">
+							{{ currentState === 'preparing' ? 'Negotiating storage slot...' : `${uploadProgress}%
+							uploaded (${formatBytes(uploadedBytes)} of ${formatBytes(activeFile?.size || 0)})` }}
+						</p>
+					</div>
+				</div>
 
-        <button
-          type="button"
-          @click="abortUpload"
-          class="text-xs font-semibold text-gray-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
+				<button type="button" @click="abortUpload"
+					class="text-xs font-semibold text-gray-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors">
+					Cancel
+				</button>
+			</div>
 
-      <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-        <div
-          class="bg-emerald-700 h-2 rounded-full transition-all duration-150 ease-out"
-          :style="{ width: `${uploadProgress}%` }"
-        ></div>
-      </div>
-    </div>
+			<div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+				<div class="bg-emerald-700 h-2 rounded-full transition-all duration-150 ease-out"
+					:style="{ width: `${uploadProgress}%` }"></div>
+			</div>
+		</div>
 
-    <!-- State 4: SUCCESS -->
-    <div
-      v-else-if="currentState === 'success'"
-      class="border border-emerald-200 rounded-xl p-4 bg-emerald-50/50 flex items-center justify-between"
-    >
-      <div class="flex items-center space-x-3">
-        <div class="w-9 h-9 rounded-lg bg-emerald-700 text-white flex items-center justify-center shadow-sm">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <div>
-          <div class="flex items-center space-x-2">
-            <h4 class="text-xs font-bold text-gray-900 truncate max-w-xs sm:max-w-md">
-              {{ activeFileName || 'Digital Edition Ready' }}
-            </h4>
-            <span class="px-1.5 py-0.5 text-[9px] font-extrabold bg-emerald-100 text-emerald-800 rounded uppercase">
-              R2 Synced
-            </span>
-          </div>
-          <p class="text-[11px] text-emerald-800 mt-0.5">
-            Cloudflare R2 verified <span v-if="activeFileSize > 0">({{ formatBytes(activeFileSize) }})</span>
-          </p>
-        </div>
-      </div>
+		<!-- State 4: SUCCESS -->
+		<div v-else-if="currentState === 'success'"
+			class="border border-emerald-200 rounded-xl p-4 bg-emerald-50/50 flex items-center justify-between">
+			<div class="flex items-center space-x-3">
+				<div class="w-9 h-9 rounded-lg bg-emerald-700 text-white flex items-center justify-center shadow-sm">
+					<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+					</svg>
+				</div>
+				<div>
+					<div class="flex items-center space-x-2">
+						<h4 class="text-xs font-bold text-gray-900 truncate max-w-xs sm:max-w-md">
+							{{ activeFileName || 'Digital Edition Ready' }}
+						</h4>
+						<span
+							class="px-1.5 py-0.5 text-[9px] font-extrabold bg-emerald-100 text-emerald-800 rounded uppercase">
+							eBook Ready
+						</span>
+					</div>
+					<p class="text-[11px] text-emerald-800 mt-0.5">
+						Digital edition verified <span v-if="activeFileSize > 0">({{ formatBytes(activeFileSize)
+							}})</span>
+					</p>
+				</div>
+			</div>
 
-      <div class="flex items-center space-x-2">
-        <button
-          type="button"
-          @click="triggerFileInput"
-          class="text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-2.5 py-1.5 rounded-lg shadow-sm"
-        >
-          Replace
-        </button>
-        <button
-          type="button"
-          @click="clearFile"
-          class="text-xs font-semibold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 border border-gray-200 px-2.5 py-1.5 rounded-lg shadow-sm"
-        >
-          Remove
-        </button>
-      </div>
+			<div class="flex items-center space-x-2">
+				<button type="button" @click="triggerFileInput"
+					class="text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-2.5 py-1.5 rounded-lg shadow-sm">
+					Replace
+				</button>
+				<button type="button" @click="clearFile"
+					class="text-xs font-semibold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 border border-gray-200 px-2.5 py-1.5 rounded-lg shadow-sm">
+					Remove
+				</button>
+			</div>
 
-      <input
-        ref="fileInputRef"
-        type="file"
-        accept="application/pdf,.pdf"
-        class="hidden"
-        @change="handleFileSelect"
-      />
-    </div>
+			<input ref="fileInputRef" type="file" accept="application/pdf,.pdf" class="hidden"
+				@change="handleFileSelect" />
+		</div>
 
-    <!-- State 5: ERROR -->
-    <div
-      v-else-if="currentState === 'error'"
-      class="border border-red-200 rounded-xl p-4 bg-red-50/60"
-    >
-      <div class="flex items-start justify-between">
-        <div class="flex items-start space-x-2.5">
-          <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <h4 class="text-xs font-bold text-red-900">Upload Failed</h4>
-            <p class="text-xs text-red-700 mt-0.5">{{ errorMessage }}</p>
-          </div>
-        </div>
+		<!-- State 5: ERROR -->
+		<div v-else-if="currentState === 'error'" class="border border-red-200 rounded-xl p-4 bg-red-50/60">
+			<div class="flex items-start justify-between">
+				<div class="flex items-start space-x-2.5">
+					<svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+						stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+							d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+					<div>
+						<h4 class="text-xs font-bold text-red-900">Upload Failed</h4>
+						<p class="text-xs text-red-700 mt-0.5">{{ errorMessage }}</p>
+					</div>
+				</div>
 
-        <div class="flex items-center space-x-2 flex-shrink-0 ml-3">
-          <button
-            type="button"
-            @click="retryUpload"
-            class="text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded-md transition-colors"
-          >
-            Retry
-          </button>
-          <button
-            type="button"
-            @click="clearFile"
-            class="text-xs font-medium text-gray-600 hover:text-gray-900 px-2 py-1"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+				<div class="flex items-center space-x-2 flex-shrink-0 ml-3">
+					<button type="button" @click="retryUpload"
+						class="text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded-md transition-colors">
+						Retry
+					</button>
+					<button type="button" @click="clearFile"
+						class="text-xs font-medium text-gray-600 hover:text-gray-900 px-2 py-1">
+						Cancel
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -278,9 +248,6 @@ async function startUploadProcess() {
   errorMessage.value = '';
 
   try {
-    // -------------------------------------------------------------------------
-    // STEP 1: ofetch eliminates TS2321 completely
-    // -------------------------------------------------------------------------
     const negotiateRes = await ofetch<{
       uploadUrl: string;
       key: string;
@@ -295,18 +262,12 @@ async function startUploadProcess() {
     });
 
     if (!negotiateRes?.uploadUrl || !negotiateRes?.key) {
-      throw new Error('Failed to acquire Cloudflare R2 upload authorization.');
+      throw new Error('Failed to prepare eBook upload authorization.');
     }
 
-    // -------------------------------------------------------------------------
-    // STEP 2: Pure XHR PUT to R2 (ZERO Authorization Headers)
-    // -------------------------------------------------------------------------
     currentState.value = 'uploading';
     await uploadDirectToR2(negotiateRes.uploadUrl, activeFile.value);
 
-    // -------------------------------------------------------------------------
-    // STEP 3: Complete
-    // -------------------------------------------------------------------------
     currentState.value = 'success';
     emit('update:modelValue', negotiateRes.key);
     emit('success', {
