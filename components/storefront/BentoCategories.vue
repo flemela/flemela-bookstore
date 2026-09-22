@@ -135,10 +135,10 @@ function handleCategoryClick(catQuery: string): void {
 			</button>
 		</div>
 
-		<!-- Category Grid: 3 on Mobile, 6 on Desktop with Photographic Backgrounds -->
+		<!-- Category Grid: 3 on Mobile, 6 on Desktop with Visible Photographic Backgrounds -->
 		<div class="grid grid-cols-3 md:grid-cols-6 gap-2.5 sm:gap-3.5 md:gap-4">
 			<button v-for="cat in CATEGORIES" :key="cat.name" type="button"
-				class="relative overflow-hidden rounded-xl p-3.5 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center transition-all duration-300 group cursor-pointer shadow-md hover:shadow-xl hover:-translate-y-1 min-h-[110px] sm:min-h-[135px] md:min-h-[155px] border border-white/10 hover:border-emerald-400/70"
+				class="relative overflow-hidden rounded-xl p-3.5 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center transition-all duration-300 group cursor-pointer shadow-md hover:shadow-xl hover:-translate-y-1 min-h-[110px] sm:min-h-[135px] md:min-h-[155px] border border-black/10 hover:border-[#E8750D]/80"
 				@click="handleCategoryClick(cat.query)">
 				<!-- Background Image with smooth zoom on hover -->
 				<img v-if="!failedImages.has(cat.name)" :src="getCategoryImageUrl(cat.name)" :alt="`${cat.name} Books`"
@@ -149,27 +149,27 @@ function handleCategoryClick(catQuery: string): void {
 				<div v-else
 					class="absolute inset-0 w-full h-full bg-gradient-to-br from-[#052219] via-[#0C3A2B] to-[#145240] pointer-events-none" />
 
-				<!-- Dark Contrast Scrim (Ensures White Text and Icons are 100% Legible) -->
+				<!-- Balanced Scrim: Allows Artwork to Pop while Preserving Pure White Text Legibility -->
 				<div
-					class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/35 group-hover:from-black/95 group-hover:via-black/65 group-hover:to-black/40 transition-colors duration-300 pointer-events-none" />
+					class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/10 group-hover:from-black/65 group-hover:via-black/20 group-hover:to-transparent transition-colors duration-300 pointer-events-none" />
 
 				<!-- Tile Foreground Content -->
 				<div
 					class="relative z-10 flex flex-col items-center justify-center text-center gap-2 sm:gap-2.5 w-full min-w-0">
-					<!-- Filled Icon inside Frosted Badge -->
+					<!-- Filled Icon with Translucent Dark Glass Badge -->
 					<div
-						class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center shadow-xs flex-shrink-0 group-hover:bg-white/30 group-hover:scale-110 transition-all duration-300">
+						class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/35 backdrop-blur-xs border border-white/20 flex items-center justify-center shadow-sm flex-shrink-0 group-hover:bg-black/45 group-hover:scale-110 transition-all duration-300">
 						<component :is="cat.icon" :size="18" class="sm:w-5 sm:h-5 fill-white text-white stroke-[1.5]" />
 					</div>
 
-					<!-- Large Bold White Typography -->
+					<!-- Large Bold White Typography with Protective Drop Shadow -->
 					<div class="space-y-0.5 w-full min-w-0 px-1">
 						<h3
-							class="font-sans font-extrabold text-xs sm:text-sm md:text-base text-white leading-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]">
+							class="font-sans font-extrabold text-xs sm:text-sm md:text-base text-white leading-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]">
 							{{ cat.name }}
 						</h3>
 						<p
-							class="text-[9px] sm:text-[10px] md:text-[11px] text-white/85 font-medium font-mono truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+							class="text-[9px] sm:text-[10px] md:text-[11px] text-white/90 font-semibold font-mono truncate drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
 							{{ getDisplayCount(cat.query, cat.fallbackCount) }}
 						</p>
 					</div>
