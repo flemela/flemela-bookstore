@@ -20,7 +20,7 @@ import type { Book } from '~/types';
 
 type SortOption = 'first_added' | 'newest' | 'price_asc' | 'price_desc' | 'title_asc';
 
-// Pagination, Filter & Sort Reactive State
+// Pagination, Filter & Sort State
 const currentPage = ref(1);
 const itemsPerPage = ref(50);
 const activeCategoryFilter = ref<string>('General');
@@ -122,14 +122,18 @@ const isFilterActive = computed(() => {
   return (cat !== 'general' && cat !== 'all') || debouncedSearch.value.trim().length > 0 || activeSort.value !== 'first_added';
 });
 
+/**
+ * Strict deliberate curation: Flash sale shelf contains ONLY books where
+ * an admin has explicitly assigned the 'FLASH_SALE' badge and sale has not expired.
+ */
 const flashSaleBooks = computed<Book[]>(() => {
   const list: Book[] = Array.isArray(showcaseBooks.value)
     ? showcaseBooks.value
     : showcaseBooks.value?.products || [];
   return list.filter((b) => {
-    if (b.badge === 'FLASH_SALE' || b.badge === 'LIMITED_TIME') return true;
-    if (!b.badge && b.compare_at_price && b.compare_at_price > b.price) return true;
-    return false;
+    if (b.badge !== 'FLASH_SALE') return false;
+    if (b.sale_ends_at && new Date(b.sale_ends_at).getTime() < Date.now()) return false;
+    return true;
   });
 });
 
@@ -180,7 +184,6 @@ const currentSortLabel = computed(() => {
   return match?.label || 'First Added';
 });
 
-// Robust display helpers avoiding template-level line breaks
 const currentCategoryLabel = computed(() => {
   return activeCategoryFilter.value.toLowerCase() === 'general'
     ? 'General (All Books)'
@@ -298,11 +301,9 @@ onUnmounted(() => {
 		<HeroCarousel @search="handleSearch" @select-category="handleCategorySelect"
 			@navigate-flash-sale="scrollToSection('flash-sale')" />
 
-		<!-- Flash Sale Shelf -->
-		<div id="flash-sale" class="mt-0">
-			<FlashSaleStrip v-if="flashSaleBooks.length > 0" :books="flashSaleBooks" title="FLASH SALE DEALS"
-				badge-label="LIMITED TIME" />
-		</div>
+		<!-- Deliberate Flash Sale Shelf: Renders ONLY if admin explicitly assigned FLASH_SALE -->
+		<FlashSaleStrip v-if="flashSaleBooks.length > 0" :books="flashSaleBooks" title="FLASH SALE DEALS"
+			badge-label="LIMITED TIME OFFERS" @request-seed="handleRequestSeed" />
 
 		<!-- Categories Bento Grid -->
 		<BentoCategories @select="handleCategorySelect" />
@@ -367,7 +368,7 @@ onUnmounted(() => {
 
 				<!-- Filter Dropdown, Sort Dropdown & Search Status Indicator -->
 				<div class="flex items-center gap-2.5 flex-wrap">
-					<!-- 1. Category Filter Dropdown -->
+					<!-- Category Filter Dropdown -->
 					<div class="relative">
 						<button id="catalogue-category-trigger" type="button"
 							class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
@@ -406,7 +407,7 @@ onUnmounted(() => {
 						</Transition>
 					</div>
 
-					<!-- 2. Sort Dropdown (Defaults strictly to first_added) -->
+					<!-- Sort Dropdown (Defaults strictly to first_added) -->
 					<div class="relative">
 						<button id="catalogue-sort-trigger" type="button"
 							class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
