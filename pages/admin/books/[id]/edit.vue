@@ -1,4 +1,4 @@
-<!-- pages/admin/books/[id]/edit.vue -->
+<!-- pages/admin/books/[id]/edit.vue (The Sunrise Bookstore) -->
 <template>
 	<AdminLayout>
 		<div class="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8 font-sans text-gray-900">
@@ -23,8 +23,8 @@
 							</NuxtLink>
 							<div>
 								<h1 class="text-2xl font-bold text-gray-900 tracking-tight">Edit Book</h1>
-								<p class="text-xs text-gray-500 mt-0.5">Manage pricing, discounts, stock, categories,
-									badges, and formats</p>
+								<p class="text-xs text-gray-500 mt-0.5">Manage pricing, strikethrough discounts, stock,
+									categories, badges, and formats</p>
 							</div>
 						</div>
 
@@ -34,7 +34,7 @@
 								Cancel
 							</NuxtLink>
 							<button type="button" :disabled="isSubmitting" @click="handleUpdate"
-								class="inline-flex items-center space-x-2 px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-lg shadow-sm transition-all cursor-pointer">
+								class="inline-flex items-center space-x-2 px-5 py-2 text-xs font-bold text-white bg-forest-900 hover:bg-forest-800 disabled:opacity-50 rounded-lg shadow-sm transition-all cursor-pointer">
 								<svg v-if="isSubmitting" class="animate-spin w-4 h-4 text-white" fill="none"
 									viewBox="0 0 24 24">
 									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
@@ -88,28 +88,27 @@
 								<div class="sm:col-span-2">
 									<label class="block text-xs font-bold text-gray-700 mb-1.5">Book Title *</label>
 									<input v-model="form.name" type="text" placeholder="e.g. The Psychology of Money"
-										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all"
+										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all"
 										required />
 								</div>
 
 								<div>
 									<label class="block text-xs font-bold text-gray-700 mb-1.5">Author</label>
 									<input v-model="form.author" type="text" placeholder="e.g. Morgan Housel"
-										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all" />
+										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all" />
 								</div>
 
-								<!-- Category with "+ New Category" Action -->
 								<div>
 									<div class="flex items-center justify-between mb-1.5">
 										<label class="block text-xs font-bold text-gray-700">Category *</label>
 										<button type="button"
-											class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer flex items-center gap-1"
+											class="text-[11px] font-bold text-forest-900 hover:text-gold-600 hover:underline cursor-pointer flex items-center gap-1"
 											@click="isCategoryModalOpen = true">
 											<span>+ New Category</span>
 										</button>
 									</div>
 									<select v-model="form.category_id"
-										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all cursor-pointer"
+										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all cursor-pointer"
 										required>
 										<option value="" disabled>Select a category</option>
 										<option v-for="cat in categories" :key="cat.id" :value="cat.id">
@@ -121,7 +120,7 @@
 								<div>
 									<label class="block text-xs font-bold text-gray-700 mb-1.5">ISBN / SKU</label>
 									<input v-model="form.sku" type="text" placeholder="e.g. 978-0857197689"
-										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all" />
+										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all" />
 								</div>
 
 								<!-- Promotional Badge -->
@@ -129,7 +128,7 @@
 									<label class="block text-xs font-bold text-gray-700">Promotional Badge</label>
 									<div class="space-y-2">
 										<select v-model="badgeSelectValue"
-											class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all cursor-pointer"
+											class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all cursor-pointer"
 											@change="handleBadgeSelectChange">
 											<option value="">None (Standard)</option>
 											<option value="BESTSELLER">Bestseller (BESTSELLER)</option>
@@ -146,8 +145,8 @@
 												placeholder="Type custom badge (e.g. EDITOR'S CHOICE, 20% OFF)"
 												class="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-xs font-mono font-bold uppercase text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
 												maxlength="30" />
-											<p class="text-[10px] text-gray-500">Appears as an editorial promotional
-												badge on the book card.</p>
+											<p class="text-[10px] text-gray-500">Appears as an editorial badge on the
+												book card.</p>
 										</div>
 									</div>
 								</div>
@@ -156,7 +155,7 @@
 									<label class="block text-xs font-bold text-gray-700 mb-1.5">Synopsis /
 										Description</label>
 									<textarea v-model="form.description" rows="3" placeholder="Summary of the book..."
-										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all resize-none"></textarea>
+										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all resize-none"></textarea>
 								</div>
 							</div>
 						</div>
@@ -205,7 +204,7 @@
 											@change="handleCoverFileSelected" />
 										<button type="button" :disabled="isUploadingCover"
 											@click="coverFileInputRef?.click()"
-											class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm disabled:opacity-50 cursor-pointer">
+											class="px-4 py-2 bg-forest-950 hover:bg-forest-900 text-white rounded-lg text-xs font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm disabled:opacity-50 cursor-pointer">
 											<svg v-if="isUploadingCover" class="animate-spin w-3.5 h-3.5 text-white"
 												fill="none" viewBox="0 0 24 24">
 												<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
@@ -227,20 +226,20 @@
 										<label class="block text-[11px] font-semibold text-gray-500">Or paste image URL
 											directly:</label>
 										<input v-model="form.cover_image_url" type="url" placeholder="https://..."
-											class="w-full px-3 py-2 bg-gray-50/50 border border-gray-200 rounded-lg text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-emerald-700 font-mono" />
+											class="w-full px-3 py-2 bg-gray-50/50 border border-gray-200 rounded-lg text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-forest-900 font-mono" />
 									</div>
 								</div>
 							</div>
 						</div>
 
-						<!-- Section 3: Format Management with Strikethrough Pricing -->
+						<!-- Section 3: Formats & Persistent Strikethrough Pricing Management -->
 						<div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
 							<h2
 								class="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-3">
 								Format &amp; Pricing Management
 							</h2>
 
-							<!-- A. Physical Hardcopy Format -->
+							<!-- A. Physical Hardcopy Edition -->
 							<div class="p-5 rounded-xl border border-gray-200 bg-gray-50/30 space-y-4">
 								<div class="flex items-center justify-between">
 									<h3 class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
@@ -273,7 +272,7 @@
 											<span class="text-[10px] text-gray-400 font-normal">Strikethrough</span>
 										</label>
 										<input v-model.number="form.hardcopyCompareAtPrice" type="number" min="0"
-											placeholder="e.g. 1499 (Optional)"
+											placeholder="e.g. 1499 (Must be > selling price)"
 											class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" />
 									</div>
 
@@ -286,7 +285,7 @@
 								</div>
 							</div>
 
-							<!-- B. Digital PDF Format -->
+							<!-- B. Digital PDF Edition -->
 							<div class="p-5 rounded-xl border border-gray-200 bg-gray-50/30 space-y-4">
 								<div class="flex items-center justify-between">
 									<div class="flex items-center space-x-2.5">
@@ -313,17 +312,17 @@
 									</div>
 
 									<div>
-										<label class="block text-xs font-semibold text-gray-700 mb-1">
+										< class="block text-xs font-semibold text-gray-700 mb-1">
 											eBook Original Price (KSh)
 											<span class="text-[10px] text-gray-400 font-normal">Strikethrough</span>
-										</label>
-										<input v-model.number="form.pdfCompareAtPrice" type="number" min="0"
-											placeholder="e.g. 299 (Optional)"
-											class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" />
+											</label>
+											<input v-model.number="form.pdfCompareAtPrice" type="number" min="0"
+												placeholder="e.g. 299 (Must be > eBook price)"
+												class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" />
 									</div>
 								</div>
 
-								<!-- Single PDF Uploader Component -->
+								<!-- Single PDF Uploader -->
 								<div>
 									<label class="block text-xs font-semibold text-gray-700 mb-1.5">
 										eBook PDF Document
@@ -412,16 +411,14 @@ const form = reactive({
   pdfFileSize: 0,
   pdfFileName: '',
 });
+	  const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME'];
 
-const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME'];
-	async function loadBookData() {
+async function loadBookData() {
   try {
-    // 1. Fetch Categories
     const catRaw = await ofetch<any>('/api/admin/categories');
     const catList = catRaw?.data || catRaw;
     if (Array.isArray(catList)) categories.value = catList;
 
-    // 2. Fetch Book Record (merged with formats via updated [id].get.ts)
     const bookRaw = await ofetch<any>(`/api/admin/books/${productId}`);
     const book = bookRaw?.data || bookRaw;
 
@@ -430,19 +427,20 @@ const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK',
     }
 
     form.name = book.name || '';
-    
-    // Multi-casing category hydration
     form.category_id = book.category_id || book.categoryId || book.category?.id || '';
-    
     form.sku = book.sku || '';
     form.description = book.description || '';
-    form.hardcopyPrice = Number(book.price) || 999;
-    form.hardcopyCompareAtPrice = (book.compare_at_price || book.compareAtPrice) 
-      ? Number(book.compare_at_price || book.compareAtPrice) 
-      : null;
+
+    const parentPrice = Number(book.price) || 999;
+    const parentCompareAt = (book.compare_at_price !== null && book.compare_at_price !== undefined)
+      ? Number(book.compare_at_price)
+      : (book.compareAtPrice !== null && book.compareAtPrice !== undefined ? Number(book.compareAtPrice) : null);
+
+    form.hardcopyPrice = parentPrice;
+    form.hardcopyCompareAtPrice = parentCompareAt;
     form.hardcopyStock = book.stock ?? 10;
 
-    // Badge Hydration: Presets vs Custom
+    // Badge Hydration
     if (book.badge) {
       if (STANDARD_BADGES.includes(book.badge)) {
         badgeSelectValue.value = book.badge;
@@ -479,15 +477,18 @@ const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK',
       form.cover_image_url = book.cover_image_url;
     }
 
-    // Formats Hydration
+    // Formats Hydration (Hierarchical Fallback)
     const formats: any[] = book.formats || [];
 
     const hardcopy = formats.find((f) => f.format === 'hardcopy');
     if (hardcopy) {
       hardcopyFormatId.value = hardcopy.id;
       form.hardcopyPrice = Number(hardcopy.price) || form.hardcopyPrice;
-      const cp = hardcopy.compare_at_price || hardcopy.compareAtPrice;
-      form.hardcopyCompareAtPrice = cp ? Number(cp) : form.hardcopyCompareAtPrice;
+      const cp = (hardcopy.compare_at_price !== null && hardcopy.compare_at_price !== undefined)
+        ? Number(hardcopy.compare_at_price)
+        : (hardcopy.compareAtPrice !== null && hardcopy.compareAtPrice !== undefined ? Number(hardcopy.compareAtPrice) : null);
+
+      form.hardcopyCompareAtPrice = cp ?? parentCompareAt ?? null;
       form.hardcopyStock = hardcopy.stock ?? form.hardcopyStock;
     }
 
@@ -495,8 +496,11 @@ const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK',
     if (pdf) {
       pdfFormatId.value = pdf.id;
       form.pdfPrice = Number(pdf.price) || 149;
-      const cp = pdf.compare_at_price || pdf.compareAtPrice;
-      form.pdfCompareAtPrice = cp ? Number(cp) : null;
+      const cp = (pdf.compare_at_price !== null && pdf.compare_at_price !== undefined)
+        ? Number(pdf.compare_at_price)
+        : (pdf.compareAtPrice !== null && pdf.compareAtPrice !== undefined ? Number(pdf.compareAtPrice) : null);
+
+      form.pdfCompareAtPrice = cp ?? null;
       form.pdfKey = pdf.file_public_id || pdf.file_url || null;
       form.pdfFileUrl = pdf.file_url || null;
       form.pdfFileSize = pdf.file_size_bytes ? Number(pdf.file_size_bytes) : 0;
@@ -533,8 +537,7 @@ function handleCategoryCreated(newCat: { id: string; name: string; slug: string 
   }
   form.category_id = newCat.id;
 }
-
-async function handleAutoFindCover() {
+	async function handleAutoFindCover() {
   if (!form.name.trim()) {
     pushToast({ message: 'Enter a book title first to search for cover art', variant: 'info' });
     return;
@@ -609,8 +612,9 @@ function handlePdfRemoved() {
   form.pdfFileSize = 0;
   form.pdfFileName = '';
   isPdfDirty.value = true;
-	}
-	async function handleUpdate() {
+}
+
+async function handleUpdate() {
   formError.value = '';
   successToast.value = '';
 
@@ -624,10 +628,25 @@ function handlePdfRemoved() {
     return;
   }
 
+  const hardcopySellingPrice = Math.max(0, Number(form.hardcopyPrice) || 0);
+  const hardcopyCompareAt = form.hardcopyCompareAtPrice ? Math.max(0, Number(form.hardcopyCompareAtPrice)) : null;
+
+  if (hardcopyCompareAt !== null && hardcopyCompareAt <= hardcopySellingPrice) {
+    formError.value = `Hardcopy Original price (KSh ${hardcopyCompareAt}) must be strictly greater than selling price (KSh ${hardcopySellingPrice}).`;
+    return;
+  }
+
+  const pdfSellingPrice = Math.max(0, Number(form.pdfPrice) || 0);
+  const pdfCompareAt = form.pdfCompareAtPrice ? Math.max(0, Number(form.pdfCompareAtPrice)) : null;
+
+  if (pdfCompareAt !== null && pdfCompareAt <= pdfSellingPrice) {
+    formError.value = `eBook Original price (KSh ${pdfCompareAt}) must be strictly greater than eBook selling price (KSh ${pdfSellingPrice}).`;
+    return;
+  }
+
   isSubmitting.value = true;
 
   try {
-    // Resolve final badge string
     let resolvedBadge: string | null = null;
     if (badgeSelectValue.value === '__CUSTOM__') {
       resolvedBadge = form.customBadgeText.trim() || null;
@@ -635,21 +654,14 @@ function handlePdfRemoved() {
       resolvedBadge = badgeSelectValue.value;
     }
 
-    const hardcopyCompareAt = form.hardcopyCompareAtPrice 
-      ? Math.max(0, Number(form.hardcopyCompareAtPrice)) 
-      : null;
-    const pdfCompareAt = form.pdfCompareAtPrice 
-      ? Math.max(0, Number(form.pdfCompareAtPrice)) 
-      : null;
-
-    // 1. Update Base Product with dual-casing to guarantee DTO compatibility
+    // 1. Update Base Product
     await ofetch(`/api/admin/books/${productId}`, {
       method: 'PATCH',
       body: {
         name: form.name.trim(),
         category_id: form.category_id,
         categoryId: form.category_id,
-        price: Math.max(0, Number(form.hardcopyPrice) || 0),
+        price: hardcopySellingPrice,
         compare_at_price: hardcopyCompareAt,
         compareAtPrice: hardcopyCompareAt,
         sku: form.sku.trim() || null,
@@ -666,7 +678,7 @@ function handlePdfRemoved() {
     // 2. Update OR Create Hardcopy Format
     const hardcopyBody = {
       format: 'hardcopy',
-      price: Math.max(0, Number(form.hardcopyPrice) || 0),
+      price: hardcopySellingPrice,
       compare_at_price: hardcopyCompareAt,
       compareAtPrice: hardcopyCompareAt,
       stock: Math.max(0, Number(form.hardcopyStock) || 0),
@@ -696,7 +708,7 @@ function handlePdfRemoved() {
         ofetch(`/api/admin/books/${productId}/formats/${pdfFormatId.value}`, {
           method: 'PATCH',
           body: {
-            price: Math.max(0, Number(form.pdfPrice) || 0),
+            price: pdfSellingPrice,
             compare_at_price: pdfCompareAt,
             compareAtPrice: pdfCompareAt,
             file_url: form.pdfFileUrl || form.pdfKey,
@@ -711,7 +723,7 @@ function handlePdfRemoved() {
           method: 'POST',
           body: {
             format: 'pdf',
-            price: Math.max(0, Number(form.pdfPrice) || 0),
+            price: pdfSellingPrice,
             compare_at_price: pdfCompareAt,
             compareAtPrice: pdfCompareAt,
             file_url: form.pdfFileUrl || form.pdfKey,
@@ -727,10 +739,9 @@ function handlePdfRemoved() {
     await Promise.all(formatPromises);
 
     isPdfDirty.value = false;
-    successToast.value = 'Book details, discounts, badges, and formats saved successfully!';
+    successToast.value = 'Book details, strikethrough discounts, badges, and formats saved successfully!';
     pushToast({ message: successToast.value, variant: 'success' });
 
-    // 4. Re-hydrate fresh database record to ensure UI stays perfectly synchronized
     await loadBookData();
   } catch (err: any) {
     formError.value =
