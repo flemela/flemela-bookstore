@@ -315,7 +315,7 @@
 										< class="block text-xs font-semibold text-gray-700 mb-1">
 											eBook Original Price (KSh)
 											<span class="text-[10px] text-gray-400 font-normal">Strikethrough</span>
-											</label>
+
 											<input v-model.number="form.pdfCompareAtPrice" type="number" min="0"
 												placeholder="e.g. 299 (Must be > eBook price)"
 												class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" />
