@@ -201,110 +201,76 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section
-    class="relative select-none bg-theme-dark text-white overflow-hidden w-full"
-    aria-roledescription="carousel"
-    aria-label="Promotions and Announcements"
-    @mouseenter="handleMouseEnter"
-    @mouseleave="handleMouseLeave"
-    @focusin="handleMouseEnter"
-    @focusout="handleMouseLeave"
-  >
-    <!-- Shimmer Skeleton: Pre-locks aspect ratio to eliminate layout shift -->
-    <div
-      v-if="bannersStatus === 'pending'"
-      class="w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[24/9] min-h-[220px] sm:min-h-[300px] md:min-h-[360px] max-h-[460px] bg-gradient-to-r from-forest-950 via-forest-900 to-forest-950 animate-pulse flex items-center justify-center"
-    >
-      <div class="flex items-center gap-2 text-white/30 font-mono text-xs uppercase tracking-widest">
-        <span class="w-2 h-2 rounded-full bg-gold-400/50 animate-ping" />
-        <span>Loading Announcements...</span>
-      </div>
-    </div>
+	<!-- 
+    Outer Stage:
+    - Mobile (< 768px): Standard fluid margins (px-3 sm:px-6)
+    - Tablets (768px - 1024px): Dynamically scales so the hero is never crushed
+    - Desktop (1280px+): Enforces minimum 200px on left and right, centered with mx-auto
+  -->
+	<div
+		class="w-full py-2.5 sm:py-4 px-3 sm:px-6 md:px-[max(32px,min(200px,calc((100vw-680px)/2)))] xl:px-[200px] flex justify-center bg-transparent">
+		<section
+			class="relative select-none bg-theme-dark text-white overflow-hidden w-full max-w-7xl mx-auto rounded-2xl md:rounded-3xl shadow-md border border-slate-200/20"
+			aria-roledescription="carousel" aria-label="Promotions and Announcements" @mouseenter="handleMouseEnter"
+			@mouseleave="handleMouseLeave" @focusin="handleMouseEnter" @focusout="handleMouseLeave">
+			<!-- Shimmer Skeleton: Pre-locks aspect ratio to eliminate layout shift -->
+			<div v-if="bannersStatus === 'pending'"
+				class="w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[21/9] lg:aspect-[24/9] min-h-[180px] sm:min-h-[240px] md:min-h-[280px] lg:min-h-[320px] max-h-[440px] bg-gradient-to-r from-forest-950 via-forest-900 to-forest-950 animate-pulse flex items-center justify-center">
+				<div class="flex items-center gap-2 text-white/30 font-mono text-xs uppercase tracking-widest">
+					<span class="w-2 h-2 rounded-full bg-gold-400/50 animate-ping" />
+					<span>Loading Announcements...</span>
+				</div>
+			</div>
 
-    <!-- Loaded Carousel Viewport -->
-    <div
-      v-else
-      class="relative w-full overflow-hidden aspect-[16/9] sm:aspect-[21/9] md:aspect-[24/9] min-h-[220px] sm:min-h-[300px] md:min-h-[360px] max-h-[460px]"
-      @touchstart.passive="handleTouchStart"
-      @touchmove.passive="handleTouchMove"
-      @touchend="handleTouchEnd"
-    >
-      <div
-        class="flex w-full h-full will-change-transform"
-        :style="trackTransformStyle"
-      >
-        <div
-          v-for="(slide, index) in activeSlides"
-          :key="slide.id"
-          class="w-full flex-shrink-0 relative h-full flex items-center justify-center"
-          role="group"
-          aria-roledescription="slide"
-          :aria-label="`${index + 1} of ${totalSlides}`"
-        >
-          <component
-            :is="slide.ctaLink ? 'a' : 'div'"
-            :href="slide.ctaLink || undefined"
-            :target="isExternalLink(slide.ctaLink) ? '_blank' : undefined"
-            :rel="isExternalLink(slide.ctaLink) ? 'noopener noreferrer' : undefined"
-            class="relative block w-full h-full overflow-hidden group cursor-pointer"
-            @click="handleSlideClick(slide)"
-          >
-            <picture class="w-full h-full block">
-              <source
-                v-if="slide.mobileImage"
-                :srcset="slide.mobileImage"
-                media="(max-width: 640px)"
-              />
-              <img
-                :src="slide.coverImage"
-                :alt="slide.title || 'Store Banner'"
-                class="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.01]"
-                loading="eager"
-              />
-            </picture>
-          </component>
-        </div>
-      </div>
+			<!-- Loaded Carousel Viewport -->
+			<div v-else
+				class="relative w-full overflow-hidden aspect-[16/9] sm:aspect-[21/9] md:aspect-[21/9] lg:aspect-[24/9] min-h-[180px] sm:min-h-[240px] md:min-h-[280px] lg:min-h-[320px] max-h-[440px]"
+				@touchstart.passive="handleTouchStart" @touchmove.passive="handleTouchMove" @touchend="handleTouchEnd">
+				<div class="flex w-full h-full will-change-transform" :style="trackTransformStyle">
+					<div v-for="(slide, index) in activeSlides" :key="slide.id"
+						class="w-full flex-shrink-0 relative h-full flex items-center justify-center" role="group"
+						aria-roledescription="slide" :aria-label="`${index + 1} of ${totalSlides}`">
+						<component :is="slide.ctaLink ? 'a' : 'div'" :href="slide.ctaLink || undefined"
+							:target="isExternalLink(slide.ctaLink) ? '_blank' : undefined"
+							:rel="isExternalLink(slide.ctaLink) ? 'noopener noreferrer' : undefined"
+							class="relative block w-full h-full overflow-hidden group cursor-pointer"
+							@click="handleSlideClick(slide)">
+							<picture class="w-full h-full block">
+								<source v-if="slide.mobileImage" :srcset="slide.mobileImage"
+									media="(max-width: 640px)" />
+								<img :src="slide.coverImage" :alt="slide.title || 'Store Banner'"
+									class="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.01]"
+									loading="eager" />
+							</picture>
+						</component>
+					</div>
+				</div>
 
-      <!-- Navigation Arrows -->
-      <div
-        v-if="totalSlides > 1"
-        class="absolute inset-y-0 inset-x-3 sm:inset-x-5 z-20 flex items-center justify-between pointer-events-none"
-      >
-        <button
-          type="button"
-          class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer border border-white/20"
-          aria-label="Previous banner"
-          @click.stop="prevSlide"
-        >
-          <ChevronLeft :size="20" />
-        </button>
+				<!-- Navigation Arrows (Snug inside the rounded hero card) -->
+				<div v-if="totalSlides > 1"
+					class="absolute inset-y-0 inset-x-3 sm:inset-x-4 z-20 flex items-center justify-between pointer-events-none">
+					<button type="button"
+						class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer border border-white/20"
+						aria-label="Previous banner" @click.stop="prevSlide">
+						<ChevronLeft :size="20" />
+					</button>
 
-        <button
-          type="button"
-          class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer border border-white/20"
-          aria-label="Next banner"
-          @click.stop="nextSlide"
-        >
-          <ChevronRight :size="20" />
-        </button>
-      </div>
+					<button type="button"
+						class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer border border-white/20"
+						aria-label="Next banner" @click.stop="nextSlide">
+						<ChevronRight :size="20" />
+					</button>
+				</div>
 
-      <!-- Pagination Indicators -->
-      <div
-        v-if="totalSlides > 1"
-        class="absolute bottom-3.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/35 backdrop-blur-xs px-3 py-1.5 rounded-full border border-white/10 pointer-events-auto"
-      >
-        <button
-          v-for="(_, idx) in totalSlides"
-          :key="idx"
-          type="button"
-          class="h-1.5 rounded-full cursor-pointer transition-all duration-300"
-          :class="idx === activeIndex ? 'w-6 bg-[#E8750D]' : 'w-2 bg-white/50 hover:bg-white/80'"
-          :aria-label="`Navigate to slide ${idx + 1}`"
-          @click.stop="goToSlide(idx)"
-        />
-      </div>
-    </div>
-  </section>
+				<!-- Pagination Indicators -->
+				<div v-if="totalSlides > 1"
+					class="absolute bottom-3 sm:bottom-3.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/35 backdrop-blur-xs px-3 py-1.5 rounded-full border border-white/10 pointer-events-auto">
+					<button v-for="(_, idx) in totalSlides" :key="idx" type="button"
+						class="h-1.5 rounded-full cursor-pointer transition-all duration-300"
+						:class="idx === activeIndex ? 'w-6 bg-[#E8750D]' : 'w-2 bg-white/50 hover:bg-white/80'"
+						:aria-label="`Navigate to slide ${idx + 1}`" @click.stop="goToSlide(idx)" />
+				</div>
+			</div>
+		</section>
+	</div>
 </template>

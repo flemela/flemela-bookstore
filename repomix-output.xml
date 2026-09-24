@@ -32,7 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Files matching these patterns are excluded: node_modules
+- Files matching these patterns are excluded: node_modules, soko-frontend
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -6610,69 +6610,6 @@ export default defineEventHandler(async (event) => {
 });
 </file>
 
-<file path="server/api/products/index.get.ts">
-// =============================================================================
-// server/api/products/index.get.ts
-// Nuxt Nitro Storefront Products Endpoint: First-Added-First Default Sorting
-// =============================================================================
-
-import { sokoClient } from '../../utils/sokoClient';
-import type { Book } from '~/types';
-
-export interface PaginatedProductsResponse {
-  products: Book[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig();
-  const storeSlug = config.public.storeSlug;
-  const query = getQuery(event);
-
-  try {
-    const res = await sokoClient<any>(`/public/stores/${storeSlug}/products`, {
-      query: {
-        page: query.page || 1,
-        limit: query.limit || 50,
-        category: (query.category as string) || undefined,
-        category_id: (query.category_id as string) || undefined,
-        q: (query.q as string) || undefined,
-        sort: (query.sort as string) || 'first_added', // Default strictly to FIFO (first-added books lead)
-      },
-    });
-
-    if (Array.isArray(res)) {
-      return {
-        products: res,
-        total: res.length,
-        page: 1,
-        limit: res.length,
-        totalPages: 1,
-      };
-    }
-
-    return {
-      products: res?.products || [],
-      total: Number(res?.total ?? 0),
-      page: Number(res?.page || query.page || 1),
-      limit: Number(res?.limit || query.limit || 50),
-      totalPages: Number(res?.totalPages || 1),
-    };
-  } catch {
-    return {
-      products: [],
-      total: 0,
-      page: 1,
-      limit: 50,
-      totalPages: 1,
-    };
-  }
-});
-</file>
-
 <file path="server/api/products/search.get.ts">
 // =============================================================================
 // server/api/products/search.get.ts
@@ -8527,6 +8464,69 @@ export default defineEventHandler(async (event) => {
 });
 </file>
 
+<file path="server/api/products/index.get.ts">
+// =============================================================================
+// server/api/products/index.get.ts
+// Nuxt Nitro Storefront Products Endpoint: First-Added-First Default Sorting
+// =============================================================================
+
+import { sokoClient } from '../../utils/sokoClient';
+import type { Book } from '~/types';
+
+export interface PaginatedProductsResponse {
+  products: Book[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig();
+  const storeSlug = config.public.storeSlug;
+  const query = getQuery(event);
+
+  try {
+    const res = await sokoClient<any>(`/public/stores/${storeSlug}/products`, {
+      query: {
+        page: query.page || 1,
+        limit: query.limit || 50,
+        category: (query.category as string) || undefined,
+        category_id: (query.category_id as string) || undefined,
+        q: (query.q as string) || undefined,
+        sort: (query.sort as string) || 'first_added', // Default strictly to FIFO (first-added books lead)
+      },
+    });
+
+    if (Array.isArray(res)) {
+      return {
+        products: res,
+        total: res.length,
+        page: 1,
+        limit: res.length,
+        totalPages: 1,
+      };
+    }
+
+    return {
+      products: res?.products || [],
+      total: Number(res?.total ?? 0),
+      page: Number(res?.page || query.page || 1),
+      limit: Number(res?.limit || query.limit || 50),
+      totalPages: Number(res?.totalPages || 1),
+    };
+  } catch {
+    return {
+      products: [],
+      total: 0,
+      page: 1,
+      limit: 50,
+      totalPages: 1,
+    };
+  }
+});
+</file>
+
 <file path="types/index.ts">
 // =============================================================================
 // types/index.ts
@@ -9177,397 +9177,6 @@ function handleSelectCat(cat: string): void {
 </template>
 </file>
 
-<file path="pages/admin/books/index.vue">
-<!-- pages/admin/books/index.vue (The Sunrise Bookstore) -->
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import {
-  Plus,
-  Search,
-  Trash2,
-  Edit2,
-  BookOpen,
-  Download,
-  Truck,
-  ExternalLink,
-  Loader2,
-  X,
-  RotateCcw,
-  ArrowUpDown,
-} from 'lucide-vue-next';
-import AdminLayout from '~/components/admin/AdminLayout.vue';
-import Pagination from '~/components/ui/Pagination.vue';
-import { useToast } from '~/composables/useToast';
-import type { Book } from '~/types';
-
-definePageMeta({
-  middleware: 'admin-auth',
-});
-
-const { push: pushToast } = useToast();
-
-const currentPage = ref(1);
-const itemsPerPage = ref(50);
-const searchInput = ref('');
-const debouncedSearch = ref('');
-const selectedCategory = ref('');
-const categories = ref<Array<{ id: string; name: string }>>([]);
-
-let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-
-function onSearchInput(): void {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    debouncedSearch.value = searchInput.value.trim();
-    currentPage.value = 1;
-  }, 350);
-}
-
-// Queries catalog: backend listProducts defaults to FIFO (created_at ASC, id ASC)
-const { data: booksData, refresh, status: fetchStatus } = await useFetch<{
-  products: Book[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}>('/api/admin/books', {
-  query: {
-    page: currentPage,
-    limit: itemsPerPage,
-    q: computed(() => (debouncedSearch.value ? debouncedSearch.value : undefined)),
-    category_id: computed(() => (selectedCategory.value ? selectedCategory.value : undefined)),
-  },
-  watch: [currentPage, debouncedSearch, selectedCategory],
-});
-
-onMounted(async () => {
-  try {
-    const res = await $fetch<any>('/api/admin/categories');
-    categories.value = Array.isArray(res) ? res : res?.data || [];
-  } catch {
-    categories.value = [];
-  }
-});
-
-const books = computed<Book[]>(() => booksData.value?.products || []);
-const totalBooks = computed(() => booksData.value?.total ?? 0);
-const totalPages = computed(() => booksData.value?.totalPages ?? 1);
-
-const rangeText = computed(() => {
-  const total = totalBooks.value;
-  if (total === 0) return '0 books';
-  const start = (currentPage.value - 1) * itemsPerPage.value + 1;
-  const end = Math.min(currentPage.value * itemsPerPage.value, total);
-  return `Showing ${start}–${end} of ${total.toLocaleString('en-KE')} books (First Added First)`;
-});
-
-const isFilterActive = computed(() => {
-  return debouncedSearch.value.length > 0 || selectedCategory.value.length > 0;
-});
-
-function clearFilters(): void {
-  searchInput.value = '';
-  debouncedSearch.value = '';
-  selectedCategory.value = '';
-  currentPage.value = 1;
-}
-
-const selectedBookIds = ref<string[]>([]);
-const deletingBookId = ref<string | null>(null);
-const isDeletingBulk = ref(false);
-
-const isAllSelected = computed(() => {
-  return books.value.length > 0 && selectedBookIds.value.length === books.value.length;
-});
-
-function toggleSelectAll(): void {
-  if (isAllSelected.value) {
-    selectedBookIds.value = [];
-  } else {
-    selectedBookIds.value = books.value.map((b) => b.id);
-  }
-}
-
-function handlePageChange(newPage: number): void {
-  currentPage.value = newPage;
-  selectedBookIds.value = [];
-  if (process.client) {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-}
-
-function resolveCoverUrl(book: Book): string {
-  const firstImg = book.images?.[0];
-  if (!firstImg) return (book as any).cover_image_url || '';
-  if (typeof firstImg === 'string') return firstImg;
-  return firstImg.image_url || (book as any).cover_image_url || '';
-}
-
-async function handleDeleteBook(id: string, name: string): Promise<void> {
-  deletingBookId.value = id;
-
-  try {
-    const res = await $fetch<{ deleted: boolean; action: 'hard_deleted' | 'soft_deleted' }>(
-      `/api/admin/books/${id}`,
-      { method: 'DELETE' }
-    );
-
-    selectedBookIds.value = selectedBookIds.value.filter((bId) => bId !== id);
-
-    const message = res?.action === 'soft_deleted'
-      ? `"${name}" removed from catalog (historical orders & customer downloads preserved)`
-      : `"${name}" permanently deleted`;
-
-    pushToast({ message, variant: 'success' });
-    await refresh();
-  } catch (err: any) {
-    const errorMsg = err.data?.message || err.statusMessage || 'Failed to delete book';
-    pushToast({ message: errorMsg, variant: 'error' });
-    await refresh();
-  } finally {
-    deletingBookId.value = null;
-  }
-}
-
-async function handleBulkDelete(): Promise<void> {
-  if (selectedBookIds.value.length === 0 || isDeletingBulk.value) return;
-
-  const count = selectedBookIds.value.length;
-  const idsToDelete = [...selectedBookIds.value];
-  isDeletingBulk.value = true;
-
-  try {
-    const res = await $fetch<{
-      deleted: boolean;
-      count: number;
-      softDeleted: number;
-      hardDeleted: number;
-    }>('/api/admin/books/bulk-delete', {
-      method: 'POST',
-      body: { productIds: idsToDelete },
-    });
-
-    selectedBookIds.value = [];
-    const details = res?.softDeleted > 0
-      ? `(${res.hardDeleted} purged, ${res.softDeleted} archived with active orders)`
-      : '';
-
-    pushToast({ message: `Successfully deleted ${count} book(s) ${details}`, variant: 'success' });
-    await refresh();
-  } catch (err: any) {
-    const errorMsg = err.data?.message || err.statusMessage || 'Bulk deletion failed';
-    pushToast({ message: errorMsg, variant: 'error' });
-    await refresh();
-  } finally {
-    isDeletingBulk.value = false;
-  }
-}
-</script>
-
-<template>
-	<AdminLayout>
-		<div class="space-y-6 max-w-7xl mx-auto text-ink">
-
-			<!-- Top Header Bar -->
-			<div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-paper-border">
-				<div>
-					<h1 class="font-display text-2xl font-bold text-forest-950">Books &amp; eBooks Catalog</h1>
-					<p class="text-xs text-ink-muted">Manage multi-format pricing, physical stock, and digital
-						downloads. Ordered with foundational bestsellers first.</p>
-				</div>
-
-				<div class="flex items-center gap-2.5">
-					<button v-if="selectedBookIds.length > 0" type="button"
-						class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-[0.98] disabled:opacity-50"
-						:disabled="isDeletingBulk" @click="handleBulkDelete">
-						<Loader2 v-if="isDeletingBulk" :size="14" class="animate-spin" />
-						<Trash2 v-else :size="14" />
-						<span>{{ isDeletingBulk ? 'Deleting...' : `Delete Selected (${selectedBookIds.length})`
-							}}</span>
-					</button>
-
-					<NuxtLink to="/admin/books/new"
-						class="bg-forest-950 text-paper hover:bg-forest-900 text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-[0.98]">
-						<Plus :size="15" class="text-gold-300" />
-						<span>Add New Book</span>
-					</NuxtLink>
-				</div>
-			</div>
-
-			<!-- Search & Database Filter Toolbar -->
-			<div
-				class="bg-paper-surface p-4 rounded-2xl border border-paper-border shadow-soft flex flex-wrap gap-3 items-center justify-between">
-				<div class="relative flex-1 min-w-[260px]">
-					<Search :size="15" class="absolute left-3.5 top-3 text-ink-subtle pointer-events-none" />
-					<input v-model="searchInput" type="text"
-						placeholder="Search entire database by title, author, or SKU..."
-						class="w-full pl-10 pr-9 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle"
-						@input="onSearchInput" />
-					<button v-if="searchInput" type="button"
-						class="absolute right-3 top-2.5 text-ink-subtle hover:text-forest-950"
-						@click="searchInput = ''; debouncedSearch = ''; currentPage = 1;">
-						<X :size="14" />
-					</button>
-				</div>
-
-				<select v-model="selectedCategory"
-					class="px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs font-semibold text-forest-950 outline-none focus:bg-white focus:border-forest-900"
-					@change="currentPage = 1">
-					<option value="">All Categories</option>
-					<option v-for="cat in categories" :key="cat.id" :value="cat.id">
-						{{ cat.name }}
-					</option>
-				</select>
-
-				<button v-if="isFilterActive" type="button"
-					class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 border border-slate-200"
-					@click="clearFilters">
-					<RotateCcw :size="13" />
-					<span>Reset</span>
-				</button>
-
-				<div
-					class="text-xs text-ink-muted font-mono font-bold bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5">
-					<ArrowUpDown :size="12" class="text-gold-600" />
-					<span>{{ rangeText }}</span>
-				</div>
-			</div>
-
-			<!-- Catalog Table -->
-			<div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft overflow-hidden">
-				<table class="w-full text-left text-xs border-collapse">
-					<thead>
-						<tr
-							class="bg-paper-cream/40 border-b border-paper-border text-ink-subtle uppercase tracking-wider font-mono text-[9px]">
-							<th class="py-3 px-4 w-10">
-								<input type="checkbox" :checked="isAllSelected"
-									class="rounded border-paper-border text-forest-950 focus:ring-forest-900 cursor-pointer"
-									@change="toggleSelectAll" />
-							</th>
-							<th class="py-3 px-4">Cover</th>
-							<th class="py-3 px-4">Title &amp; Author</th>
-							<th class="py-3 px-4">Category</th>
-							<th class="py-3 px-4">Available Formats</th>
-							<th class="py-3 px-4">Status</th>
-							<th class="py-3 px-4 text-right">Actions</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-paper-border/60">
-						<tr v-if="fetchStatus === 'pending'">
-							<td colspan="7" class="py-12 text-center text-ink-muted text-xs">
-								Searching database catalog...
-							</td>
-						</tr>
-
-						<tr v-else-if="books.length === 0">
-							<td colspan="7" class="py-12 text-center text-ink-muted text-xs space-y-2">
-								<p>No books match the current query.</p>
-								<button v-if="isFilterActive" type="button"
-									class="text-forest-900 font-bold underline cursor-pointer text-xs"
-									@click="clearFilters">
-									Clear all search filters
-								</button>
-							</td>
-						</tr>
-
-						<tr v-for="book in books" :key="book.id" class="hover:bg-paper-cream/30 transition-colors"
-							:class="{ 'bg-paper-cream/50': selectedBookIds.includes(book.id) }">
-							<td class="py-3.5 px-4">
-								<input type="checkbox" :value="book.id" v-model="selectedBookIds"
-									class="rounded border-paper-border text-forest-950 focus:ring-forest-900 cursor-pointer" />
-							</td>
-
-							<td class="py-3.5 px-4 w-16">
-								<div
-									class="w-10 h-14 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex items-center justify-center shadow-xs">
-									<img v-if="resolveCoverUrl(book)" :src="resolveCoverUrl(book)"
-										:alt="`Cover for ${book.name}`" class="w-full h-full object-cover"
-										referrerpolicy="no-referrer"
-										@error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'" />
-									<BookOpen v-else :size="16" class="text-ink-muted opacity-40" />
-								</div>
-							</td>
-
-							<td class="py-3.5 px-4 max-w-xs">
-								<NuxtLink :to="`/admin/books/${book.id}/edit`"
-									class="font-bold text-forest-950 hover:text-gold-600 transition-colors line-clamp-1">
-									{{ book.name }}
-								</NuxtLink>
-								<p class="text-[11px] text-ink-muted truncate italic">{{ book.author || '—' }}</p>
-								<span v-if="book.sku" class="text-[10px] font-mono text-ink-subtle">SKU: {{ book.sku
-									}}</span>
-							</td>
-
-							<td class="py-3.5 px-4">
-								<span
-									class="inline-block text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-md bg-paper-cream text-forest-950 border border-paper-border">
-									{{ book.category_name || 'General' }}
-								</span>
-							</td>
-
-							<td class="py-3.5 px-4">
-								<div class="flex flex-wrap gap-1.5">
-									<span v-for="fmt in book.formats" :key="fmt.id"
-										class="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border"
-										:class="{
-                      'bg-amber-50 text-amber-900 border-amber-200': fmt.format === 'hardcopy',
-                      'bg-emerald-50 text-emerald-900 border-emerald-200': fmt.format === 'pdf',
-                      'bg-blue-50 text-blue-900 border-blue-200': fmt.format === 'epub',
-                    }">
-										<component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="10" />
-										{{ fmt.format.toUpperCase() }}: KSh {{ fmt.price }}
-									</span>
-									<span v-if="!book.formats?.length" class="text-[10px] text-ink-subtle italic">No
-										formats</span>
-								</div>
-							</td>
-
-							<td class="py-3.5 px-4">
-								<span
-									class="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border"
-									:class="book.status === 'published' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-700 border-slate-200'">
-									<span class="w-1.5 h-1.5 rounded-full"
-										:class="book.status === 'published' ? 'bg-emerald-600' : 'bg-slate-400'" />
-									{{ book.status }}
-								</span>
-							</td>
-
-							<td class="py-3.5 px-4 text-right">
-								<div class="inline-flex items-center gap-1">
-									<NuxtLink :to="`/book/${book.slug}`" target="_blank"
-										class="p-1.5 rounded-lg hover:bg-paper-cream text-ink-muted hover:text-forest-950 transition-colors"
-										title="View on Storefront">
-										<ExternalLink :size="14" />
-									</NuxtLink>
-
-									<NuxtLink :to="`/admin/books/${book.id}/edit`"
-										class="p-1.5 rounded-lg hover:bg-paper-cream text-ink-muted hover:text-forest-950 transition-colors"
-										title="Edit Book">
-										<Edit2 :size="14" />
-									</NuxtLink>
-
-									<button type="button"
-										class="p-1.5 rounded-lg hover:bg-red-50 text-ink-muted hover:text-red-700 transition-colors cursor-pointer disabled:opacity-50"
-										:disabled="deletingBookId === book.id" title="Delete book"
-										@click="handleDeleteBook(book.id, book.name)">
-										<Loader2 v-if="deletingBookId === book.id" :size="14"
-											class="animate-spin text-red-700" />
-										<Trash2 v-else :size="14" />
-									</button>
-								</div>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-
-			<Pagination :page="currentPage" :total-pages="totalPages" :disabled="fetchStatus === 'pending'"
-				@change="handlePageChange" />
-		</div>
-	</AdminLayout>
-</template>
-</file>
-
 <file path="server/api/admin/books/[id].patch.ts">
 // =============================================================================
 // flemela/server/api/admin/books/[id].patch.ts
@@ -10153,6 +9762,397 @@ const navSections: NavSection[] = [
     <!-- Global Admin Toast Container -->
     <ToastContainer />
   </div>
+</template>
+</file>
+
+<file path="pages/admin/books/index.vue">
+<!-- pages/admin/books/index.vue (The Sunrise Bookstore) -->
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import {
+  Plus,
+  Search,
+  Trash2,
+  Edit2,
+  BookOpen,
+  Download,
+  Truck,
+  ExternalLink,
+  Loader2,
+  X,
+  RotateCcw,
+  ArrowUpDown,
+} from 'lucide-vue-next';
+import AdminLayout from '~/components/admin/AdminLayout.vue';
+import Pagination from '~/components/ui/Pagination.vue';
+import { useToast } from '~/composables/useToast';
+import type { Book } from '~/types';
+
+definePageMeta({
+  middleware: 'admin-auth',
+});
+
+const { push: pushToast } = useToast();
+
+const currentPage = ref(1);
+const itemsPerPage = ref(50);
+const searchInput = ref('');
+const debouncedSearch = ref('');
+const selectedCategory = ref('');
+const categories = ref<Array<{ id: string; name: string }>>([]);
+
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+function onSearchInput(): void {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    debouncedSearch.value = searchInput.value.trim();
+    currentPage.value = 1;
+  }, 350);
+}
+
+// Queries catalog: backend listProducts defaults to FIFO (created_at ASC, id ASC)
+const { data: booksData, refresh, status: fetchStatus } = await useFetch<{
+  products: Book[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}>('/api/admin/books', {
+  query: {
+    page: currentPage,
+    limit: itemsPerPage,
+    q: computed(() => (debouncedSearch.value ? debouncedSearch.value : undefined)),
+    category_id: computed(() => (selectedCategory.value ? selectedCategory.value : undefined)),
+  },
+  watch: [currentPage, debouncedSearch, selectedCategory],
+});
+
+onMounted(async () => {
+  try {
+    const res = await $fetch<any>('/api/admin/categories');
+    categories.value = Array.isArray(res) ? res : res?.data || [];
+  } catch {
+    categories.value = [];
+  }
+});
+
+const books = computed<Book[]>(() => booksData.value?.products || []);
+const totalBooks = computed(() => booksData.value?.total ?? 0);
+const totalPages = computed(() => booksData.value?.totalPages ?? 1);
+
+const rangeText = computed(() => {
+  const total = totalBooks.value;
+  if (total === 0) return '0 books';
+  const start = (currentPage.value - 1) * itemsPerPage.value + 1;
+  const end = Math.min(currentPage.value * itemsPerPage.value, total);
+  return `Showing ${start}–${end} of ${total.toLocaleString('en-KE')} books (First Added First)`;
+});
+
+const isFilterActive = computed(() => {
+  return debouncedSearch.value.length > 0 || selectedCategory.value.length > 0;
+});
+
+function clearFilters(): void {
+  searchInput.value = '';
+  debouncedSearch.value = '';
+  selectedCategory.value = '';
+  currentPage.value = 1;
+}
+
+const selectedBookIds = ref<string[]>([]);
+const deletingBookId = ref<string | null>(null);
+const isDeletingBulk = ref(false);
+
+const isAllSelected = computed(() => {
+  return books.value.length > 0 && selectedBookIds.value.length === books.value.length;
+});
+
+function toggleSelectAll(): void {
+  if (isAllSelected.value) {
+    selectedBookIds.value = [];
+  } else {
+    selectedBookIds.value = books.value.map((b) => b.id);
+  }
+}
+
+function handlePageChange(newPage: number): void {
+  currentPage.value = newPage;
+  selectedBookIds.value = [];
+  if (process.client) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function resolveCoverUrl(book: Book): string {
+  const firstImg = book.images?.[0];
+  if (!firstImg) return (book as any).cover_image_url || '';
+  if (typeof firstImg === 'string') return firstImg;
+  return firstImg.image_url || (book as any).cover_image_url || '';
+}
+
+async function handleDeleteBook(id: string, name: string): Promise<void> {
+  deletingBookId.value = id;
+
+  try {
+    const res = await $fetch<{ deleted: boolean; action: 'hard_deleted' | 'soft_deleted' }>(
+      `/api/admin/books/${id}`,
+      { method: 'DELETE' }
+    );
+
+    selectedBookIds.value = selectedBookIds.value.filter((bId) => bId !== id);
+
+    const message = res?.action === 'soft_deleted'
+      ? `"${name}" removed from catalog (historical orders & customer downloads preserved)`
+      : `"${name}" permanently deleted`;
+
+    pushToast({ message, variant: 'success' });
+    await refresh();
+  } catch (err: any) {
+    const errorMsg = err.data?.message || err.statusMessage || 'Failed to delete book';
+    pushToast({ message: errorMsg, variant: 'error' });
+    await refresh();
+  } finally {
+    deletingBookId.value = null;
+  }
+}
+
+async function handleBulkDelete(): Promise<void> {
+  if (selectedBookIds.value.length === 0 || isDeletingBulk.value) return;
+
+  const count = selectedBookIds.value.length;
+  const idsToDelete = [...selectedBookIds.value];
+  isDeletingBulk.value = true;
+
+  try {
+    const res = await $fetch<{
+      deleted: boolean;
+      count: number;
+      softDeleted: number;
+      hardDeleted: number;
+    }>('/api/admin/books/bulk-delete', {
+      method: 'POST',
+      body: { productIds: idsToDelete },
+    });
+
+    selectedBookIds.value = [];
+    const details = res?.softDeleted > 0
+      ? `(${res.hardDeleted} purged, ${res.softDeleted} archived with active orders)`
+      : '';
+
+    pushToast({ message: `Successfully deleted ${count} book(s) ${details}`, variant: 'success' });
+    await refresh();
+  } catch (err: any) {
+    const errorMsg = err.data?.message || err.statusMessage || 'Bulk deletion failed';
+    pushToast({ message: errorMsg, variant: 'error' });
+    await refresh();
+  } finally {
+    isDeletingBulk.value = false;
+  }
+}
+</script>
+
+<template>
+	<AdminLayout>
+		<div class="space-y-6 max-w-7xl mx-auto text-ink">
+
+			<!-- Top Header Bar -->
+			<div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-paper-border">
+				<div>
+					<h1 class="font-display text-2xl font-bold text-forest-950">Books &amp; eBooks Catalog</h1>
+					<p class="text-xs text-ink-muted">Manage multi-format pricing, physical stock, and digital
+						downloads. Ordered with foundational bestsellers first.</p>
+				</div>
+
+				<div class="flex items-center gap-2.5">
+					<button v-if="selectedBookIds.length > 0" type="button"
+						class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-[0.98] disabled:opacity-50"
+						:disabled="isDeletingBulk" @click="handleBulkDelete">
+						<Loader2 v-if="isDeletingBulk" :size="14" class="animate-spin" />
+						<Trash2 v-else :size="14" />
+						<span>{{ isDeletingBulk ? 'Deleting...' : `Delete Selected (${selectedBookIds.length})`
+							}}</span>
+					</button>
+
+					<NuxtLink to="/admin/books/new"
+						class="bg-forest-950 text-paper hover:bg-forest-900 text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-[0.98]">
+						<Plus :size="15" class="text-gold-300" />
+						<span>Add New Book</span>
+					</NuxtLink>
+				</div>
+			</div>
+
+			<!-- Search & Database Filter Toolbar -->
+			<div
+				class="bg-paper-surface p-4 rounded-2xl border border-paper-border shadow-soft flex flex-wrap gap-3 items-center justify-between">
+				<div class="relative flex-1 min-w-[260px]">
+					<Search :size="15" class="absolute left-3.5 top-3 text-ink-subtle pointer-events-none" />
+					<input v-model="searchInput" type="text"
+						placeholder="Search entire database by title, author, or SKU..."
+						class="w-full pl-10 pr-9 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle"
+						@input="onSearchInput" />
+					<button v-if="searchInput" type="button"
+						class="absolute right-3 top-2.5 text-ink-subtle hover:text-forest-950"
+						@click="searchInput = ''; debouncedSearch = ''; currentPage = 1;">
+						<X :size="14" />
+					</button>
+				</div>
+
+				<select v-model="selectedCategory"
+					class="px-3 py-2 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs font-semibold text-forest-950 outline-none focus:bg-white focus:border-forest-900"
+					@change="currentPage = 1">
+					<option value="">All Categories</option>
+					<option v-for="cat in categories" :key="cat.id" :value="cat.id">
+						{{ cat.name }}
+					</option>
+				</select>
+
+				<button v-if="isFilterActive" type="button"
+					class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 border border-slate-200"
+					@click="clearFilters">
+					<RotateCcw :size="13" />
+					<span>Reset</span>
+				</button>
+
+				<div
+					class="text-xs text-ink-muted font-mono font-bold bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5">
+					<ArrowUpDown :size="12" class="text-gold-600" />
+					<span>{{ rangeText }}</span>
+				</div>
+			</div>
+
+			<!-- Catalog Table -->
+			<div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft overflow-hidden">
+				<table class="w-full text-left text-xs border-collapse">
+					<thead>
+						<tr
+							class="bg-paper-cream/40 border-b border-paper-border text-ink-subtle uppercase tracking-wider font-mono text-[9px]">
+							<th class="py-3 px-4 w-10">
+								<input type="checkbox" :checked="isAllSelected"
+									class="rounded border-paper-border text-forest-950 focus:ring-forest-900 cursor-pointer"
+									@change="toggleSelectAll" />
+							</th>
+							<th class="py-3 px-4">Cover</th>
+							<th class="py-3 px-4">Title &amp; Author</th>
+							<th class="py-3 px-4">Category</th>
+							<th class="py-3 px-4">Available Formats</th>
+							<th class="py-3 px-4">Status</th>
+							<th class="py-3 px-4 text-right">Actions</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-paper-border/60">
+						<tr v-if="fetchStatus === 'pending'">
+							<td colspan="7" class="py-12 text-center text-ink-muted text-xs">
+								Searching database catalog...
+							</td>
+						</tr>
+
+						<tr v-else-if="books.length === 0">
+							<td colspan="7" class="py-12 text-center text-ink-muted text-xs space-y-2">
+								<p>No books match the current query.</p>
+								<button v-if="isFilterActive" type="button"
+									class="text-forest-900 font-bold underline cursor-pointer text-xs"
+									@click="clearFilters">
+									Clear all search filters
+								</button>
+							</td>
+						</tr>
+
+						<tr v-for="book in books" :key="book.id" class="hover:bg-paper-cream/30 transition-colors"
+							:class="{ 'bg-paper-cream/50': selectedBookIds.includes(book.id) }">
+							<td class="py-3.5 px-4">
+								<input type="checkbox" :value="book.id" v-model="selectedBookIds"
+									class="rounded border-paper-border text-forest-950 focus:ring-forest-900 cursor-pointer" />
+							</td>
+
+							<td class="py-3.5 px-4 w-16">
+								<div
+									class="w-10 h-14 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex items-center justify-center shadow-xs">
+									<img v-if="resolveCoverUrl(book)" :src="resolveCoverUrl(book)"
+										:alt="`Cover for ${book.name}`" class="w-full h-full object-cover"
+										referrerpolicy="no-referrer"
+										@error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'" />
+									<BookOpen v-else :size="16" class="text-ink-muted opacity-40" />
+								</div>
+							</td>
+
+							<td class="py-3.5 px-4 max-w-xs">
+								<NuxtLink :to="`/admin/books/${book.id}/edit`"
+									class="font-bold text-forest-950 hover:text-gold-600 transition-colors line-clamp-1">
+									{{ book.name }}
+								</NuxtLink>
+								<p class="text-[11px] text-ink-muted truncate italic">{{ book.author || '—' }}</p>
+								<span v-if="book.sku" class="text-[10px] font-mono text-ink-subtle">SKU: {{ book.sku
+									}}</span>
+							</td>
+
+							<td class="py-3.5 px-4">
+								<span
+									class="inline-block text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-md bg-paper-cream text-forest-950 border border-paper-border">
+									{{ book.category_name || 'General' }}
+								</span>
+							</td>
+
+							<td class="py-3.5 px-4">
+								<div class="flex flex-wrap gap-1.5">
+									<span v-for="fmt in book.formats" :key="fmt.id"
+										class="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border"
+										:class="{
+                      'bg-amber-50 text-amber-900 border-amber-200': fmt.format === 'hardcopy',
+                      'bg-emerald-50 text-emerald-900 border-emerald-200': fmt.format === 'pdf',
+                      'bg-blue-50 text-blue-900 border-blue-200': fmt.format === 'epub',
+                    }">
+										<component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="10" />
+										{{ fmt.format.toUpperCase() }}: KSh {{ fmt.price }}
+									</span>
+									<span v-if="!book.formats?.length" class="text-[10px] text-ink-subtle italic">No
+										formats</span>
+								</div>
+							</td>
+
+							<td class="py-3.5 px-4">
+								<span
+									class="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border"
+									:class="book.status === 'published' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-700 border-slate-200'">
+									<span class="w-1.5 h-1.5 rounded-full"
+										:class="book.status === 'published' ? 'bg-emerald-600' : 'bg-slate-400'" />
+									{{ book.status }}
+								</span>
+							</td>
+
+							<td class="py-3.5 px-4 text-right">
+								<div class="inline-flex items-center gap-1">
+									<NuxtLink :to="`/book/${book.slug}`" target="_blank"
+										class="p-1.5 rounded-lg hover:bg-paper-cream text-ink-muted hover:text-forest-950 transition-colors"
+										title="View on Storefront">
+										<ExternalLink :size="14" />
+									</NuxtLink>
+
+									<NuxtLink :to="`/admin/books/${book.id}/edit`"
+										class="p-1.5 rounded-lg hover:bg-paper-cream text-ink-muted hover:text-forest-950 transition-colors"
+										title="Edit Book">
+										<Edit2 :size="14" />
+									</NuxtLink>
+
+									<button type="button"
+										class="p-1.5 rounded-lg hover:bg-red-50 text-ink-muted hover:text-red-700 transition-colors cursor-pointer disabled:opacity-50"
+										:disabled="deletingBookId === book.id" title="Delete book"
+										@click="handleDeleteBook(book.id, book.name)">
+										<Loader2 v-if="deletingBookId === book.id" :size="14"
+											class="animate-spin text-red-700" />
+										<Trash2 v-else :size="14" />
+									</button>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
+			<Pagination :page="currentPage" :total-pages="totalPages" :disabled="fetchStatus === 'pending'"
+				@change="handlePageChange" />
+		</div>
+	</AdminLayout>
 </template>
 </file>
 
@@ -15521,419 +15521,6 @@ function handleCategoryClick(catQuery: string): void {
 </template>
 </file>
 
-<file path="components/storefront/FlashSaleStrip.vue">
-<!-- components/storefront/FlashSaleStrip.vue -->
-<script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { ChevronLeft, ChevronRight, ShoppingCart, Zap, Clock } from 'lucide-vue-next';
-import { useCart } from '~/composables/useCart';
-import { useToast } from '~/composables/useToast';
-import type { Book, ProductFormat, BookFormatType } from '~/types';
-
-interface Props {
-  books: Book[];
-  title?: string;
-  badgeLabel?: string;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  title: 'FLASH SALE DEALS',
-  badgeLabel: 'LIMITED TIME',
-});
-
-const { addItem, openDrawer } = useCart();
-const { push: pushToast } = useToast();
-
-const scrollContainer = ref<HTMLElement | null>(null);
-const selectedFormats = ref<Record<string, string>>({});
-
-// Live Flash Sale Countdown Timer (Hours, Minutes, Seconds until midnight)
-const hours = ref('08');
-const minutes = ref('24');
-const seconds = ref('36');
-let timerInterval: ReturnType<typeof setInterval> | undefined;
-
-function updateCountdown(): void {
-  const now = new Date();
-  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-  const diff = Math.max(0, target.getTime() - now.getTime());
-
-  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-  const m = Math.floor((diff / 1000 / 60) % 60);
-  const s = Math.floor((diff / 1000) % 60);
-
-  hours.value = String(h).padStart(2, '0');
-  minutes.value = String(m).padStart(2, '0');
-  seconds.value = String(s).padStart(2, '0');
-}
-
-onMounted(() => {
-  updateCountdown();
-  timerInterval = setInterval(updateCountdown, 1000);
-});
-
-onUnmounted(() => {
-  if (timerInterval) clearInterval(timerInterval);
-});
-
-function scrollLeft(): void {
-  scrollContainer.value?.scrollBy({ left: -240, behavior: 'smooth' });
-}
-
-function scrollRight(): void {
-  scrollContainer.value?.scrollBy({ left: 240, behavior: 'smooth' });
-}
-
-function formatCurrency(val: number): string {
-  return `KSh ${val.toLocaleString('en-KE')}`;
-}
-
-// Filter to available digital formats with real files
-function getAvailableDigitalFormats(book: Book): ProductFormat[] {
-  if (!book.formats || book.formats.length === 0) return [];
-  return book.formats.filter((f) => {
-    const isDigital = f.format === 'pdf' || f.format === 'epub';
-    if (!isDigital) return false;
-    if (book.isSeed) return true;
-    return Boolean(
-      (f.file_url && f.file_url.trim().length > 0) ||
-      (f.file_public_id && f.file_public_id.trim().length > 0)
-    );
-  });
-}
-
-// Guaranteed Hardcopy Format
-function getHardcopyFormat(book: Book): ProductFormat {
-  const existing = book.formats?.find((f) => f.format === 'hardcopy');
-  if (existing) return existing;
-  return {
-    id: `synthetic-hardcopy-${book.id}`,
-    product_id: book.id,
-    format: 'hardcopy' as BookFormatType,
-    price: book.price || 999,
-    compare_at_price: book.compare_at_price || null,
-    file_url: null,
-    file_public_id: null,
-    file_size_bytes: null,
-    stock: book.stock ?? 10,
-    created_at: book.created_at || '',
-    updated_at: book.updated_at || '',
-  };
-}
-
-// Ordered: Hardcopy first, then eBooks
-function getBookDisplayFormats(book: Book): ProductFormat[] {
-  const hardcopy = getHardcopyFormat(book);
-  const digitals = getAvailableDigitalFormats(book);
-  return [hardcopy, ...digitals];
-}
-
-function getSelectedFormat(book: Book): ProductFormat {
-  const fmts = getBookDisplayFormats(book);
-  const selectedId = selectedFormats.value[book.id];
-  if (selectedId) {
-    const found = fmts.find((f) => f.id === selectedId);
-    if (found) return found;
-  }
-  return fmts[0];
-}
-
-// Format-specific display label helper (type-safe exhaustive narrowing)
-function getFormatDisplayLabel(fmt: ProductFormat): string {
-  if (fmt.format === 'hardcopy') return 'Hardcopy';
-  if (fmt.format === 'pdf') return 'eBook (PDF)';
-  if (fmt.format === 'epub') return 'eBook (EPUB)';
-  return String(fmt.format || '').toUpperCase();
-}
-
-function getBookPricing(book: Book) {
-  const pBook = book.price ?? 0;
-  const cpBook = book.compare_at_price ?? null;
-  const hasParentSale = Boolean(cpBook && cpBook > pBook && pBook > 0);
-  const parentDiscountRatio = hasParentSale && cpBook ? (cpBook - pBook) / cpBook : 0;
-
-  const fmt = getSelectedFormat(book);
-  let p = fmt ? fmt.price : pBook;
-  let cp: number | null = null;
-
-  if (fmt) {
-    if (fmt.compare_at_price && fmt.compare_at_price > fmt.price) {
-      cp = fmt.compare_at_price;
-    } else if (fmt.format === 'hardcopy') {
-      cp = cpBook;
-    } else if (hasParentSale && parentDiscountRatio > 0 && parentDiscountRatio < 1) {
-      cp = Math.round(fmt.price / (1 - parentDiscountRatio));
-    }
-  } else {
-    cp = cpBook;
-  }
-
-  if (cp !== null && cp !== undefined && cp > 0 && p > 0 && cp !== p) {
-    const minP = Math.min(p, cp);
-    const maxP = Math.max(p, cp);
-    const diff = maxP - minP;
-    const percentDown = Math.round((diff / maxP) * 100);
-
-    return {
-      currentPrice: minP,
-      originalPrice: maxP,
-      discountPercentage: percentDown > 0 ? percentDown : 0,
-    };
-  }
-
-  return {
-    currentPrice: p,
-    originalPrice: null,
-    discountPercentage: 0,
-  };
-}
-
-// Badge is always "flash" or the passed-in label here — icon instead of emoji
-function getBadgeLabel(badgeStr?: string | null): string {
-  if (!badgeStr) return 'FLASH';
-  if (badgeStr === 'LIMITED_TIME') return 'LIMITED';
-  if (badgeStr === 'FLASH_SALE') return 'FLASH';
-  return badgeStr.replace(/_/g, ' ');
-}
-
-function selectBookFormat(bookId: string, formatId: string, event: Event): void {
-  event.preventDefault();
-  event.stopPropagation();
-  selectedFormats.value[bookId] = formatId;
-}
-
-function handleQuickAdd(book: Book, event: Event): void {
-  event.preventDefault();
-  event.stopPropagation();
-
-  const fmt = getSelectedFormat(book);
-  const pricing = getBookPricing(book);
-  const isPhysical = fmt?.format === 'hardcopy';
-  const formatType = fmt ? fmt.format : 'hardcopy';
-
-  const isSynthetic = !fmt || fmt.id.startsWith('synthetic-');
-  const validFormatId = isSynthetic ? '' : fmt.id;
-
-  addItem({
-    productId: book.id,
-    formatId: validFormatId,
-    title: book.name,
-    format: formatType,
-    price: pricing.currentPrice,
-    compare_at_price: pricing.originalPrice,
-    quantity: 1,
-    deliveryMethod: isPhysical ? 'delivery' : 'digital',
-    coverUrl: book.images?.[0]?.image_url || (book as any).cover_image_url || null,
-    author: book.author,
-  });
-
-  pushToast({
-    message: `Added "${book.name}" (${formatType.toUpperCase()}) to cart!`,
-    variant: 'success',
-  });
-
-  openDrawer();
-}
-</script>
-
-<template>
-  <!--
-    Redesign notes (matches BookCard fixes):
-    - Strip background moved from raw #f50000 to theme-coral-hover — same
-      urgency red-orange, now sourced from the token system.
-    - Cards: type scale collapsed to the same 3 tiers as BookCard (10px
-      label / xs title / sm price), width widened 148/156px -> 160/168px.
-    - Discount + badge use coral/forest+turquoise the same way BookCard
-      does, so a card here and a card on the homepage grid read as the
-      same component, not two different systems.
-    - Strikethrough price moved off red onto slate for the same reason:
-      the discount badge already signals "on sale".
-  -->
-  <section
-    v-if="books.length > 0"
-    class="bg-theme-coral-hover text-white py-3 px-4 sm:px-6 relative overflow-hidden select-none rounded-2xl max-w-6xl mx-auto shadow-md"
-  >
-    <!-- Background Texture -->
-    <svg class="absolute -left-16 -bottom-16 w-80 h-80 text-white/10 pointer-events-none" viewBox="0 0 200 200" fill="none">
-      <circle cx="100" cy="100" r="40" stroke="currentColor" stroke-width="1.5" />
-      <circle cx="100" cy="100" r="75" stroke="currentColor" stroke-width="1.5" />
-      <circle cx="100" cy="100" r="110" stroke="currentColor" stroke-width="1.5" />
-    </svg>
-
-    <!-- Controls on the Left, Shelf on the Right -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 sm:gap-8 relative z-10">
-
-      <!-- CONTROLS CONTAINER -->
-      <div class="w-full sm:w-72 sm:flex-shrink-0 space-y-2.5 text-left py-1">
-        <div class="space-y-1">
-          <span class="inline-flex items-center gap-1 text-[10px] font-mono font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-theme-dark text-theme-turquoise shadow-2xs">
-            <Zap :size="10" />
-            {{ badgeLabel }}
-          </span>
-          <h2 class="font-poster text-3xl sm:text-4xl font-extrabold uppercase tracking-wide leading-none text-white drop-shadow-xs">
-            {{ title }}
-          </h2>
-        </div>
-
-        <p class="text-xs text-white/90 leading-relaxed font-sans line-clamp-2">
-          Limited-quantity price cuts on reader favorites. Grab them before the daily countdown expires!
-        </p>
-
-        <!-- Live Countdown Timer -->
-        <ClientOnly>
-          <div class="flex items-center gap-2 pt-0.5">
-            <div class="bg-white text-theme-ink rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
-              <span class="font-mono text-sm font-bold block">{{ hours }}H</span>
-            </div>
-            <span class="font-bold text-white">:</span>
-            <div class="bg-white text-theme-ink rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px]">
-              <span class="font-mono text-sm font-bold block">{{ minutes }}M</span>
-            </div>
-            <span class="font-bold text-white">:</span>
-            <div class="bg-white text-theme-ink rounded-lg px-2.5 py-1 border border-white/20 text-center shadow-xs min-w-[42px] flex items-center justify-center gap-1">
-              <Clock :size="10" class="text-theme-coral" />
-              <span class="font-mono text-sm font-bold text-theme-coral block">{{ seconds }}S</span>
-            </div>
-          </div>
-        </ClientOnly>
-
-        <!-- Shelf Navigation -->
-        <div class="hidden sm:flex items-center gap-2.5 pt-1">
-          <button
-            type="button"
-            class="w-8 h-8 rounded-full bg-theme-dark/30 hover:bg-theme-dark text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 border border-white/20"
-            aria-label="Previous deal"
-            @click="scrollLeft"
-          >
-            <ChevronLeft :size="15" />
-          </button>
-          <button
-            type="button"
-            class="w-8 h-8 rounded-full bg-theme-dark text-theme-turquoise hover:bg-theme-forest flex items-center justify-center cursor-pointer shadow-xs active:scale-95 transition-all border border-theme-turquoise/30"
-            aria-label="Next deal"
-            @click="scrollRight"
-          >
-            <ChevronRight :size="15" />
-          </button>
-        </div>
-      </div>
-
-      <!-- BOOKS SHELF -->
-      <div class="flex-1 min-w-0 w-full">
-        <div
-          ref="scrollContainer"
-          class="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-1 px-1 snap-x snap-mandatory touch-pan-x"
-        >
-          <div
-            v-for="book in books"
-            :key="book.id"
-            class="w-[160px] sm:w-[168px] flex-shrink-0 bg-white text-theme-ink rounded-xl p-2.5 sm:p-3 shadow-card hover:shadow-medium transition-all snap-start flex flex-col justify-between group select-none text-left border border-theme-border"
-          >
-            <div>
-              <!-- Book Cover -->
-              <NuxtLink
-                :to="`/book/${book.slug}`"
-                class="block relative aspect-[1/1.37] rounded-book overflow-hidden bg-stone-100 book-cover-3d mb-2 sm:mb-2.5"
-              >
-                <img
-                  :src="book.images?.[0]?.image_url || (book as any).cover_image_url || '/images/book-placeholder.svg'"
-                  :alt="book.name"
-                  class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                  referrerpolicy="no-referrer"
-                />
-
-                <span
-                  v-if="getBookPricing(book).discountPercentage > 0"
-                  class="absolute top-1.5 right-1.5 bg-theme-coral text-white font-mono font-extrabold text-[10px] px-1.5 py-0.5 rounded shadow-xs z-10"
-                >
-                  -{{ getBookPricing(book).discountPercentage }}%
-                </span>
-
-                <span
-                  class="absolute top-1.5 left-1.5 bg-theme-forest text-theme-turquoise font-mono font-bold text-[10px] px-1.5 py-0.5 rounded uppercase z-10 flex items-center gap-1"
-                >
-                  <Zap :size="9" />
-                  {{ getBadgeLabel(book.badge) }}
-                </span>
-              </NuxtLink>
-
-              <!-- Book Title -->
-              <NuxtLink :to="`/book/${book.slug}`" class="block">
-                <h3 class="font-display text-xs font-bold text-theme-ink group-hover:text-theme-coral transition-colors line-clamp-1 leading-snug">
-                  {{ book.name }}
-                </h3>
-              </NuxtLink>
-              <p class="text-[10px] text-theme-muted italic truncate mt-0.5">
-                {{ book.author ? (book.author.startsWith('By ') ? book.author : `By ${book.author}`) : 'Original Edition' }}
-              </p>
-
-              <!-- Stacked Format Selector -->
-              <div class="mt-2 space-y-1">
-                <template v-if="getBookDisplayFormats(book).length > 1">
-                  <button
-                    v-for="fmt in getBookDisplayFormats(book)"
-                    :key="fmt.id"
-                    type="button"
-                    class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans transition-all cursor-pointer select-none leading-none border"
-                    :class="
-                      getSelectedFormat(book)?.id === fmt.id
-                        ? 'bg-theme-coral/10 border-theme-coral text-theme-coral-hover font-extrabold shadow-2xs'
-                        : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold'
-                    "
-                    @click="selectBookFormat(book.id, fmt.id, $event)"
-                  >
-                    <span class="truncate pr-1">{{ getFormatDisplayLabel(fmt) }}</span>
-                    <span class="font-mono font-bold text-[10px] flex-shrink-0" :class="getSelectedFormat(book)?.id === fmt.id ? 'text-theme-coral-hover' : 'text-slate-600'">
-                      {{ formatCurrency(fmt.price) }}
-                    </span>
-                  </button>
-                </template>
-                <div
-                  v-else
-                  class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-sans font-bold bg-theme-coral/10 border border-theme-coral/60 text-theme-coral-hover"
-                >
-                  <span class="truncate pr-1">{{ getFormatDisplayLabel(getSelectedFormat(book)) }}</span>
-                  <span class="font-mono font-bold text-[10px] flex-shrink-0">
-                    {{ formatCurrency(getSelectedFormat(book).price) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Bottom Bar: Price + Cart Button -->
-            <div class="pt-2 mt-2 border-t border-theme-border flex items-end justify-between gap-1.5">
-              <div class="min-w-0 flex flex-col justify-center">
-                <span
-                  v-if="getBookPricing(book).originalPrice && getBookPricing(book).originalPrice! > getBookPricing(book).currentPrice"
-                  class="text-[10px] text-slate-400 line-through decoration-slate-400 decoration-1 font-mono font-bold block leading-none mb-0.5"
-                >
-                  {{ formatCurrency(getBookPricing(book).originalPrice!) }}
-                </span>
-                <span class="text-sm font-black font-mono leading-tight text-theme-ink tracking-tight">
-                  {{ formatCurrency(getBookPricing(book).currentPrice) }}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                class="w-8 h-8 rounded-lg bg-theme-forest hover:bg-theme-coral text-white flex items-center justify-center transition-colors cursor-pointer active:scale-95 shadow-xs flex-shrink-0"
-                :title="getSelectedFormat(book)?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart'"
-                :aria-label="getSelectedFormat(book)?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart'"
-                @click="handleQuickAdd(book, $event)"
-              >
-                <ShoppingCart :size="13" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </section>
-</template>
-</file>
-
 <file path="components/storefront/StoreNavbar.vue">
 <!-- components/storefront/StoreNavbar.vue -->
 <script setup lang="ts">
@@ -16503,8 +16090,203 @@ onUnmounted(() => {
 </style>
 </file>
 
+<file path="components/storefront/FlashSaleStrip.vue">
+<!-- components/storefront/FlashSaleStrip.vue (The Sunrise Bookstore) -->
+<template>
+	<section v-if="books && books.length > 0" id="flash-sale" class="py-10 sm:py-14 bg-transparent select-none"
+		aria-label="Flash Sale Deals">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+			<!-- TOP HEADER: Red Eyebrow, Red Headline & Red Live Countdown Timer -->
+			<div
+				class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
+				<div class="space-y-1">
+					<div class="flex items-center gap-2">
+						<span
+							class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-red-600 flex items-center gap-1">
+							<Zap :size="12" class="fill-current text-red-600" />
+							{{ badgeLabel }}
+						</span>
+					</div>
+					<!-- Red Heading -->
+					<h2
+						class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-red-600 tracking-wide leading-none drop-shadow-xs">
+						{{ title }}
+					</h2>
+					<p class="text-xs sm:text-sm text-slate-600 mt-1">
+						Limited-time price cuts on bestselling literature and digital editions. Order before the timer
+						runs out!
+					</p>
+				</div>
+
+				<!-- Live Red Countdown Clock -->
+				<div
+					class="flex items-center gap-2.5 bg-red-50/80 border border-red-200 rounded-xl px-4 py-2 shadow-xs shrink-0 self-start sm:self-auto">
+					<span class="text-xs font-mono font-bold text-red-600 flex items-center gap-1.5">
+						<span class="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+						<Clock :size="13" class="text-red-600" />
+						ENDS IN:
+					</span>
+					<div class="flex items-center gap-1 font-mono text-xs font-black text-red-700">
+						<span class="bg-white px-2 py-0.5 rounded border border-red-200 shadow-2xs">{{
+							formattedTime.hours }}h</span>
+						<span class="text-red-400">:</span>
+						<span class="bg-white px-2 py-0.5 rounded border border-red-200 shadow-2xs">{{
+							formattedTime.minutes }}m</span>
+						<span class="text-red-400">:</span>
+						<span class="bg-white px-2 py-0.5 rounded border border-red-200 shadow-2xs">{{
+							formattedTime.seconds }}s</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- CAROUSEL TRACK WITH LEFT & RIGHT NAVIGATION BUTTONS -->
+			<div class="relative group">
+				<!-- Left Chevron -->
+				<button type="button"
+					class="absolute -left-3 sm:-left-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-slate-800 hover:text-red-600 hover:border-red-500 hover:bg-red-50 border border-slate-300 shadow-[0_4px_18px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+					:disabled="!canScrollLeft" aria-label="Scroll left to previous books" @click="scrollLeft">
+					<ChevronLeft :size="24" class="stroke-[2.5]" />
+				</button>
+
+				<!-- Right Chevron -->
+				<button type="button"
+					class="absolute -right-3 sm:-right-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-slate-800 hover:text-red-600 hover:border-red-500 hover:bg-red-50 border border-slate-300 shadow-[0_4px_18px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+					:disabled="!canScrollRight" aria-label="Scroll right to next books" @click="scrollRight">
+					<ChevronRight :size="24" class="stroke-[2.5]" />
+				</button>
+
+				<!-- Normalized Track: Reuses Canonical BookCard -->
+				<div ref="scrollContainer"
+					class="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto scroll-smooth no-scrollbar py-2 snap-x snap-mandatory"
+					style="touch-action: pan-y;" @scroll="checkScrollButtons">
+					<div v-for="book in books" :key="book.id"
+						class="w-[calc((100%-0.75rem)/2)] sm:w-[calc((100%-1rem*2)/3)] lg:w-[calc((100%-1.5rem*3)/4)] flex-shrink-0 snap-start flex">
+						<BookCard :book="book" class="h-full" @request-seed="(t, a) => $emit('request-seed', t, a)" />
+					</div>
+				</div>
+			</div>
+
+		</div>
+	</section>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
+import { ChevronLeft, ChevronRight, Zap, Clock } from 'lucide-vue-next';
+import BookCard from '~/components/storefront/BookCard.vue';
+import type { Book } from '~/types';
+
+interface Props {
+  books: Book[];
+  title?: string;
+  badgeLabel?: string;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  title: 'FLASH SALE DEALS',
+  badgeLabel: 'LIMITED TIME OFFERS',
+});
+
+defineEmits<{
+  (e: 'request-seed', title: string, author?: string): void;
+}>();
+
+const scrollContainer = ref<HTMLElement | null>(null);
+const canScrollLeft = ref(false);
+const canScrollRight = ref(true);
+
+function checkScrollButtons(): void {
+  if (!scrollContainer.value) return;
+  const { scrollLeft, scrollWidth, clientWidth } = scrollContainer.value;
+  canScrollLeft.value = scrollLeft > 8;
+  canScrollRight.value = scrollLeft + clientWidth < scrollWidth - 8;
+}
+
+function scrollLeft(): void {
+  if (!scrollContainer.value) return;
+  const firstChild = scrollContainer.value.firstElementChild as HTMLElement | null;
+  const cardWidth = firstChild ? firstChild.clientWidth : 280;
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+  const count = isDesktop ? 4 : 2;
+  const scrollDistance = (cardWidth + 24) * count;
+  scrollContainer.value.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
+}
+
+function scrollRight(): void {
+  if (!scrollContainer.value) return;
+  const firstChild = scrollContainer.value.firstElementChild as HTMLElement | null;
+  const cardWidth = firstChild ? firstChild.clientWidth : 280;
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+  const count = isDesktop ? 4 : 2;
+  const scrollDistance = (cardWidth + 24) * count;
+  scrollContainer.value.scrollBy({ left: scrollDistance, behavior: 'smooth' });
+}
+
+watch(
+  () => props.books,
+  async () => {
+    await nextTick();
+    checkScrollButtons();
+  },
+  { deep: true }
+);
+
+// Countdown calculation
+const hours = ref('08');
+const minutes = ref('24');
+const seconds = ref('36');
+let timerInterval: ReturnType<typeof setInterval> | undefined;
+
+function updateCountdown(): void {
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  const diff = Math.max(0, target.getTime() - now.getTime());
+
+  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const m = Math.floor((diff / 1000 / 60) % 60);
+  const s = Math.floor((diff / 1000) % 60);
+
+  hours.value = String(h).padStart(2, '0');
+  minutes.value = String(m).padStart(2, '0');
+  seconds.value = String(s).padStart(2, '0');
+}
+
+const formattedTime = computed(() => ({
+  hours: hours.value,
+  minutes: minutes.value,
+  seconds: seconds.value,
+}));
+
+onMounted(() => {
+  updateCountdown();
+  timerInterval = setInterval(updateCountdown, 1000);
+  setTimeout(checkScrollButtons, 300);
+  window.addEventListener('resize', checkScrollButtons);
+});
+
+onUnmounted(() => {
+  if (timerInterval) clearInterval(timerInterval);
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', checkScrollButtons);
+  }
+});
+</script>
+
+<style scoped>
+	.no-scrollbar::-webkit-scrollbar {
+		display: none;
+	}
+
+	.no-scrollbar {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+</style>
+</file>
+
 <file path="pages/admin/books/[id]/edit.vue">
-<!-- pages/admin/books/[id]/edit.vue -->
+<!-- pages/admin/books/[id]/edit.vue (The Sunrise Bookstore) -->
 <template>
 	<AdminLayout>
 		<div class="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8 font-sans text-gray-900">
@@ -16529,8 +16311,8 @@ onUnmounted(() => {
 							</NuxtLink>
 							<div>
 								<h1 class="text-2xl font-bold text-gray-900 tracking-tight">Edit Book</h1>
-								<p class="text-xs text-gray-500 mt-0.5">Manage pricing, discounts, stock, categories,
-									badges, and formats</p>
+								<p class="text-xs text-gray-500 mt-0.5">Manage pricing, strikethrough discounts, stock,
+									categories, badges, and formats</p>
 							</div>
 						</div>
 
@@ -16540,7 +16322,7 @@ onUnmounted(() => {
 								Cancel
 							</NuxtLink>
 							<button type="button" :disabled="isSubmitting" @click="handleUpdate"
-								class="inline-flex items-center space-x-2 px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-lg shadow-sm transition-all cursor-pointer">
+								class="inline-flex items-center space-x-2 px-5 py-2 text-xs font-bold text-white bg-forest-900 hover:bg-forest-800 disabled:opacity-50 rounded-lg shadow-sm transition-all cursor-pointer">
 								<svg v-if="isSubmitting" class="animate-spin w-4 h-4 text-white" fill="none"
 									viewBox="0 0 24 24">
 									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
@@ -16594,28 +16376,27 @@ onUnmounted(() => {
 								<div class="sm:col-span-2">
 									<label class="block text-xs font-bold text-gray-700 mb-1.5">Book Title *</label>
 									<input v-model="form.name" type="text" placeholder="e.g. The Psychology of Money"
-										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all"
+										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all"
 										required />
 								</div>
 
 								<div>
 									<label class="block text-xs font-bold text-gray-700 mb-1.5">Author</label>
 									<input v-model="form.author" type="text" placeholder="e.g. Morgan Housel"
-										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all" />
+										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all" />
 								</div>
 
-								<!-- Category with "+ New Category" Action -->
 								<div>
 									<div class="flex items-center justify-between mb-1.5">
 										<label class="block text-xs font-bold text-gray-700">Category *</label>
 										<button type="button"
-											class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer flex items-center gap-1"
+											class="text-[11px] font-bold text-forest-900 hover:text-gold-600 hover:underline cursor-pointer flex items-center gap-1"
 											@click="isCategoryModalOpen = true">
 											<span>+ New Category</span>
 										</button>
 									</div>
 									<select v-model="form.category_id"
-										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all cursor-pointer"
+										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all cursor-pointer"
 										required>
 										<option value="" disabled>Select a category</option>
 										<option v-for="cat in categories" :key="cat.id" :value="cat.id">
@@ -16627,7 +16408,7 @@ onUnmounted(() => {
 								<div>
 									<label class="block text-xs font-bold text-gray-700 mb-1.5">ISBN / SKU</label>
 									<input v-model="form.sku" type="text" placeholder="e.g. 978-0857197689"
-										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all" />
+										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all" />
 								</div>
 
 								<!-- Promotional Badge -->
@@ -16635,7 +16416,7 @@ onUnmounted(() => {
 									<label class="block text-xs font-bold text-gray-700">Promotional Badge</label>
 									<div class="space-y-2">
 										<select v-model="badgeSelectValue"
-											class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all cursor-pointer"
+											class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all cursor-pointer"
 											@change="handleBadgeSelectChange">
 											<option value="">None (Standard)</option>
 											<option value="BESTSELLER">Bestseller (BESTSELLER)</option>
@@ -16652,8 +16433,8 @@ onUnmounted(() => {
 												placeholder="Type custom badge (e.g. EDITOR'S CHOICE, 20% OFF)"
 												class="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-xs font-mono font-bold uppercase text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
 												maxlength="30" />
-											<p class="text-[10px] text-gray-500">Appears as an editorial promotional
-												badge on the book card.</p>
+											<p class="text-[10px] text-gray-500">Appears as an editorial badge on the
+												book card.</p>
 										</div>
 									</div>
 								</div>
@@ -16662,7 +16443,7 @@ onUnmounted(() => {
 									<label class="block text-xs font-bold text-gray-700 mb-1.5">Synopsis /
 										Description</label>
 									<textarea v-model="form.description" rows="3" placeholder="Summary of the book..."
-										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all resize-none"></textarea>
+										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all resize-none"></textarea>
 								</div>
 							</div>
 						</div>
@@ -16711,7 +16492,7 @@ onUnmounted(() => {
 											@change="handleCoverFileSelected" />
 										<button type="button" :disabled="isUploadingCover"
 											@click="coverFileInputRef?.click()"
-											class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm disabled:opacity-50 cursor-pointer">
+											class="px-4 py-2 bg-forest-950 hover:bg-forest-900 text-white rounded-lg text-xs font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm disabled:opacity-50 cursor-pointer">
 											<svg v-if="isUploadingCover" class="animate-spin w-3.5 h-3.5 text-white"
 												fill="none" viewBox="0 0 24 24">
 												<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
@@ -16733,20 +16514,20 @@ onUnmounted(() => {
 										<label class="block text-[11px] font-semibold text-gray-500">Or paste image URL
 											directly:</label>
 										<input v-model="form.cover_image_url" type="url" placeholder="https://..."
-											class="w-full px-3 py-2 bg-gray-50/50 border border-gray-200 rounded-lg text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-emerald-700 font-mono" />
+											class="w-full px-3 py-2 bg-gray-50/50 border border-gray-200 rounded-lg text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-forest-900 font-mono" />
 									</div>
 								</div>
 							</div>
 						</div>
 
-						<!-- Section 3: Format Management with Strikethrough Pricing -->
+						<!-- Section 3: Formats & Persistent Strikethrough Pricing Management -->
 						<div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
 							<h2
 								class="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-3">
 								Format &amp; Pricing Management
 							</h2>
 
-							<!-- A. Physical Hardcopy Format -->
+							<!-- A. Physical Hardcopy Edition -->
 							<div class="p-5 rounded-xl border border-gray-200 bg-gray-50/30 space-y-4">
 								<div class="flex items-center justify-between">
 									<h3 class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
@@ -16779,7 +16560,7 @@ onUnmounted(() => {
 											<span class="text-[10px] text-gray-400 font-normal">Strikethrough</span>
 										</label>
 										<input v-model.number="form.hardcopyCompareAtPrice" type="number" min="0"
-											placeholder="e.g. 1499 (Optional)"
+											placeholder="e.g. 1499 (Must be > selling price)"
 											class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" />
 									</div>
 
@@ -16792,7 +16573,7 @@ onUnmounted(() => {
 								</div>
 							</div>
 
-							<!-- B. Digital PDF Format -->
+							<!-- B. Digital PDF Edition -->
 							<div class="p-5 rounded-xl border border-gray-200 bg-gray-50/30 space-y-4">
 								<div class="flex items-center justify-between">
 									<div class="flex items-center space-x-2.5">
@@ -16819,17 +16600,17 @@ onUnmounted(() => {
 									</div>
 
 									<div>
-										<label class="block text-xs font-semibold text-gray-700 mb-1">
+										< class="block text-xs font-semibold text-gray-700 mb-1">
 											eBook Original Price (KSh)
 											<span class="text-[10px] text-gray-400 font-normal">Strikethrough</span>
-										</label>
-										<input v-model.number="form.pdfCompareAtPrice" type="number" min="0"
-											placeholder="e.g. 299 (Optional)"
-											class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" />
+
+											<input v-model.number="form.pdfCompareAtPrice" type="number" min="0"
+												placeholder="e.g. 299 (Must be > eBook price)"
+												class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" />
 									</div>
 								</div>
 
-								<!-- Single PDF Uploader Component -->
+								<!-- Single PDF Uploader -->
 								<div>
 									<label class="block text-xs font-semibold text-gray-700 mb-1.5">
 										eBook PDF Document
@@ -16918,16 +16699,14 @@ const form = reactive({
   pdfFileSize: 0,
   pdfFileName: '',
 });
+	  const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME'];
 
-const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME'];
-	async function loadBookData() {
+async function loadBookData() {
   try {
-    // 1. Fetch Categories
     const catRaw = await ofetch<any>('/api/admin/categories');
     const catList = catRaw?.data || catRaw;
     if (Array.isArray(catList)) categories.value = catList;
 
-    // 2. Fetch Book Record (merged with formats via updated [id].get.ts)
     const bookRaw = await ofetch<any>(`/api/admin/books/${productId}`);
     const book = bookRaw?.data || bookRaw;
 
@@ -16936,19 +16715,20 @@ const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK',
     }
 
     form.name = book.name || '';
-    
-    // Multi-casing category hydration
     form.category_id = book.category_id || book.categoryId || book.category?.id || '';
-    
     form.sku = book.sku || '';
     form.description = book.description || '';
-    form.hardcopyPrice = Number(book.price) || 999;
-    form.hardcopyCompareAtPrice = (book.compare_at_price || book.compareAtPrice) 
-      ? Number(book.compare_at_price || book.compareAtPrice) 
-      : null;
+
+    const parentPrice = Number(book.price) || 999;
+    const parentCompareAt = (book.compare_at_price !== null && book.compare_at_price !== undefined)
+      ? Number(book.compare_at_price)
+      : (book.compareAtPrice !== null && book.compareAtPrice !== undefined ? Number(book.compareAtPrice) : null);
+
+    form.hardcopyPrice = parentPrice;
+    form.hardcopyCompareAtPrice = parentCompareAt;
     form.hardcopyStock = book.stock ?? 10;
 
-    // Badge Hydration: Presets vs Custom
+    // Badge Hydration
     if (book.badge) {
       if (STANDARD_BADGES.includes(book.badge)) {
         badgeSelectValue.value = book.badge;
@@ -16985,15 +16765,18 @@ const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK',
       form.cover_image_url = book.cover_image_url;
     }
 
-    // Formats Hydration
+    // Formats Hydration (Hierarchical Fallback)
     const formats: any[] = book.formats || [];
 
     const hardcopy = formats.find((f) => f.format === 'hardcopy');
     if (hardcopy) {
       hardcopyFormatId.value = hardcopy.id;
       form.hardcopyPrice = Number(hardcopy.price) || form.hardcopyPrice;
-      const cp = hardcopy.compare_at_price || hardcopy.compareAtPrice;
-      form.hardcopyCompareAtPrice = cp ? Number(cp) : form.hardcopyCompareAtPrice;
+      const cp = (hardcopy.compare_at_price !== null && hardcopy.compare_at_price !== undefined)
+        ? Number(hardcopy.compare_at_price)
+        : (hardcopy.compareAtPrice !== null && hardcopy.compareAtPrice !== undefined ? Number(hardcopy.compareAtPrice) : null);
+
+      form.hardcopyCompareAtPrice = cp ?? parentCompareAt ?? null;
       form.hardcopyStock = hardcopy.stock ?? form.hardcopyStock;
     }
 
@@ -17001,8 +16784,11 @@ const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK',
     if (pdf) {
       pdfFormatId.value = pdf.id;
       form.pdfPrice = Number(pdf.price) || 149;
-      const cp = pdf.compare_at_price || pdf.compareAtPrice;
-      form.pdfCompareAtPrice = cp ? Number(cp) : null;
+      const cp = (pdf.compare_at_price !== null && pdf.compare_at_price !== undefined)
+        ? Number(pdf.compare_at_price)
+        : (pdf.compareAtPrice !== null && pdf.compareAtPrice !== undefined ? Number(pdf.compareAtPrice) : null);
+
+      form.pdfCompareAtPrice = cp ?? null;
       form.pdfKey = pdf.file_public_id || pdf.file_url || null;
       form.pdfFileUrl = pdf.file_url || null;
       form.pdfFileSize = pdf.file_size_bytes ? Number(pdf.file_size_bytes) : 0;
@@ -17039,8 +16825,7 @@ function handleCategoryCreated(newCat: { id: string; name: string; slug: string 
   }
   form.category_id = newCat.id;
 }
-
-async function handleAutoFindCover() {
+	async function handleAutoFindCover() {
   if (!form.name.trim()) {
     pushToast({ message: 'Enter a book title first to search for cover art', variant: 'info' });
     return;
@@ -17115,8 +16900,9 @@ function handlePdfRemoved() {
   form.pdfFileSize = 0;
   form.pdfFileName = '';
   isPdfDirty.value = true;
-	}
-	async function handleUpdate() {
+}
+
+async function handleUpdate() {
   formError.value = '';
   successToast.value = '';
 
@@ -17130,10 +16916,25 @@ function handlePdfRemoved() {
     return;
   }
 
+  const hardcopySellingPrice = Math.max(0, Number(form.hardcopyPrice) || 0);
+  const hardcopyCompareAt = form.hardcopyCompareAtPrice ? Math.max(0, Number(form.hardcopyCompareAtPrice)) : null;
+
+  if (hardcopyCompareAt !== null && hardcopyCompareAt <= hardcopySellingPrice) {
+    formError.value = `Hardcopy Original price (KSh ${hardcopyCompareAt}) must be strictly greater than selling price (KSh ${hardcopySellingPrice}).`;
+    return;
+  }
+
+  const pdfSellingPrice = Math.max(0, Number(form.pdfPrice) || 0);
+  const pdfCompareAt = form.pdfCompareAtPrice ? Math.max(0, Number(form.pdfCompareAtPrice)) : null;
+
+  if (pdfCompareAt !== null && pdfCompareAt <= pdfSellingPrice) {
+    formError.value = `eBook Original price (KSh ${pdfCompareAt}) must be strictly greater than eBook selling price (KSh ${pdfSellingPrice}).`;
+    return;
+  }
+
   isSubmitting.value = true;
 
   try {
-    // Resolve final badge string
     let resolvedBadge: string | null = null;
     if (badgeSelectValue.value === '__CUSTOM__') {
       resolvedBadge = form.customBadgeText.trim() || null;
@@ -17141,21 +16942,14 @@ function handlePdfRemoved() {
       resolvedBadge = badgeSelectValue.value;
     }
 
-    const hardcopyCompareAt = form.hardcopyCompareAtPrice 
-      ? Math.max(0, Number(form.hardcopyCompareAtPrice)) 
-      : null;
-    const pdfCompareAt = form.pdfCompareAtPrice 
-      ? Math.max(0, Number(form.pdfCompareAtPrice)) 
-      : null;
-
-    // 1. Update Base Product with dual-casing to guarantee DTO compatibility
+    // 1. Update Base Product
     await ofetch(`/api/admin/books/${productId}`, {
       method: 'PATCH',
       body: {
         name: form.name.trim(),
         category_id: form.category_id,
         categoryId: form.category_id,
-        price: Math.max(0, Number(form.hardcopyPrice) || 0),
+        price: hardcopySellingPrice,
         compare_at_price: hardcopyCompareAt,
         compareAtPrice: hardcopyCompareAt,
         sku: form.sku.trim() || null,
@@ -17172,7 +16966,7 @@ function handlePdfRemoved() {
     // 2. Update OR Create Hardcopy Format
     const hardcopyBody = {
       format: 'hardcopy',
-      price: Math.max(0, Number(form.hardcopyPrice) || 0),
+      price: hardcopySellingPrice,
       compare_at_price: hardcopyCompareAt,
       compareAtPrice: hardcopyCompareAt,
       stock: Math.max(0, Number(form.hardcopyStock) || 0),
@@ -17202,7 +16996,7 @@ function handlePdfRemoved() {
         ofetch(`/api/admin/books/${productId}/formats/${pdfFormatId.value}`, {
           method: 'PATCH',
           body: {
-            price: Math.max(0, Number(form.pdfPrice) || 0),
+            price: pdfSellingPrice,
             compare_at_price: pdfCompareAt,
             compareAtPrice: pdfCompareAt,
             file_url: form.pdfFileUrl || form.pdfKey,
@@ -17217,7 +17011,7 @@ function handlePdfRemoved() {
           method: 'POST',
           body: {
             format: 'pdf',
-            price: Math.max(0, Number(form.pdfPrice) || 0),
+            price: pdfSellingPrice,
             compare_at_price: pdfCompareAt,
             compareAtPrice: pdfCompareAt,
             file_url: form.pdfFileUrl || form.pdfKey,
@@ -17233,10 +17027,9 @@ function handlePdfRemoved() {
     await Promise.all(formatPromises);
 
     isPdfDirty.value = false;
-    successToast.value = 'Book details, discounts, badges, and formats saved successfully!';
+    successToast.value = 'Book details, strikethrough discounts, badges, and formats saved successfully!';
     pushToast({ message: successToast.value, variant: 'success' });
 
-    // 4. Re-hydrate fresh database record to ensure UI stays perfectly synchronized
     await loadBookData();
   } catch (err: any) {
     formError.value =
@@ -17703,11 +17496,11 @@ import type { Book } from '~/types';
 
 type SortOption = 'first_added' | 'newest' | 'price_asc' | 'price_desc' | 'title_asc';
 
-// Pagination, Filter & Sort Reactive State
+// Pagination, Filter & Sort State
 const currentPage = ref(1);
 const itemsPerPage = ref(50);
 const activeCategoryFilter = ref<string>('General');
-const activeSort = ref<SortOption>('first_added'); // Defaults strictly to FIFO: first-added bestsellers first
+const activeSort = ref<SortOption>('first_added'); // FIFO default: foundational bestsellers first
 const searchQuery = ref<string>('');
 const debouncedSearch = ref<string>('');
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -17805,14 +17598,18 @@ const isFilterActive = computed(() => {
   return (cat !== 'general' && cat !== 'all') || debouncedSearch.value.trim().length > 0 || activeSort.value !== 'first_added';
 });
 
+/**
+ * Strict deliberate curation: Flash sale shelf contains ONLY books where
+ * an admin has explicitly assigned the 'FLASH_SALE' badge and sale has not expired.
+ */
 const flashSaleBooks = computed<Book[]>(() => {
   const list: Book[] = Array.isArray(showcaseBooks.value)
     ? showcaseBooks.value
     : showcaseBooks.value?.products || [];
   return list.filter((b) => {
-    if (b.badge === 'FLASH_SALE' || b.badge === 'LIMITED_TIME') return true;
-    if (!b.badge && b.compare_at_price && b.compare_at_price > b.price) return true;
-    return false;
+    if (b.badge !== 'FLASH_SALE') return false;
+    if (b.sale_ends_at && new Date(b.sale_ends_at).getTime() < Date.now()) return false;
+    return true;
   });
 });
 
@@ -17862,6 +17659,22 @@ const currentSortLabel = computed(() => {
   const match = SORT_OPTIONS.find((s) => s.value === activeSort.value);
   return match?.label || 'First Added';
 });
+
+const currentCategoryLabel = computed(() => {
+  return activeCategoryFilter.value.toLowerCase() === 'general'
+    ? 'General (All Books)'
+    : activeCategoryFilter.value;
+});
+
+const catalogueHeading = computed(() => {
+  return activeCategoryFilter.value.toLowerCase() === 'general'
+    ? 'BROWSE ALL BOOKS'
+    : activeCategoryFilter.value;
+});
+
+function formatCategoryDisplay(cat: string): string {
+  return cat.toLowerCase() === 'general' ? 'General (All Books)' : cat;
+}
 
 const isCatalogueDropdownOpen = ref(false);
 const isSortDropdownOpen = ref(false);
@@ -17964,11 +17777,9 @@ onUnmounted(() => {
 		<HeroCarousel @search="handleSearch" @select-category="handleCategorySelect"
 			@navigate-flash-sale="scrollToSection('flash-sale')" />
 
-		<!-- Flash Sale Shelf -->
-		<div id="flash-sale" class="mt-0">
-			<FlashSaleStrip v-if="flashSaleBooks.length > 0" :books="flashSaleBooks" title="FLASH SALE DEALS"
-				badge-label="LIMITED TIME" />
-		</div>
+		<!-- Deliberate Flash Sale Shelf: Renders ONLY if admin explicitly assigned FLASH_SALE -->
+		<FlashSaleStrip v-if="flashSaleBooks.length > 0" :books="flashSaleBooks" title="FLASH SALE DEALS"
+			badge-label="LIMITED TIME OFFERS" @request-seed="handleRequestSeed" />
 
 		<!-- Categories Bento Grid -->
 		<BentoCategories @select="handleCategorySelect" />
@@ -18027,22 +17838,20 @@ onUnmounted(() => {
 					</div>
 					<h2
 						class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
-						{{ activeCategoryFilter.toLowerCase() === 'general' ? 'BROWSE ALL BOOKS' : activeCategoryFilter
-						}}
+						{{ catalogueHeading }}
 					</h2>
 				</div>
 
 				<!-- Filter Dropdown, Sort Dropdown & Search Status Indicator -->
 				<div class="flex items-center gap-2.5 flex-wrap">
-					<!-- 1. Category Filter Dropdown -->
+					<!-- Category Filter Dropdown -->
 					<div class="relative">
 						<button id="catalogue-category-trigger" type="button"
 							class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
 							:class="{ 'border-[#E8750D] text-[#E8750D] bg-[#FFF7ED]': isCatalogueDropdownOpen }"
 							@click="isCatalogueDropdownOpen = !isCatalogueDropdownOpen">
 							<Filter :size="14" class="text-[#E8750D]" />
-							<span>Category: <strong>{{ activeCategoryFilter.toLowerCase() === 'general' ? 'General (All
-									Books)' : activeCategoryFilter }}</strong></span>
+							<span>Category: <strong>{{ currentCategoryLabel }}</strong></span>
 							<ChevronDown :size="14" class="transition-transform duration-200 text-slate-500"
 								:class="{ 'rotate-180 text-[#E8750D]': isCatalogueDropdownOpen }" />
 						</button>
@@ -18066,7 +17875,7 @@ onUnmounted(() => {
 										class="w-full text-left px-4 py-2 hover:bg-[#FFF7ED] hover:text-[#C25E00] text-xs transition-colors cursor-pointer flex items-center justify-between"
 										:class="activeCategoryFilter === cat ? 'bg-[#FFF7ED] text-[#E8750D] font-extrabold' : 'text-slate-700 font-semibold'"
 										@click="selectCatalogueCategory(cat)">
-										<span>{{ cat === 'General' ? 'General (All Books)' : cat }}</span>
+										<span>{{ formatCategoryDisplay(cat) }}</span>
 										<Check v-if="activeCategoryFilter === cat" :size="14" class="text-[#E8750D]" />
 									</button>
 								</div>
@@ -18074,7 +17883,7 @@ onUnmounted(() => {
 						</Transition>
 					</div>
 
-					<!-- 2. Sort Dropdown (Defaults strictly to first_added) -->
+					<!-- Sort Dropdown (Defaults strictly to first_added) -->
 					<div class="relative">
 						<button id="catalogue-sort-trigger" type="button"
 							class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
