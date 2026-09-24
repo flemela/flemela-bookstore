@@ -1,0 +1,8 @@
+# Credentials and run data for the catalogue tools stay on the machine that runs them.
+auth.json
+*.tsv
+*.jsonl
+*-snapshot.json
+pdf-keys.json
+gutenberg-titles.json
+csv-backup-*/
