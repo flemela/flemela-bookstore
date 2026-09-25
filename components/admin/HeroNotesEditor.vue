@@ -1,6 +1,12 @@
-<!-- components/admin/HeroNotesEditor.vue -->
+<!-- components/admin/HeroNotesEditor.vue (Tiptap Version) -->
 <script setup lang="ts">
-import { ref, watch, onMounted} from 'vue';
+import { ref, watch, onBeforeUnmount } from 'vue';
+import { useEditor, EditorContent } from '@tiptap/vue-3';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import Link from '@tiptap/extension-link';
+import Youtube from '@tiptap/extension-youtube';
+import TextAlign from '@tiptap/extension-text-align';
 import {
   Bold,
   Italic,
@@ -16,11 +22,10 @@ import {
   AlignRight,
   Link as LinkIcon,
   Video,
-  Image as ImageIcon,
   RotateCcw,
   Sparkles,
   Save,
-  X
+  X,
 } from 'lucide-vue-next';
 import { useToast } from '~/composables/useToast';
 
@@ -48,14 +53,48 @@ const emit = defineEmits<{
 
 const { push: pushToast } = useToast();
 
-const editorRef = ref<HTMLDivElement | null>(null);
-
 const localState = ref<StoreHeroNotes>({
   is_active: props.modelValue.is_active,
   title: props.modelValue.title || 'Reader Announcements',
   content_html: props.modelValue.content_html || '',
   bg_color: props.modelValue.bg_color || '#FAF7F0',
   text_color: props.modelValue.text_color || '#141E1A',
+});
+
+// Initialize Tiptap Editor
+const editor = useEditor({
+  content: localState.value.content_html,
+  extensions: [
+    StarterKit.configure({
+      heading: { levels: [2, 3] },
+    }),
+    Underline,
+    Link.configure({
+      openOnClick: false,
+      HTMLAttributes: {
+        class: 'text-emerald-900 font-bold underline',
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      },
+    }),
+    Youtube.configure({
+      HTMLAttributes: {
+        class: 'w-full aspect-video rounded-xl my-3 shadow-xs',
+      },
+    }),
+    TextAlign.configure({
+      types: ['heading', 'paragraph'],
+    }),
+  ],
+  editorProps: {
+    attributes: {
+      class: 'prose prose-sm max-w-none p-5 sm:p-6 min-h-[280px] max-h-[460px] overflow-y-auto outline-none text-slate-900 bg-white',
+    },
+  },
+  onUpdate: ({ editor }) => {
+    localState.value.content_html = editor.getHTML();
+    emit('update:modelValue', { ...localState.value });
+  },
 });
 
 watch(
@@ -69,103 +108,61 @@ watch(
         bg_color: newVal.bg_color || '#FAF7F0',
         text_color: newVal.text_color || '#141E1A',
       };
-      if (editorRef.value && editorRef.value.innerHTML !== newVal.content_html) {
-        editorRef.value.innerHTML = newVal.content_html || '';
+      if (editor.value && editor.value.getHTML() !== newVal.content_html) {
+        editor.value.commands.setContent(newVal.content_html || '', { emitUpdate: false });
       }
     }
   },
   { deep: true }
 );
 
-onMounted(() => {
-  if (editorRef.value) {
-    editorRef.value.innerHTML = localState.value.content_html || '';
-  }
+onBeforeUnmount(() => {
+  editor.value?.destroy();
 });
 
-function handleEditorInput(): void {
-  if (!editorRef.value) return;
-  localState.value.content_html = editorRef.value.innerHTML;
-  emit('update:modelValue', { ...localState.value });
-}
-
-function execCmd(command: string, value: string | undefined = undefined): void {
-  if (!process.client) return;
-  document.execCommand(command, false, value);
-  handleEditorInput();
-  editorRef.value?.focus();
-}
-
-// Modal States for Inserting Link & Video
+// Modals
 const showLinkModal = ref(false);
 const linkUrl = ref('');
-const linkText = ref('');
-
-const showVideoModal = ref(false);
-const videoUrl = ref('');
 
 function openLinkModal(): void {
-  linkUrl.value = 'https://';
-  linkText.value = '';
+  const previousUrl = editor.value?.getAttributes('link').href;
+  linkUrl.value = previousUrl || 'https://';
   showLinkModal.value = true;
 }
 
-function insertLink(): void {
+function setLink(): void {
   const url = linkUrl.value.trim();
-  if (!url || url === 'https://') return;
-  
-  if (linkText.value.trim()) {
-    const html = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #073B24; font-weight: bold; text-decoration: underline;">${linkText.value.trim()}</a>`;
-    execCmd('insertHTML', html);
+  if (!url || url === 'https://') {
+    editor.value?.chain().focus().unsetLink().run();
   } else {
-    execCmd('createLink', url);
+    editor.value?.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }
   showLinkModal.value = false;
 }
+
+const showVideoModal = ref(false);
+const videoUrl = ref('');
 
 function openVideoModal(): void {
   videoUrl.value = '';
   showVideoModal.value = true;
 }
 
-function insertVideoEmbed(): void {
-  const raw = videoUrl.value.trim();
-  if (!raw) return;
-
-  let embedUrl = raw;
-  // Convert standard YouTube watch link to responsive embed
-  const ytMatch = raw.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-  if (ytMatch && ytMatch[1]) {
-    embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
-  }
-
-  // Convert Vimeo link
-  const vimeoMatch = raw.match(/vimeo\.com\/([0-9]+)/);
-  if (vimeoMatch && vimeoMatch[1]) {
-    embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-  }
-
-  const iframeHtml = `
-    <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; margin: 12px 0;">
-      <iframe src="${embedUrl}" style="position: absolute; top:0; left: 0; width: 100%; height: 100%; border:0;" allowfullscreen loading="lazy"></iframe>
-    </div>
-    <p></p>
-  `;
-  execCmd('insertHTML', iframeHtml);
+function addVideo(): void {
+  if (!videoUrl.value.trim()) return;
+  editor.value?.commands.setYoutubeVideo({
+    src: videoUrl.value.trim(),
+    width: 640,
+    height: 360,
+  });
   showVideoModal.value = false;
-  pushToast({ message: 'Video embed inserted!', variant: 'success' });
-}
-
-function insertImagePrompt(): void {
-  const url = prompt('Enter public image URL (https://...):');
-  if (url && url.startsWith('http')) {
-    const imgHtml = `<img src="${url.trim()}" alt="Editorial Photo" style="max-width: 100%; border-radius: 10px; margin: 8px 0; border: 1px solid rgba(8,37,27,0.1);" /><p></p>`;
-    execCmd('insertHTML', imgHtml);
-  }
+  pushToast({ message: 'YouTube video embedded!', variant: 'success' });
 }
 
 function handleSave(): void {
-  handleEditorInput();
+  if (editor.value) {
+    localState.value.content_html = editor.value.getHTML();
+  }
   emit('save', { ...localState.value });
 }
 </script>
@@ -193,7 +190,6 @@ function handleSave(): void {
 			</div>
 
 			<div class="grid sm:grid-cols-3 gap-4">
-				<!-- Card Title -->
 				<div class="space-y-1 sm:col-span-1">
 					<label class="text-xs font-bold text-forest-950">Card Heading *</label>
 					<input v-model="localState.title" type="text" placeholder="e.g. Reader Notice / Curators Note"
@@ -201,7 +197,6 @@ function handleSave(): void {
 						maxlength="80" />
 				</div>
 
-				<!-- Background Color -->
 				<div class="space-y-1 sm:col-span-1">
 					<label class="text-xs font-bold text-forest-950">Card Background</label>
 					<div class="flex items-center gap-2">
@@ -212,7 +207,6 @@ function handleSave(): void {
 					</div>
 				</div>
 
-				<!-- Text Tone -->
 				<div class="space-y-1 sm:col-span-1">
 					<label class="text-xs font-bold text-forest-950">Text Tone</label>
 					<div class="flex items-center gap-2">
@@ -225,128 +219,116 @@ function handleSave(): void {
 			</div>
 		</div>
 
-		<!-- Word Processor WYSIWYG Editor Workspace -->
+		<!-- Word Processor Workspace -->
 		<div class="grid lg:grid-cols-12 gap-6 items-start">
 			<!-- Left: Editor (7 cols) -->
 			<div
 				class="lg:col-span-7 bg-white rounded-2xl border border-paper-border shadow-soft overflow-hidden flex flex-col">
-				<!-- Word Toolbar -->
-				<div
+				<!-- Tiptap Word Toolbar -->
+				<div v-if="editor"
 					class="p-2 sm:p-2.5 bg-paper-cream/80 border-b border-paper-border flex flex-wrap items-center gap-1 text-forest-950">
-					<!-- Text Styling Group -->
 					<div class="flex items-center bg-white border border-paper-border rounded-lg p-0.5 shadow-2xs">
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Bold (Ctrl+B)" @click="execCmd('bold')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('bold') ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Bold (Ctrl+B)" @click="editor.chain().focus().toggleBold().run()">
 							<Bold :size="14" />
 						</button>
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Italic (Ctrl+I)" @click="execCmd('italic')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('italic') ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Italic (Ctrl+I)" @click="editor.chain().focus().toggleItalic().run()">
 							<Italic :size="14" />
 						</button>
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Underline (Ctrl+U)" @click="execCmd('underline')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('underline') ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Underline (Ctrl+U)" @click="editor.chain().focus().toggleUnderline().run()">
 							<UnderlineIcon :size="14" />
 						</button>
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Strikethrough" @click="execCmd('strikeThrough')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('strike') ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Strikethrough" @click="editor.chain().focus().toggleStrike().run()">
 							<Strikethrough :size="14" />
 						</button>
 					</div>
 
-					<!-- Headings Group -->
 					<div class="flex items-center bg-white border border-paper-border rounded-lg p-0.5 shadow-2xs">
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Heading 2" @click="execCmd('formatBlock', '<h2>')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('heading', { level: 2 }) ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Heading 2" @click="editor.chain().focus().toggleHeading({ level: 2 }).run()">
 							<Heading2 :size="14" />
 						</button>
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Heading 3" @click="execCmd('formatBlock', '<h3>')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('heading', { level: 3 }) ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Heading 3" @click="editor.chain().focus().toggleHeading({ level: 3 }).run()">
 							<Heading3 :size="14" />
 						</button>
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Paragraph" @click="execCmd('formatBlock', '<p>')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('paragraph') ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Paragraph" @click="editor.chain().focus().setParagraph().run()">
 							<span class="font-bold text-xs px-1">P</span>
 						</button>
 					</div>
 
-					<!-- Lists & Quotes Group -->
 					<div class="flex items-center bg-white border border-paper-border rounded-lg p-0.5 shadow-2xs">
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Bulleted List" @click="execCmd('insertUnorderedList')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('bulletList') ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Bullet List" @click="editor.chain().focus().toggleBulletList().run()">
 							<List :size="14" />
 						</button>
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Numbered List" @click="execCmd('insertOrderedList')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('orderedList') ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Numbered List" @click="editor.chain().focus().toggleOrderedList().run()">
 							<ListOrdered :size="14" />
 						</button>
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Blockquote" @click="execCmd('formatBlock', '<blockquote>')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('blockquote') ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Quote" @click="editor.chain().focus().toggleBlockquote().run()">
 							<Quote :size="14" />
 						</button>
 					</div>
 
-					<!-- Alignment Group -->
 					<div class="flex items-center bg-white border border-paper-border rounded-lg p-0.5 shadow-2xs">
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Align Left" @click="execCmd('justifyLeft')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive({ textAlign: 'left' }) ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Align Left" @click="editor.chain().focus().setTextAlign('left').run()">
 							<AlignLeft :size="14" />
 						</button>
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Align Center" @click="execCmd('justifyCenter')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive({ textAlign: 'center' }) ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Align Center" @click="editor.chain().focus().setTextAlign('center').run()">
 							<AlignCenter :size="14" />
 						</button>
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Align Right" @click="execCmd('justifyRight')">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive({ textAlign: 'right' }) ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Align Right" @click="editor.chain().focus().setTextAlign('right').run()">
 							<AlignRight :size="14" />
 						</button>
 					</div>
 
-					<!-- Media Group -->
 					<div class="flex items-center bg-white border border-paper-border rounded-lg p-0.5 shadow-2xs">
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Insert Hyperlink" @click="openLinkModal">
+						<button type="button" class="p-1.5 rounded transition-colors cursor-pointer"
+							:class="editor.isActive('link') ? 'bg-forest-950 text-white' : 'text-slate-800 hover:bg-slate-100'"
+							title="Hyperlink" @click="openLinkModal">
 							<LinkIcon :size="14" />
 						</button>
 						<button type="button"
 							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Embed Video (YouTube / Vimeo)" @click="openVideoModal">
+							title="Embed YouTube Video" @click="openVideoModal">
 							<Video :size="14" />
-						</button>
-						<button type="button"
-							class="p-1.5 hover:bg-slate-100 rounded text-slate-800 hover:text-black cursor-pointer"
-							title="Insert Image URL" @click="insertImagePrompt">
-							<ImageIcon :size="14" />
 						</button>
 					</div>
 
-					<!-- Clear Formatting -->
 					<button type="button"
 						class="p-1.5 hover:bg-slate-200 rounded text-slate-600 hover:text-black cursor-pointer ml-auto"
-						title="Clear Formatting" @click="execCmd('removeFormat')">
+						title="Clear Formatting" @click="editor.chain().focus().unsetAllMarks().clearNodes().run()">
 						<RotateCcw :size="13" />
 					</button>
 				</div>
 
-				<!-- Editable Area -->
-				<div ref="editorRef" contenteditable="true"
-					class="p-5 sm:p-6 min-h-[280px] max-h-[460px] overflow-y-auto outline-none prose prose-sm max-w-none text-slate-900 bg-white"
-					@input="handleEditorInput" />
+				<!-- Tiptap Canvas -->
+				<ClientOnly>
+					<EditorContent :editor="editor" />
+				</ClientOnly>
 
-				<!-- Save Button Footer -->
 				<div class="p-3 bg-paper-cream/40 border-t border-paper-border flex justify-between items-center">
 					<span class="text-[11px] text-ink-muted">
 						HTML Output: <strong>{{ localState.content_html.length }}</strong> characters
@@ -361,7 +343,7 @@ function handleSave(): void {
 				</div>
 			</div>
 
-			<!-- Right: Real-time Live Desktop Storefront Preview (5 cols) -->
+			<!-- Right: Real-time Live Storefront Preview (5 cols) -->
 			<div class="lg:col-span-5 space-y-3 sticky top-24">
 				<div class="flex items-center justify-between text-xs font-mono font-bold text-forest-950">
 					<span class="flex items-center gap-1.5">
@@ -374,7 +356,6 @@ function handleSave(): void {
 					</span>
 				</div>
 
-				<!-- Rendered Card Simulation -->
 				<div class="rounded-2xl p-5 sm:p-6 border border-slate-300 shadow-card space-y-3 overflow-hidden transition-colors"
 					:style="{
             backgroundColor: localState.bg_color,
@@ -396,7 +377,7 @@ function handleSave(): void {
 			</div>
 		</div>
 
-		<!-- MODAL 1: Insert Link -->
+		<!-- MODAL 1: Hyperlink -->
 		<Teleport to="body">
 			<div v-if="showLinkModal"
 				class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-forest-950/70 backdrop-blur-xs"
@@ -404,43 +385,36 @@ function handleSave(): void {
 				<div
 					class="bg-white rounded-2xl shadow-2xl border border-paper-border max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95">
 					<div class="flex justify-between items-center border-b border-paper-border pb-2.5">
-						<h4 class="font-display font-bold text-sm text-forest-950">Insert Hyperlink</h4>
+						<h4 class="font-display font-bold text-sm text-forest-950">Set Hyperlink</h4>
 						<button type="button" class="text-ink-muted hover:text-black cursor-pointer"
 							@click="showLinkModal = false">
 							<X :size="16" />
 						</button>
 					</div>
 
-					<div class="space-y-3 text-xs">
-						<div class="space-y-1">
-							<label class="font-bold text-forest-950">Link Text (Optional)</label>
-							<input v-model="linkText" type="text" placeholder="e.g. View Weekend Deals"
-								class="w-full px-3 py-2 border border-paper-border rounded-xl outline-none focus:border-forest-900" />
-						</div>
-
-						<div class="space-y-1">
-							<label class="font-bold text-forest-950">URL Destination *</label>
-							<input v-model="linkUrl" type="text" placeholder="https://... or #flash-sale"
-								class="w-full px-3 py-2 border border-paper-border rounded-xl font-mono outline-none focus:border-forest-900" />
-						</div>
+					<div class="space-y-2 text-xs">
+						<label class="font-bold text-forest-950">URL Destination</label>
+						<input v-model="linkUrl" type="text" placeholder="https://... or #flash-sale"
+							class="w-full px-3 py-2 border border-paper-border rounded-xl font-mono outline-none focus:border-forest-900" />
 					</div>
 
 					<div class="flex justify-end gap-2 pt-2 border-t border-paper-border">
-						<button type="button" class="px-3 py-1.5 text-xs text-ink-muted hover:text-black cursor-pointer"
+						<button type="button" class="px-3 py-1.5 text-xs text-ink-muted hover:text-black"
 							@click="showLinkModal = false">
 							Cancel
 						</button>
-						<button type="button"
-							class="px-4 py-1.5 bg-forest-950 text-paper text-xs font-bold rounded-xl hover:bg-forest-900 cursor-pointer"
-							@click="insertLink">
-							Apply Link
+						<button type="button" class="px-4 py-1.5 bg-forest-950 text-paper text-xs font-bold rounded-xl"
+							@click="setLink">
+							Apply
 						</button>
 					</div>
 				</div>
 			</div>
 		</Teleport>
 
-		<!-- MODAL 2: Embed Video -->
+		<!-- MODAL 2: YouTube Video -->
+
+		<!-- MODAL 2: YouTube Video -->
 		<Teleport to="body">
 			<div v-if="showVideoModal"
 				class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-forest-950/70 backdrop-blur-xs"
@@ -448,34 +422,27 @@ function handleSave(): void {
 				<div
 					class="bg-white rounded-2xl shadow-2xl border border-paper-border max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95">
 					<div class="flex justify-between items-center border-b border-paper-border pb-2.5">
-						<h4 class="font-display font-bold text-sm text-forest-950">Embed Video / Trailer</h4>
+						<h4 class="font-display font-bold text-sm text-forest-950">Embed YouTube Video</h4>
 						<button type="button" class="text-ink-muted hover:text-black cursor-pointer"
 							@click="showVideoModal = false">
 							<X :size="16" />
 						</button>
 					</div>
 
-					<div class="space-y-3 text-xs">
-						<div class="space-y-1">
-							<label class="font-bold text-forest-950">Video Link (YouTube / Vimeo) *</label>
-							<input v-model="videoUrl" type="url" placeholder="https://www.youtube.com/watch?v=..."
-								class="w-full px-3 py-2 border border-paper-border rounded-xl font-mono outline-none focus:border-forest-900" />
-							<p class="text-[10px] text-ink-muted leading-relaxed">
-								Paste any standard YouTube or Vimeo URL. It will automatically convert to a responsive
-								player.
-							</p>
-						</div>
+					<div class="space-y-2 text-xs">
+						<label class="font-bold text-forest-950">YouTube Video URL</label>
+						<input v-model="videoUrl" type="url" placeholder="https://www.youtube.com/watch?v=..."
+							class="w-full px-3 py-2 border border-paper-border rounded-xl font-mono outline-none focus:border-forest-900" />
 					</div>
 
 					<div class="flex justify-end gap-2 pt-2 border-t border-paper-border">
-						<button type="button" class="px-3 py-1.5 text-xs text-ink-muted hover:text-black cursor-pointer"
+						<button type="button" class="px-3 py-1.5 text-xs text-ink-muted hover:text-black"
 							@click="showVideoModal = false">
 							Cancel
 						</button>
-						<button type="button"
-							class="px-4 py-1.5 bg-forest-950 text-paper text-xs font-bold rounded-xl hover:bg-forest-900 cursor-pointer"
-							@click="insertVideoEmbed">
-							Embed Video
+						<button type="button" class="px-4 py-1.5 bg-forest-950 text-paper text-xs font-bold rounded-xl"
+							@click="addVideo">
+							Embed
 						</button>
 					</div>
 				</div>
