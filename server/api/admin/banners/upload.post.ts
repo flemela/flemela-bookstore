@@ -1,6 +1,6 @@
 // =============================================================================
 // flemela/server/api/admin/banners/upload.post.ts
-// Server-side forwarder for admin banner image uploads to backend
+// Server-side forwarder for admin banner/cover image uploads to Cloudflare R2
 // =============================================================================
 
 export default defineEventHandler(async (event) => {

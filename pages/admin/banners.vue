@@ -136,7 +136,7 @@ async function loadHeroNotes(): Promise<void> {
       heroNotes.value = data;
     }
   } catch {
-    // Graceful fallback
+    // Non-blocking fallback
   }
 }
 
@@ -160,7 +160,7 @@ async function handleSaveHeroNotes(updated: StoreHeroNotes): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// 3. Hero Banners Modal & State
+// 3. Hero Banners Modal & State (Cloudflare R2)
 // -----------------------------------------------------------------------------
 const showModal = ref(false);
 const editingBannerId = ref<string | null>(null);
@@ -240,7 +240,7 @@ async function handleImageUpload(event: Event, targetField: 'image_url' | 'mobil
     if (res?.url) {
       form.value[targetField] = res.url;
       pushToast({
-        message: `${targetField === 'image_url' ? 'Desktop' : 'Mobile'} banner uploaded successfully!`,
+        message: `${targetField === 'image_url' ? 'Desktop' : 'Mobile'} banner uploaded to Cloudflare R2!`,
         variant: 'success',
       });
     }
@@ -404,11 +404,8 @@ onMounted(() => {
 				</div>
 			</div>
 
-			<!-- ================================================================= -->
-			<!-- TAB 1: GOLD TICKER STRIP CONFIGURATION                            -->
-			<!-- ================================================================= -->
+			<!-- TAB 1: GOLD TICKER -->
 			<div v-if="activeTab === 'ticker'" class="space-y-6 animate-in fade-in duration-200">
-				<!-- Live Gold Gradient Ribbon Preview -->
 				<div class="bg-paper-surface p-5 rounded-2xl border border-paper-border shadow-soft space-y-3">
 					<div class="flex justify-between items-center text-xs">
 						<span class="font-bold text-forest-950 uppercase font-mono tracking-wider">Storefront Live
@@ -429,14 +426,12 @@ onMounted(() => {
 					</div>
 				</div>
 
-				<!-- Ticker Messages Editor List -->
 				<div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft p-6 space-y-5">
 					<div class="flex justify-between items-center pb-3 border-b border-paper-border">
 						<div>
 							<h3 class="font-display font-bold text-base text-forest-950">Active Announcement Messages
 							</h3>
-							<p class="text-[11px] text-ink-muted">These rotate automatically every 4.5 seconds on the
-								storefront between the Hero and Flash Sale.</p>
+							<p class="text-[11px] text-ink-muted">These rotate automatically on the storefront.</p>
 						</div>
 
 						<button type="button"
@@ -504,9 +499,7 @@ onMounted(() => {
 				</div>
 			</div>
 
-			<!-- ================================================================= -->
-			<!-- TAB 2: HERO CAROUSEL BANNERS CONFIGURATION                        -->
-			<!-- ================================================================= -->
+			<!-- TAB 2: HERO CAROUSEL BANNERS (Cloudflare R2 Public CDN) -->
 			<div v-else-if="activeTab === 'banners'" class="space-y-6 animate-in fade-in duration-200">
 				<div class="flex justify-end gap-2.5">
 					<button type="button"
@@ -536,8 +529,7 @@ onMounted(() => {
 						</div>
 						<h3 class="font-display font-bold text-sm text-forest-950">No Promotional Banners Yet</h3>
 						<p class="text-xs text-ink-muted max-w-sm mx-auto">
-							Upload custom 4:1 graphics or photos. If none exist, your signature brand poster displays
-							cleanly.
+							Upload 4:1 banner graphics directly to Cloudflare R2.
 						</p>
 						<button type="button"
 							class="bg-forest-950 text-paper text-xs font-bold px-4 py-2 rounded-xl cursor-pointer"
@@ -621,9 +613,7 @@ onMounted(() => {
 				</div>
 			</div>
 
-			<!-- ================================================================= -->
-			<!-- TAB 3: HERO NOTES EDITORIAL WORD PROCESSOR                         -->
-			<!-- ================================================================= -->
+			<!-- TAB 3: HERO NOTES EDITORIAL WORD PROCESSOR -->
 			<div v-else-if="activeTab === 'notes'" class="space-y-6 animate-in fade-in duration-200">
 				<HeroNotesEditor :model-value="heroNotes" :loading="isSavingNotes" @save="handleSaveHeroNotes" />
 			</div>
@@ -642,7 +632,7 @@ onMounted(() => {
 								{{ editingBannerId ? 'Edit Hero Banner' : 'New Hero Banner' }}
 							</h3>
 							<p class="text-[11px] text-ink-muted">
-								Desktop image is the only required field. All text, buttons, and dates are optional.
+								Desktop image uploaded directly to Cloudflare R2 public bucket.
 							</p>
 						</div>
 						<button type="button" class="text-ink-muted hover:text-ink p-1 cursor-pointer"

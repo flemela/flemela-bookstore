@@ -160,13 +160,14 @@
 							</div>
 						</div>
 
-						<!-- Section 2: Book Cover Art -->
+						<!-- Section 2: Book Cover Art (Cloudflare R2 Direct Upload) -->
 						<div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-5">
 							<div class="flex items-center justify-between border-b border-gray-100 pb-3">
 								<div>
 									<h2 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Book Cover Art
 									</h2>
-									<p class="text-xs text-gray-500 mt-0.5">High-definition publisher jacket</p>
+									<p class="text-xs text-gray-500 mt-0.5">High-definition publisher jacket (Cloudflare
+										R2)</p>
 								</div>
 								<button type="button" :disabled="isFindingCover || !form.name.trim()"
 									@click="handleAutoFindCover"
@@ -212,11 +213,11 @@
 												<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z">
 												</path>
 											</svg>
-											<span>{{ isUploadingCover ? 'Uploading...' : 'Upload Cover Image' }}</span>
+											<span>{{ isUploadingCover ? 'Uploading to R2...' : 'Upload Cover Image'
+												}}</span>
 										</button>
 
-										<button v-if="form.cover_image_url" type="button"
-											@click="form.cover_image_url = ''"
+										<button v-if="form.cover_image_url" type="button" @click="clearCoverImage"
 											class="px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
 											Remove
 										</button>
@@ -312,13 +313,13 @@
 									</div>
 
 									<div>
-										< class="block text-xs font-semibold text-gray-700 mb-1">
+										<label class="block text-xs font-semibold text-gray-700 mb-1">
 											eBook Original Price (KSh)
 											<span class="text-[10px] text-gray-400 font-normal">Strikethrough</span>
-
-											<input v-model.number="form.pdfCompareAtPrice" type="number" min="0"
-												placeholder="e.g. 299 (Must be > eBook price)"
-												class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" />
+										</label>
+										<input v-model.number="form.pdfCompareAtPrice" type="number" min="0"
+											placeholder="e.g. 299 (Must be > eBook price)"
+											class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" />
 									</div>
 								</div>
 
@@ -401,6 +402,7 @@ const form = reactive({
   customBadgeText: '',
   description: '',
   cover_image_url: '',
+  cover_image_key: '',
   hardcopyPrice: 999,
   hardcopyCompareAtPrice: null as number | null,
   hardcopyStock: 10,
@@ -411,7 +413,8 @@ const form = reactive({
   pdfFileSize: 0,
   pdfFileName: '',
 });
-	  const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME'];
+
+const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME'];
 
 async function loadBookData() {
   try {
@@ -432,9 +435,12 @@ async function loadBookData() {
     form.description = book.description || '';
 
     const parentPrice = Number(book.price) || 999;
-    const parentCompareAt = (book.compare_at_price !== null && book.compare_at_price !== undefined)
-      ? Number(book.compare_at_price)
-      : (book.compareAtPrice !== null && book.compareAtPrice !== undefined ? Number(book.compareAtPrice) : null);
+    const parentCompareAt =
+      book.compare_at_price !== null && book.compare_at_price !== undefined
+        ? Number(book.compare_at_price)
+        : book.compareAtPrice !== null && book.compareAtPrice !== undefined
+        ? Number(book.compareAtPrice)
+        : null;
 
     form.hardcopyPrice = parentPrice;
     form.hardcopyCompareAtPrice = parentCompareAt;
@@ -471,22 +477,28 @@ async function loadBookData() {
     const firstImg = book.images?.[0];
     if (typeof firstImg === 'string') {
       form.cover_image_url = firstImg;
+      form.cover_image_key = 'r2_asset';
     } else if (firstImg?.image_url) {
       form.cover_image_url = firstImg.image_url;
+      form.cover_image_key = firstImg.image_public_id || 'r2_asset';
     } else if (book.cover_image_url) {
       form.cover_image_url = book.cover_image_url;
+      form.cover_image_key = 'r2_asset';
     }
 
-    // Formats Hydration (Hierarchical Fallback)
+    // Formats Hydration
     const formats: any[] = book.formats || [];
 
     const hardcopy = formats.find((f) => f.format === 'hardcopy');
     if (hardcopy) {
       hardcopyFormatId.value = hardcopy.id;
       form.hardcopyPrice = Number(hardcopy.price) || form.hardcopyPrice;
-      const cp = (hardcopy.compare_at_price !== null && hardcopy.compare_at_price !== undefined)
-        ? Number(hardcopy.compare_at_price)
-        : (hardcopy.compareAtPrice !== null && hardcopy.compareAtPrice !== undefined ? Number(hardcopy.compareAtPrice) : null);
+      const cp =
+        hardcopy.compare_at_price !== null && hardcopy.compare_at_price !== undefined
+          ? Number(hardcopy.compare_at_price)
+          : hardcopy.compareAtPrice !== null && hardcopy.compareAtPrice !== undefined
+          ? Number(hardcopy.compareAtPrice)
+          : null;
 
       form.hardcopyCompareAtPrice = cp ?? parentCompareAt ?? null;
       form.hardcopyStock = hardcopy.stock ?? form.hardcopyStock;
@@ -496,9 +508,12 @@ async function loadBookData() {
     if (pdf) {
       pdfFormatId.value = pdf.id;
       form.pdfPrice = Number(pdf.price) || 149;
-      const cp = (pdf.compare_at_price !== null && pdf.compare_at_price !== undefined)
-        ? Number(pdf.compare_at_price)
-        : (pdf.compareAtPrice !== null && pdf.compareAtPrice !== undefined ? Number(pdf.compareAtPrice) : null);
+      const cp =
+        pdf.compare_at_price !== null && pdf.compare_at_price !== undefined
+          ? Number(pdf.compare_at_price)
+          : pdf.compareAtPrice !== null && pdf.compareAtPrice !== undefined
+          ? Number(pdf.compareAtPrice)
+          : null;
 
       form.pdfCompareAtPrice = cp ?? null;
       form.pdfKey = pdf.file_public_id || pdf.file_url || null;
@@ -536,7 +551,7 @@ function handleCategoryCreated(newCat: { id: string; name: string; slug: string 
     categories.value.push(newCat);
   }
   form.category_id = newCat.id;
-}
+													   }
 	async function handleAutoFindCover() {
   if (!form.name.trim()) {
     pushToast({ message: 'Enter a book title first to search for cover art', variant: 'info' });
@@ -557,6 +572,7 @@ function handleCategoryCreated(newCat: { id: string; name: string; slug: string 
 
     if (res?.coverUrl) {
       form.cover_image_url = res.coverUrl;
+      form.cover_image_key = `auto_${res.source || 'web'}`;
       pushToast({
         message: `High-res cover located (${(res.source || 'Studio').toUpperCase()})!`,
         variant: 'success',
@@ -578,24 +594,45 @@ async function handleCoverFileSelected(e: Event) {
 
   isUploadingCover.value = true;
   try {
-    const formData = new FormData();
-    formData.append('file', file);
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const mime = file.type || (ext === 'png' ? 'image/png' : 'image/jpeg');
 
-    const res = await ofetch<{ url: string }>('/api/admin/banners/upload', {
-      method: 'POST',
-      body: formData,
+    const slot = await ofetch<{ uploadUrl: string; publicUrl: string; key: string }>(
+      '/api/admin/upload-signature',
+      {
+        method: 'POST',
+        body: {
+          target: 'products',
+          filename: file.name,
+          contentType: mime,
+        },
+      }
+    );
+
+    const putRes = await fetch(slot.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': mime },
+      body: file,
     });
 
-    if (res?.url) {
-      form.cover_image_url = res.url;
-      pushToast({ message: 'Cover image uploaded successfully!', variant: 'success' });
+    if (!putRes.ok) {
+      throw new Error(`Cloudflare R2 upload rejected with HTTP ${putRes.status}`);
     }
+
+    form.cover_image_url = slot.publicUrl;
+    form.cover_image_key = slot.key;
+    pushToast({ message: 'Cover image uploaded to Cloudflare R2!', variant: 'success' });
   } catch (err: any) {
-    pushToast({ message: err.data?.message || 'Failed to upload cover image.', variant: 'error' });
+    pushToast({ message: err.data?.message || err.message || 'Failed to upload cover image.', variant: 'error' });
   } finally {
     isUploadingCover.value = false;
     target.value = '';
   }
+}
+
+function clearCoverImage() {
+  form.cover_image_url = '';
+  form.cover_image_key = '';
 }
 
 function handlePdfReplaced(payload: { key: string; fileUrl: string; sizeBytes: number; fileName: string }) {
@@ -668,7 +705,7 @@ async function handleUpdate() {
         badge: resolvedBadge,
         description: form.author ? `By ${form.author.trim()}. ${form.description}` : form.description,
         images: form.cover_image_url
-          ? [{ image_url: form.cover_image_url, image_public_id: 'cover_img' }]
+          ? [{ image_url: form.cover_image_url, image_public_id: form.cover_image_key || 'r2_asset' }]
           : [],
       },
     });
@@ -701,8 +738,7 @@ async function handleUpdate() {
         })
       );
     }
-
-    // 3. Update OR Create Digital PDF Format
+	  // 3. Update OR Create Digital PDF Format
     if (pdfFormatId.value) {
       formatPromises.push(
         ofetch(`/api/admin/books/${productId}/formats/${pdfFormatId.value}`, {
