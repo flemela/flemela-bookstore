@@ -14,6 +14,7 @@ import {
   Sparkles,
   Save,
   FileText,
+  PanelLeft,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import HeroNotesEditor, { type StoreHeroNotes } from '~/components/admin/HeroNotesEditor.vue';
@@ -48,11 +49,18 @@ interface PromoTickerItem {
   sort_order: number;
 }
 
+interface StoreHeroLeftBanner {
+  is_active: boolean;
+  title: string;
+  image_url: string;
+  link: string | null;
+}
+
 const { push: pushToast } = useToast();
 const { data: banners, refresh: refreshBanners, status: bannersStatus } = await useFetch<StoreBanner[]>('/api/admin/banners');
 
-// Tab State: ticker | banners | notes
-const activeTab = ref<'ticker' | 'banners' | 'notes'>('ticker');
+// 4-Way Tab Switcher: ticker | banners | left-flank | notes
+const activeTab = ref<'ticker' | 'banners' | 'left-flank' | 'notes'>('ticker');
 
 // -----------------------------------------------------------------------------
 // 1. Ticker State
@@ -118,7 +126,81 @@ async function handleSaveTicker(): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// 2. Hero Notes State
+// 2. Hero Left Flank Banner State
+// -----------------------------------------------------------------------------
+const leftBanner = ref<StoreHeroLeftBanner>({
+  is_active: false,
+  title: 'Special Promotion',
+  image_url: '',
+  link: '#catalog-results',
+});
+const isSavingLeftBanner = ref(false);
+const isUploadingLeftImage = ref(false);
+
+async function loadLeftBanner(): Promise<void> {
+  try {
+    const data = await $fetch<StoreHeroLeftBanner>('/api/admin/hero-left-banner');
+    if (data) {
+      leftBanner.value = data;
+    }
+  } catch {
+    // Non-blocking fallback
+  }
+}
+
+async function handleUploadLeftImage(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  isUploadingLeftImage.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await $fetch<{ url: string }>('/api/admin/banners/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (res?.url) {
+      leftBanner.value.image_url = res.url;
+      pushToast({ message: 'Left flank banner uploaded to Cloudflare R2!', variant: 'success' });
+    }
+  } catch (err: any) {
+    pushToast({ message: err.data?.statusMessage || err.message || 'Image upload failed', variant: 'error' });
+  } finally {
+    isUploadingLeftImage.value = false;
+    target.value = '';
+  }
+}
+
+async function handleSaveLeftBanner(): Promise<void> {
+  isSavingLeftBanner.value = true;
+  try {
+    const res = await $fetch<StoreHeroLeftBanner>('/api/admin/hero-left-banner', {
+      method: 'PUT',
+      body: {
+        is_active: leftBanner.value.is_active,
+        title: leftBanner.value.title.trim() || 'Special Promotion',
+        image_url: leftBanner.value.image_url.trim(),
+        link: leftBanner.value.link?.trim() || null,
+      },
+    });
+    leftBanner.value = res;
+    pushToast({ message: 'Hero Left Flank banner updated!', variant: 'success' });
+  } catch (err: any) {
+    pushToast({
+      message: err.data?.statusMessage || err.statusMessage || 'Failed to save left banner',
+      variant: 'error',
+    });
+  } finally {
+    isSavingLeftBanner.value = false;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 3. Hero Notes State
 // -----------------------------------------------------------------------------
 const heroNotes = ref<StoreHeroNotes>({
   is_active: false,
@@ -160,7 +242,7 @@ async function handleSaveHeroNotes(updated: StoreHeroNotes): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// 3. Hero Banners Modal & State (Cloudflare R2)
+// 4. Hero Carousel Banners Modal & State
 // -----------------------------------------------------------------------------
 const showModal = ref(false);
 const editingBannerId = ref<string | null>(null);
@@ -354,6 +436,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
 
 onMounted(() => {
   loadTicker();
+  loadLeftBanner();
   loadHeroNotes();
 });
 </script>
@@ -372,14 +455,16 @@ onMounted(() => {
 						Promotions & Announcements
 					</h1>
 					<p class="text-xs text-ink-muted mt-0.5">
-						Configure the gold announcement ribbon, hero carousel slides, and right-side editorial notes.
+						Configure the gold announcement ribbon, hero carousel slides, left flank poster, and right-side
+						notes.
 					</p>
 				</div>
 
-				<!-- 3-Way Tab Switcher -->
-				<div class="flex items-center gap-1.5 bg-paper-cream p-1 rounded-xl border border-paper-border">
+				<!-- 4-Way Tab Switcher -->
+				<div
+					class="flex items-center gap-1.5 bg-paper-cream p-1 rounded-xl border border-paper-border overflow-x-auto">
 					<button type="button"
-						class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+						class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
 						:class="activeTab === 'ticker' ? 'bg-[#052219] text-[#FCF6BA] shadow-xs' : 'text-forest-950 hover:bg-white/50'"
 						@click="activeTab = 'ticker'">
 						<Sparkles :size="13" />
@@ -387,19 +472,27 @@ onMounted(() => {
 					</button>
 
 					<button type="button"
-						class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+						class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
 						:class="activeTab === 'banners' ? 'bg-[#052219] text-[#FCF6BA] shadow-xs' : 'text-forest-950 hover:bg-white/50'"
 						@click="activeTab = 'banners'">
 						<Images :size="13" />
-						<span>Hero Banners</span>
+						<span>Center Banners</span>
 					</button>
 
 					<button type="button"
-						class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+						class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+						:class="activeTab === 'left-flank' ? 'bg-[#052219] text-[#FCF6BA] shadow-xs' : 'text-forest-950 hover:bg-white/50'"
+						@click="activeTab = 'left-flank'">
+						<PanelLeft :size="13" />
+						<span>Left Flank Poster</span>
+					</button>
+
+					<button type="button"
+						class="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
 						:class="activeTab === 'notes' ? 'bg-[#052219] text-[#FCF6BA] shadow-xs' : 'text-forest-950 hover:bg-white/50'"
 						@click="activeTab = 'notes'">
 						<FileText :size="13" />
-						<span>Hero Notes</span>
+						<span>Right Notes</span>
 					</button>
 				</div>
 			</div>
@@ -499,7 +592,7 @@ onMounted(() => {
 				</div>
 			</div>
 
-			<!-- TAB 2: HERO CAROUSEL BANNERS (Cloudflare R2 Public CDN) -->
+			<!-- TAB 2: HERO CAROUSEL BANNERS -->
 			<div v-else-if="activeTab === 'banners'" class="space-y-6 animate-in fade-in duration-200">
 				<div class="flex justify-end gap-2.5">
 					<button type="button"
@@ -612,8 +705,108 @@ onMounted(() => {
 					</div>
 				</div>
 			</div>
+			<!-- TAB 3: HERO LEFT FLANK POSTER (NEW FEATURE) -->
+			<div v-else-if="activeTab === 'left-flank'" class="space-y-6 animate-in fade-in duration-200">
+				<div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft p-6 sm:p-7 space-y-6">
+					<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-paper-border">
+						<div>
+							<h3 class="font-display font-bold text-base text-forest-950">
+								Hero Left Flank Promotional Poster
+							</h3>
+							<p class="text-xs text-ink-muted mt-0.5">
+								Occupies 1fr on the left flank of desktop screens (forming the 1fr : 2fr : 1fr layout).
+								Automatically hidden on mobile devices.
+							</p>
+						</div>
 
-			<!-- TAB 3: HERO NOTES EDITORIAL WORD PROCESSOR -->
+						<label
+							class="flex items-center gap-2 cursor-pointer select-none px-3.5 py-1.5 rounded-xl bg-paper-cream border border-paper-border">
+							<input v-model="leftBanner.is_active" type="checkbox"
+								class="rounded border-paper-border text-forest-950 focus:ring-forest-900" />
+							<span class="text-xs font-bold text-forest-950">Enable Left Flank</span>
+						</label>
+					</div>
+
+					<div class="grid sm:grid-cols-12 gap-6 items-start">
+						<!-- Settings Form (7 cols) -->
+						<div class="sm:col-span-7 space-y-4">
+							<div class="space-y-1.5">
+								<label class="text-xs font-bold text-forest-950">Campaign Title / Alt Text</label>
+								<input v-model="leftBanner.title" type="text"
+									placeholder="e.g. Special Release / Collectors Hardcover"
+									class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm font-semibold outline-none focus:border-forest-900 text-forest-950" />
+							</div>
+
+							<div class="space-y-1.5">
+								<label class="text-xs font-bold text-forest-950">Destination URL Link</label>
+								<input v-model="leftBanner.link" type="text"
+									placeholder="e.g. /book/atomic-habits or #flash-sale"
+									class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm font-mono outline-none focus:border-forest-900 text-forest-950" />
+							</div>
+
+							<div class="space-y-1.5 pt-1">
+								<div class="flex justify-between items-baseline">
+									<label class="text-xs font-bold text-forest-950">Poster Image (Cloudflare
+										R2)</label>
+									<span class="text-[10px] text-gold-600 font-mono font-bold uppercase">
+										Aspect: ~3:4 or Portrait Poster
+									</span>
+								</div>
+
+								<div class="flex gap-2 items-center">
+									<input v-model="leftBanner.image_url" type="text" placeholder="https://..."
+										class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900" />
+									<label
+										class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0">
+										<Upload :size="13" />
+										<span>{{ isUploadingLeftImage ? 'Uploading...' : 'Upload' }}</span>
+										<input type="file" accept="image/*" class="hidden"
+											:disabled="isUploadingLeftImage" @change="handleUploadLeftImage" />
+									</label>
+								</div>
+							</div>
+
+							<div class="pt-4 border-t border-paper-border flex justify-end">
+								<button type="button"
+									class="bg-forest-950 hover:bg-forest-900 text-paper font-bold text-xs uppercase tracking-wider px-6 py-2.5 rounded-xl shadow-medium flex items-center gap-2 cursor-pointer disabled:opacity-50 transition-all active:scale-[0.98]"
+									:disabled="isSavingLeftBanner" @click="handleSaveLeftBanner">
+									<RefreshCw v-if="isSavingLeftBanner" :size="14" class="animate-spin" />
+									<Save v-else :size="14" class="text-gold-300" />
+									<span>{{ isSavingLeftBanner ? 'Saving...' : 'Save Left Flank' }}</span>
+								</button>
+							</div>
+						</div>
+
+						<!-- Live Card Preview (5 cols) -->
+						<div class="sm:col-span-5 space-y-2">
+							<span class="text-[10px] uppercase font-mono font-bold text-ink-muted tracking-wider block">
+								Live Poster Preview (Desktop 1fr)
+							</span>
+
+							<div
+								class="relative w-full aspect-[3/4] max-h-[380px] rounded-2xl overflow-hidden border border-paper-border bg-forest-950 flex items-center justify-center shadow-md">
+								<img v-if="leftBanner.image_url" :src="leftBanner.image_url" :alt="leftBanner.title"
+									class="w-full h-full object-cover" />
+								<div v-else class="text-center p-4 text-white/50 space-y-1">
+									<Images :size="32" class="mx-auto opacity-40" />
+									<p class="text-xs">No image uploaded</p>
+								</div>
+
+								<div
+									class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+								<div class="absolute bottom-3 left-3 right-3 text-white">
+									<p class="text-xs font-bold line-clamp-1 drop-shadow-sm">{{ leftBanner.title ||
+										'Special Promotion' }}</p>
+									<span
+										class="text-[9px] font-mono text-gold-300 uppercase tracking-widest font-bold">Featured
+										Spotlight</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- TAB 4: HERO NOTES EDITORIAL WORD PROCESSOR -->
 			<div v-else-if="activeTab === 'notes'" class="space-y-6 animate-in fade-in duration-200">
 				<HeroNotesEditor :model-value="heroNotes" :loading="isSavingNotes" @save="handleSaveHeroNotes" />
 			</div>

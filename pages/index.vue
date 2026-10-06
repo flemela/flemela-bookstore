@@ -59,6 +59,17 @@ const { data: flashSaleData } = await useFetch<{
   },
 });
 
+// Dedicated Hero Right Flank Top Sellers query (Top 4 Bestsellers from database)
+const { data: heroTopSellersData } = await useFetch<{
+  products: Book[];
+}>('/api/products', {
+  query: {
+    badge: 'BESTSELLER',
+    limit: 4,
+    sort: 'newest',
+  },
+});
+
 // Showcase fetch for Bestseller shelf
 const { data: showcaseBooks } = await useFetch<any>('/api/products?limit=50&sort=first_added');
 const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
@@ -147,7 +158,6 @@ const flashSaleBooks = computed<Book[]>(() => {
     });
   }
 
-  // Fallback scan across local showcase items
   const fallbackList: Book[] = Array.isArray(showcaseBooks.value)
     ? showcaseBooks.value
     : showcaseBooks.value?.products || [];
@@ -156,6 +166,22 @@ const flashSaleBooks = computed<Book[]>(() => {
     if (b.sale_ends_at && new Date(b.sale_ends_at).getTime() < Date.now()) return false;
     return true;
   });
+});
+
+/**
+ * Resolves 4 Top Selling books for Hero right flank:
+ * Sourced directly from database via badge=BESTSELLER.
+ */
+const heroTopSellers = computed<Book[]>(() => {
+  const fromApi = heroTopSellersData.value?.products;
+  if (Array.isArray(fromApi) && fromApi.length > 0) {
+    return fromApi;
+  }
+  const fallbackList: Book[] = Array.isArray(showcaseBooks.value)
+    ? showcaseBooks.value
+    : showcaseBooks.value?.products || [];
+  const tagged = fallbackList.filter((b) => b.badge === 'BESTSELLER' || b.badge === 'NO1_PICK');
+  return mergeWithSeeds(tagged, MONTHLY_TOP_SEEDS, 4, fallbackList).slice(0, 4);
 });
 
 const bestsellersOfWeek = computed<Book[]>(() => {
@@ -318,8 +344,8 @@ onUnmounted(() => {
 		<StoreNavbar @search="handleSearch" @select-category="handleCategorySelect"
 			@request-book="() => handleRequestSeed()" />
 
-		<!-- Hero Carousel -->
-		<HeroCarousel @search="handleSearch" @select-category="handleCategorySelect"
+		<!-- Dynamic Tripartite Hero Stage (Left 1fr : Center 2fr : Right 1fr; Sides Hidden on Mobile) -->
+		<HeroCarousel :top-sellers="heroTopSellers" @search="handleSearch" @select-category="handleCategorySelect"
 			@navigate-flash-sale="scrollToSection('flash-sale')" />
 
 		<!-- Deliberate Flash Sale Shelf: Renders if products with FLASH_SALE exist -->

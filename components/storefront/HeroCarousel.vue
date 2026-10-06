@@ -2,8 +2,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import HeroLeftBanner, { type StoreHeroLeftBanner } from './HeroLeftBanner.vue';
+import HeroTopSellersPanel from './HeroTopSellersPanel.vue';
 import HeroNotesPanel from './HeroNotesPanel.vue';
 import type { PublicBanner } from '~/server/api/banners/index.get';
+import type { Book } from '~/types';
 
 export interface CarouselSlide {
   id: string;
@@ -14,6 +17,14 @@ export interface CarouselSlide {
   isRemote?: boolean;
 }
 
+interface Props {
+  topSellers?: Book[];
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  topSellers: () => [],
+});
+
 const emit = defineEmits<{
   search: [query: string, category?: string];
   selectCategory: [category: string];
@@ -23,12 +34,64 @@ const emit = defineEmits<{
 const { data: remoteBanners, status: bannersStatus } = await useFetch<PublicBanner[]>('/api/banners');
 const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
 
+// Left Flank State
+const heroLeftBanner = computed<StoreHeroLeftBanner | null>(() => {
+  return storeMetadata.value?.hero_left_banner || null;
+});
+
+const hasActiveLeftFlank = computed(() => {
+  return Boolean(heroLeftBanner.value && heroLeftBanner.value.is_active && heroLeftBanner.value.image_url);
+});
+
+// Right Flank State (Prefers Top Sellers if available, falls back to rich-text Hero Notes)
+const hasTopSellers = computed(() => {
+  return Array.isArray(props.topSellers) && props.topSellers.length > 0;
+});
+
 const heroNotes = computed(() => {
   return storeMetadata.value?.hero_notes || null;
 });
 
-const hasActiveNotes = computed(() => {
+const hasActiveHeroNotes = computed(() => {
   return Boolean(heroNotes.value && heroNotes.value.is_active && heroNotes.value.content_html);
+});
+
+const hasActiveRightFlank = computed(() => {
+  return hasTopSellers.value || hasActiveHeroNotes.value;
+});
+
+// Dynamic Desktop Grid Class (1fr : 2fr : 1fr when both active)
+const gridLayoutClass = computed(() => {
+  if (hasActiveLeftFlank.value && hasActiveRightFlank.value) {
+    return 'grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5 items-stretch';
+  }
+  if (hasActiveLeftFlank.value) {
+    return 'grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5 items-stretch';
+  }
+  if (hasActiveRightFlank.value) {
+    return 'grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5 items-stretch';
+  }
+  return '';
+});
+
+// Center Carousel Column Span
+const centerCarouselSpanClass = computed(() => {
+  if (hasActiveLeftFlank.value && hasActiveRightFlank.value) {
+    return 'lg:col-span-2 w-full';
+  }
+  if (hasActiveLeftFlank.value || hasActiveRightFlank.value) {
+    return 'lg:col-span-3 w-full';
+  }
+  return 'w-full';
+});
+
+// Outer Wrapper Padding (Small side margins when standalone)
+const outerWrapperPaddingClass = computed(() => {
+  if (hasActiveLeftFlank.value || hasActiveRightFlank.value) {
+    return 'px-3 sm:px-6 lg:px-8 max-w-[1560px] mx-auto';
+  }
+  // Standalone: occupies full width leaving modest side margins
+  return 'px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto';
 });
 
 // Clean visual fallback banners
@@ -211,26 +274,25 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<!-- 
-    Adaptive Stage:
-    - If Hero Notes are active: Expands into a 75/25 desktop split grid utilizing the 250px right flank.
-    - If Hero Notes are disabled: Retains the centered layout with 250px on desktop (xl:px-[250px]).
-  -->
-	<div class="w-full py-2.5 sm:py-4 flex justify-center bg-transparent transition-all duration-300" :class="hasActiveNotes
-      ? 'px-3 sm:px-6 lg:px-8 max-w-[1560px] mx-auto'
-      : 'px-3 sm:px-6 md:px-[max(32px,min(200px,calc((100vw-680px)/2)))] lg:px-[200px] xl:px-[250px]'
-    ">
-		<div class="w-full"
-			:class="hasActiveNotes ? 'grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-stretch' : ''">
-			<!-- Carousel Main Section (Full width when notes inactive; 75% width when notes active) -->
+	<div class="w-full py-2.5 sm:py-4 flex justify-center bg-transparent transition-all duration-300"
+		:class="outerWrapperPaddingClass">
+		<div class="w-full" :class="gridLayoutClass">
+
+			<!-- 1. LEFT FLANK: Promotional Poster (Desktop 1fr, Hidden on Mobile) -->
+			<div v-if="hasActiveLeftFlank"
+				class="hidden lg:flex lg:col-span-1 w-full h-[380px] sm:h-[400px] lg:h-[440px] xl:h-[460px]">
+				<HeroLeftBanner :banner="heroLeftBanner" />
+			</div>
+
+			<!-- 2. CENTER STAGE: Hero Carousel (Desktop 2fr when both active, Full Width on Mobile) -->
 			<section
-				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-md border border-slate-200/20"
-				:class="hasActiveNotes ? 'lg:col-span-8 xl:col-span-9 w-full' : 'w-full max-w-7xl mx-auto'"
-				aria-roledescription="carousel" aria-label="Promotions and Announcements" @mouseenter="handleMouseEnter"
-				@mouseleave="handleMouseLeave" @focusin="handleMouseEnter" @focusout="handleMouseLeave">
+				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-md border border-slate-200/20 h-[220px] sm:h-[280px] md:h-[340px] lg:h-[440px] xl:h-[460px]"
+				:class="centerCarouselSpanClass" aria-roledescription="carousel"
+				aria-label="Promotions and Announcements" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave"
+				@focusin="handleMouseEnter" @focusout="handleMouseLeave">
 				<!-- Shimmer Skeleton -->
 				<div v-if="bannersStatus === 'pending'"
-					class="w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[21/9] lg:aspect-[24/9] min-h-[180px] sm:min-h-[240px] md:min-h-[280px] lg:min-h-[320px] max-h-[440px] bg-gradient-to-r from-forest-950 via-forest-900 to-forest-950 animate-pulse flex items-center justify-center">
+					class="w-full h-full bg-gradient-to-r from-forest-950 via-forest-900 to-forest-950 animate-pulse flex items-center justify-center">
 					<div class="flex items-center gap-2 text-white/30 font-mono text-xs uppercase tracking-widest">
 						<span class="w-2 h-2 rounded-full bg-gold-400/50 animate-ping" />
 						<span>Loading Announcements...</span>
@@ -238,10 +300,8 @@ onUnmounted(() => {
 				</div>
 
 				<!-- Loaded Carousel Viewport -->
-				<div v-else
-					class="relative w-full overflow-hidden aspect-[16/9] sm:aspect-[21/9] md:aspect-[21/9] lg:aspect-[24/9] min-h-[180px] sm:min-h-[240px] md:min-h-[280px] lg:min-h-[320px] max-h-[440px]"
-					@touchstart.passive="handleTouchStart" @touchmove.passive="handleTouchMove"
-					@touchend="handleTouchEnd">
+				<div v-else class="relative w-full h-full overflow-hidden" @touchstart.passive="handleTouchStart"
+					@touchmove.passive="handleTouchMove" @touchend="handleTouchEnd">
 					<div class="flex w-full h-full will-change-transform" :style="trackTransformStyle">
 						<div v-for="(slide, index) in activeSlides" :key="slide.id"
 							class="w-full flex-shrink-0 relative h-full flex items-center justify-center" role="group"
@@ -289,10 +349,13 @@ onUnmounted(() => {
 				</div>
 			</section>
 
-			<!-- Right-Side Editorial Notes Flank (occupies the 250px right slot on desktop) -->
-			<div v-if="hasActiveNotes" class="lg:col-span-4 xl:col-span-3 w-full flex items-stretch">
-				<HeroNotesPanel :notes="heroNotes" />
+			<!-- 3. RIGHT FLANK: 4 Top Selling Books / Editorial Notes (Desktop 1fr, Hidden on Mobile) -->
+			<div v-if="hasActiveRightFlank"
+				class="hidden lg:flex lg:col-span-1 w-full h-[380px] sm:h-[400px] lg:h-[440px] xl:h-[460px]">
+				<HeroTopSellersPanel v-if="hasTopSellers" :books="topSellers" />
+				<HeroNotesPanel v-else-if="hasActiveHeroNotes" :notes="heroNotes" />
 			</div>
+
 		</div>
 	</div>
 </template>
