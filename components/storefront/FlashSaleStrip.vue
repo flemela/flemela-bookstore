@@ -35,6 +35,11 @@
 						ENDS IN:
 					</span>
 					<div class="flex items-center gap-1 font-mono text-xs font-black text-red-700">
+						<template v-if="formattedTime.days">
+							<span class="bg-white px-2 py-0.5 rounded border border-red-200 shadow-2xs">{{
+								formattedTime.days }}d</span>
+							<span class="text-red-400">:</span>
+						</template>
 						<span class="bg-white px-2 py-0.5 rounded border border-red-200 shadow-2xs">{{
 							formattedTime.hours }}h</span>
 						<span class="text-red-400">:</span>
@@ -139,7 +144,9 @@ watch(
   { deep: true }
 );
 
-// Countdown calculation
+// Countdown to the sale's real end: the earliest future sale_ends_at among the books shown
+// (set per book in the admin). Books without an end date fall back to the end of today.
+const days = ref(0);
 const hours = ref('08');
 const minutes = ref('24');
 const seconds = ref('36');
@@ -147,9 +154,15 @@ let timerInterval: ReturnType<typeof setInterval> | undefined;
 
 function updateCountdown(): void {
   const now = new Date();
-  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-  const diff = Math.max(0, target.getTime() - now.getTime());
+  const saleEnds = (props.books || [])
+    .map((b) => (b.sale_ends_at ? new Date(b.sale_ends_at).getTime() : NaN))
+    .filter((t) => Number.isFinite(t) && t > now.getTime());
+  const target = saleEnds.length
+    ? Math.min(...saleEnds)
+    : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).getTime();
+  const diff = Math.max(0, target - now.getTime());
 
+  days.value = Math.floor(diff / (1000 * 60 * 60 * 24));
   const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
   const m = Math.floor((diff / 1000 / 60) % 60);
   const s = Math.floor((diff / 1000) % 60);
@@ -160,6 +173,7 @@ function updateCountdown(): void {
 }
 
 const formattedTime = computed(() => ({
+  days: days.value,
   hours: hours.value,
   minutes: minutes.value,
   seconds: seconds.value,
