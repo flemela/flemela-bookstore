@@ -1,6 +1,6 @@
 // =============================================================================
 // server/api/products/index.get.ts
-// Nuxt Nitro Storefront Products Endpoint: First-Added-First Default Sorting
+// Nuxt Nitro Storefront Products Endpoint: Forwards Search, Category & Badges
 // =============================================================================
 
 import { sokoClient } from '../../utils/sokoClient';
@@ -26,8 +26,9 @@ export default defineEventHandler(async (event) => {
         limit: query.limit || 50,
         category: (query.category as string) || undefined,
         category_id: (query.category_id as string) || undefined,
+        badge: (query.badge as string) || undefined,
         q: (query.q as string) || undefined,
-        sort: (query.sort as string) || 'first_added', // Default strictly to FIFO (first-added books lead)
+        sort: (query.sort as string) || 'first_added',
       },
     });
 

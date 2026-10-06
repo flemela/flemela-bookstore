@@ -24,7 +24,7 @@
 							<div>
 								<h1 class="text-2xl font-bold text-gray-900 tracking-tight">Edit Book</h1>
 								<p class="text-xs text-gray-500 mt-0.5">Manage pricing, strikethrough discounts, stock,
-									categories, badges, and formats</p>
+									categories, badges, sale schedules, and formats</p>
 							</div>
 						</div>
 
@@ -123,7 +123,7 @@
 										class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-900/20 focus:border-forest-900 transition-all" />
 								</div>
 
-								<!-- Promotional Badge -->
+								<!-- Promotional Badge & Flash Sale Schedule -->
 								<div class="space-y-1.5">
 									<label class="block text-xs font-bold text-gray-700">Promotional Badge</label>
 									<div class="space-y-2">
@@ -132,7 +132,7 @@
 											@change="handleBadgeSelectChange">
 											<option value="">None (Standard)</option>
 											<option value="BESTSELLER">Bestseller (BESTSELLER)</option>
-											<option value="FLASH_SALE">Flash Sale (FLASH_SALE)</option>
+											<option value="FLASH_SALE">⚡ Flash Sale (FLASH_SALE)</option>
 											<option value="NO1_PICK">#1 Staff Pick (NO1_PICK)</option>
 											<option value="DEAL_OF_WEEK">Deal of the Week (DEAL_OF_WEEK)</option>
 											<option value="LIMITED_TIME">Limited Time (LIMITED_TIME)</option>
@@ -148,6 +148,26 @@
 											<p class="text-[10px] text-gray-500">Appears as an editorial badge on the
 												book card.</p>
 										</div>
+
+										<!-- Sale End Schedule Date Control -->
+										<div v-if="badgeSelectValue === 'FLASH_SALE' || badgeSelectValue === 'LIMITED_TIME'"
+											class="p-3 bg-red-50/60 border border-red-200 rounded-xl space-y-1.5 animate-in fade-in duration-200">
+											<div class="flex items-center justify-between">
+												<label class="text-[11px] font-bold text-red-900">Sale Auto-Expiration
+													(Optional)</label>
+												<button v-if="form.sale_ends_at" type="button"
+													class="text-[10px] text-red-700 underline font-semibold cursor-pointer"
+													@click="form.sale_ends_at = ''">
+													Clear Expiration (Run Indefinitely)
+												</button>
+											</div>
+											<input v-model="form.sale_ends_at" type="datetime-local"
+												class="w-full px-2.5 py-1.5 bg-white border border-red-200 rounded-lg text-xs font-mono text-gray-800 outline-none focus:border-red-500" />
+											<p class="text-[10px] text-red-700 leading-relaxed">
+												Leave blank to keep the badge active without a deadline. Setting a past
+												date will hide the book from the Flash Sale shelf.
+											</p>
+										</div>
 									</div>
 								</div>
 
@@ -160,7 +180,7 @@
 							</div>
 						</div>
 
-						<!-- Section 2: Book Cover Art (Cloudflare R2 Direct Upload) -->
+						<!-- Section 2: Book Cover Art -->
 						<div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-5">
 							<div class="flex items-center justify-between border-b border-gray-100 pb-3">
 								<div>
@@ -233,7 +253,7 @@
 							</div>
 						</div>
 
-						<!-- Section 3: Formats & Persistent Strikethrough Pricing Management -->
+						<!-- Section 3: Formats & Pricing Management -->
 						<div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
 							<h2
 								class="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-3">
@@ -325,9 +345,8 @@
 
 								<!-- Single PDF Uploader -->
 								<div>
-									<label class="block text-xs font-semibold text-gray-700 mb-1.5">
-										eBook PDF Document
-									</label>
+									<label class="block text-xs font-semibold text-gray-700 mb-1.5">eBook PDF
+										Document</label>
 									<SinglePdfUploader v-model="form.pdfKey" :initial-file-name="form.pdfFileName"
 										:initial-file-size="form.pdfFileSize" :max-file-size-mb="50"
 										@success="handlePdfReplaced" @remove="handlePdfRemoved" />
@@ -400,6 +419,7 @@ const form = reactive({
   sku: '',
   badge: null as string | null,
   customBadgeText: '',
+  sale_ends_at: '' as string,
   description: '',
   cover_image_url: '',
   cover_image_key: '',
@@ -446,7 +466,7 @@ async function loadBookData() {
     form.hardcopyCompareAtPrice = parentCompareAt;
     form.hardcopyStock = book.stock ?? 10;
 
-    // Badge Hydration
+    // Badge & Schedule Hydration
     if (book.badge) {
       if (STANDARD_BADGES.includes(book.badge)) {
         badgeSelectValue.value = book.badge;
@@ -462,7 +482,11 @@ async function loadBookData() {
       form.customBadgeText = '';
     }
 
-    // Prefill author from description if prefixed "By ..."
+    form.sale_ends_at = book.sale_ends_at
+      ? new Date(book.sale_ends_at).toISOString().slice(0, 16)
+      : '';
+
+    // Author
     if (book.description && book.description.startsWith('By ')) {
       const match = book.description.match(/^By\s+([^.]+)\.\s*(.*)$/);
       if (match) {
@@ -473,7 +497,7 @@ async function loadBookData() {
       form.author = book.author;
     }
 
-    // Prefill cover image
+    // Cover
     const firstImg = book.images?.[0];
     if (typeof firstImg === 'string') {
       form.cover_image_url = firstImg;
@@ -486,7 +510,7 @@ async function loadBookData() {
       form.cover_image_key = 'r2_asset';
     }
 
-    // Formats Hydration
+    // Formats
     const formats: any[] = book.formats || [];
 
     const hardcopy = formats.find((f) => f.format === 'hardcopy');
@@ -541,18 +565,19 @@ function handleBadgeSelectChange() {
   } else if (badgeSelectValue.value === '') {
     form.badge = null;
     form.customBadgeText = '';
+    form.sale_ends_at = '';
   } else {
     form.badge = badgeSelectValue.value;
   }
 }
-
-function handleCategoryCreated(newCat: { id: string; name: string; slug: string }) {
+	function handleCategoryCreated(newCat: { id: string; name: string; slug: string }) {
   if (!categories.value.some((c) => c.id === newCat.id)) {
     categories.value.push(newCat);
   }
   form.category_id = newCat.id;
-													   }
-	async function handleAutoFindCover() {
+}
+
+async function handleAutoFindCover() {
   if (!form.name.trim()) {
     pushToast({ message: 'Enter a book title first to search for cover art', variant: 'info' });
     return;
@@ -633,9 +658,8 @@ async function handleCoverFileSelected(e: Event) {
 function clearCoverImage() {
   form.cover_image_url = '';
   form.cover_image_key = '';
-}
-
-function handlePdfReplaced(payload: { key: string; fileUrl: string; sizeBytes: number; fileName: string }) {
+	}
+	function handlePdfReplaced(payload: { key: string; fileUrl: string; sizeBytes: number; fileName: string }) {
   form.pdfKey = payload.key;
   form.pdfFileUrl = payload.fileUrl;
   form.pdfFileSize = payload.sizeBytes;
@@ -691,6 +715,10 @@ async function handleUpdate() {
       resolvedBadge = badgeSelectValue.value;
     }
 
+    const saleEndsAtIso = form.sale_ends_at
+      ? new Date(form.sale_ends_at).toISOString()
+      : null;
+
     // 1. Update Base Product
     await ofetch(`/api/admin/books/${productId}`, {
       method: 'PATCH',
@@ -703,6 +731,7 @@ async function handleUpdate() {
         compareAtPrice: hardcopyCompareAt,
         sku: form.sku.trim() || null,
         badge: resolvedBadge,
+        sale_ends_at: saleEndsAtIso,
         description: form.author ? `By ${form.author.trim()}. ${form.description}` : form.description,
         images: form.cover_image_url
           ? [{ image_url: form.cover_image_url, image_public_id: form.cover_image_key || 'r2_asset' }]
@@ -711,8 +740,7 @@ async function handleUpdate() {
     });
 
     const formatPromises: Promise<any>[] = [];
-
-    // 2. Update OR Create Hardcopy Format
+	  // 2. Update OR Create Hardcopy Format
     const hardcopyBody = {
       format: 'hardcopy',
       price: hardcopySellingPrice,
@@ -738,7 +766,8 @@ async function handleUpdate() {
         })
       );
     }
-	  // 3. Update OR Create Digital PDF Format
+
+    // 3. Update OR Create Digital PDF Format
     if (pdfFormatId.value) {
       formatPromises.push(
         ofetch(`/api/admin/books/${productId}/formats/${pdfFormatId.value}`, {
@@ -775,7 +804,7 @@ async function handleUpdate() {
     await Promise.all(formatPromises);
 
     isPdfDirty.value = false;
-    successToast.value = 'Book details, strikethrough discounts, badges, and formats saved successfully!';
+    successToast.value = 'Book details, badges, sale schedule, and formats saved successfully!';
     pushToast({ message: successToast.value, variant: 'success' });
 
     await loadBookData();

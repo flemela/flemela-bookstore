@@ -47,7 +47,19 @@ const { data: catalogData, status: booksStatus } = await useFetch<{
   watch: [currentPage, activeCategoryFilter, debouncedSearch, activeSort],
 });
 
-// Dedicated Showcase fetch for Flash Sale & Bestseller shelves (first-added books first)
+// Dedicated database-backed Flash Sale query across the entire store catalogue
+const { data: flashSaleData } = await useFetch<{
+  products: Book[];
+  total: number;
+}>('/api/products', {
+  query: {
+    badge: 'FLASH_SALE',
+    limit: 24,
+    sort: 'newest',
+  },
+});
+
+// Showcase fetch for Bestseller shelf
 const { data: showcaseBooks } = await useFetch<any>('/api/products?limit=50&sort=first_added');
 const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
 
@@ -123,14 +135,23 @@ const isFilterActive = computed(() => {
 });
 
 /**
- * Strict deliberate curation: Flash sale shelf contains ONLY books where
- * an admin has explicitly assigned the 'FLASH_SALE' badge and sale has not expired.
+ * Direct catalogue query resolution: Any book marked with FLASH_SALE
+ * anywhere in the database surfaces cleanly without relying on page-1 items.
  */
 const flashSaleBooks = computed<Book[]>(() => {
-  const list: Book[] = Array.isArray(showcaseBooks.value)
+  const fromApi = flashSaleData.value?.products;
+  if (Array.isArray(fromApi) && fromApi.length > 0) {
+    return fromApi.filter((b) => {
+      if (b.sale_ends_at && new Date(b.sale_ends_at).getTime() < Date.now()) return false;
+      return true;
+    });
+  }
+
+  // Fallback scan across local showcase items
+  const fallbackList: Book[] = Array.isArray(showcaseBooks.value)
     ? showcaseBooks.value
     : showcaseBooks.value?.products || [];
-  return list.filter((b) => {
+  return fallbackList.filter((b) => {
     if (b.badge !== 'FLASH_SALE') return false;
     if (b.sale_ends_at && new Date(b.sale_ends_at).getTime() < Date.now()) return false;
     return true;
@@ -301,7 +322,7 @@ onUnmounted(() => {
 		<HeroCarousel @search="handleSearch" @select-category="handleCategorySelect"
 			@navigate-flash-sale="scrollToSection('flash-sale')" />
 
-		<!-- Deliberate Flash Sale Shelf: Renders ONLY if admin explicitly assigned FLASH_SALE -->
+		<!-- Deliberate Flash Sale Shelf: Renders if products with FLASH_SALE exist -->
 		<FlashSaleStrip v-if="flashSaleBooks.length > 0" :books="flashSaleBooks" title="FLASH SALE DEALS"
 			badge-label="LIMITED TIME OFFERS" @request-seed="handleRequestSeed" />
 

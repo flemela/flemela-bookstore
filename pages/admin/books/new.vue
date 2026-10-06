@@ -1,6 +1,6 @@
 <!-- =============================================================================
      flemela/pages/admin/books/new.vue
-     Add Book: Production Type-Safe with Auto-Find & Upload Cover Art (Cloudflare R2)
+     Add Book: Production Type-Safe with Badges, Sale Schedules & Cloudflare R2
      ============================================================================= -->
 
 <template>
@@ -29,7 +29,7 @@
 						Cancel
 					</NuxtLink>
 					<button type="button" :disabled="isSubmitting" @click="handleSubmit"
-						class="inline-flex items-center space-x-2 px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-lg shadow-sm transition-all">
+						class="inline-flex items-center space-x-2 px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-lg shadow-sm transition-all cursor-pointer">
 						<svg v-if="isSubmitting" class="animate-spin w-4 h-4 text-white" fill="none"
 							viewBox="0 0 24 24">
 							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
@@ -99,18 +99,29 @@
 							<label class="block text-xs font-bold text-gray-700 mb-1.5">Promotional Badge</label>
 							<select v-model="form.badge"
 								class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all">
-								<option :value="null">None</option>
+								<option :value="null">None (Standard)</option>
 								<option value="BESTSELLER">Bestseller</option>
-								<option value="FLASH_SALE">Flash Sale</option>
+								<option value="FLASH_SALE">⚡ Flash Sale</option>
 								<option value="NO1_PICK">#1 Staff Pick</option>
 								<option value="DEAL_OF_WEEK">Deal of the Week</option>
+								<option value="LIMITED_TIME">Limited Time</option>
 							</select>
+						</div>
+
+						<div v-if="form.badge === 'FLASH_SALE' || form.badge === 'LIMITED_TIME'"
+							class="sm:col-span-2 p-3.5 bg-red-50/60 border border-red-200 rounded-xl space-y-1.5">
+							<label class="text-xs font-bold text-red-900">Sale Auto-Expiration (Optional)</label>
+							<input v-model="form.sale_ends_at" type="datetime-local"
+								class="w-full max-w-sm px-3 py-1.5 bg-white border border-red-200 rounded-lg text-xs font-mono text-gray-800 outline-none focus:border-red-500" />
+							<p class="text-[10px] text-red-700 leading-relaxed">
+								Leave empty to run the promotion indefinitely until cleared manually.
+							</p>
 						</div>
 
 						<div class="sm:col-span-2">
 							<label class="block text-xs font-bold text-gray-700 mb-1.5">Synopsis / Description</label>
 							<textarea v-model="form.description" rows="3" placeholder="Describe the book..."
-								class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all"></textarea>
+								class="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all resize-none"></textarea>
 						</div>
 					</div>
 				</div>
@@ -125,7 +136,7 @@
 						</div>
 						<button type="button" :disabled="isFindingCover || !form.name.trim()"
 							@click="handleAutoFindCover"
-							class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition-all disabled:opacity-50">
+							class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition-all disabled:opacity-50 cursor-pointer">
 							<svg v-if="isFindingCover" class="animate-spin w-3.5 h-3.5 text-amber-900" fill="none"
 								viewBox="0 0 24 24">
 								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
@@ -159,7 +170,7 @@
 								<input ref="coverFileInputRef" type="file" accept="image/*" class="hidden"
 									@change="handleCoverFileSelected" />
 								<button type="button" :disabled="isUploadingCover" @click="coverFileInputRef?.click()"
-									class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm disabled:opacity-50">
+									class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm disabled:opacity-50 cursor-pointer">
 									<svg v-if="isUploadingCover" class="animate-spin w-3.5 h-3.5 text-white" fill="none"
 										viewBox="0 0 24 24">
 										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
@@ -170,7 +181,7 @@
 								</button>
 
 								<button v-if="form.cover_image_url" type="button" @click="clearCoverImage"
-									class="px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+									class="px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
 									Remove
 								</button>
 							</div>
@@ -279,6 +290,7 @@ const form = reactive({
   category_id: '',
   sku: '',
   badge: null as string | null,
+  sale_ends_at: '' as string,
   description: '',
   cover_image_url: '',
   cover_image_key: '',
@@ -422,12 +434,17 @@ async function handleSubmit() {
   isSubmitting.value = true;
 
   try {
+    const saleEndsAtIso = form.sale_ends_at
+      ? new Date(form.sale_ends_at).toISOString()
+      : null;
+
     const productPayload = {
       name: form.name.trim(),
       category_id: form.category_id,
       price: form.hardcopyPrice,
       sku: form.sku.trim() || null,
       badge: form.badge || null,
+      sale_ends_at: saleEndsAtIso,
       description: form.author ? `By ${form.author.trim()}. ${form.description}` : form.description,
       stock: form.hardcopyStock,
       publish: true,
