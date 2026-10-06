@@ -26,6 +26,10 @@
             DEALS END IN:
           </span>
           <div class="flex items-center gap-1 font-mono text-xs font-black text-theme-ink">
+            <template v-if="formattedTime.days">
+              <span class="bg-slate-100 px-1.5 py-0.5 rounded">{{ formattedTime.days }}d</span>
+              <span class="text-theme-muted">:</span>
+            </template>
             <span class="bg-slate-100 px-1.5 py-0.5 rounded">{{ formattedTime.hours }}h</span>
             <span class="text-theme-muted">:</span>
             <span class="bg-slate-100 px-1.5 py-0.5 rounded">{{ formattedTime.minutes }}m</span>
@@ -138,18 +142,28 @@ watch(
   { deep: true }
 );
 
-// 48-Hour Live Countdown Loop
-const timeLeftSeconds = ref(47 * 3600 + 38 * 60 + 15);
-let timerInterval: any = null;
+// Countdown to when the deals really end: the earliest future sale_ends_at among the books
+// shown (set per book in the admin), otherwise the end of this week (Sunday 23:59:59).
+function dealsEndAt(now: Date): number {
+  const saleEnds = (props.books || [])
+    .map((b) => (b.sale_ends_at ? new Date(b.sale_ends_at).getTime() : NaN))
+    .filter((t) => Number.isFinite(t) && t > now.getTime());
+  if (saleEnds.length) return Math.min(...saleEnds);
+  const daysToSunday = (7 - now.getDay()) % 7;
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToSunday, 23, 59, 59).getTime();
+}
+
+const timeLeftSeconds = ref(0);
+let timerInterval: ReturnType<typeof setInterval> | null = null;
+
+function updateCountdown(): void {
+  const now = new Date();
+  timeLeftSeconds.value = Math.max(0, Math.floor((dealsEndAt(now) - now.getTime()) / 1000));
+}
 
 onMounted(() => {
-  timerInterval = setInterval(() => {
-    if (timeLeftSeconds.value > 0) {
-      timeLeftSeconds.value--;
-    } else {
-      timeLeftSeconds.value = 48 * 3600;
-    }
-  }, 1000);
+  updateCountdown();
+  timerInterval = setInterval(updateCountdown, 1000);
 
   setTimeout(checkScrollButtons, 300);
   window.addEventListener('resize', checkScrollButtons);
@@ -164,10 +178,11 @@ onUnmounted(() => {
 
 const formattedTime = computed(() => {
   const total = timeLeftSeconds.value;
-  const hours = String(Math.floor(total / 3600)).padStart(2, '0');
+  const days = Math.floor(total / 86400);
+  const hours = String(Math.floor((total % 86400) / 3600)).padStart(2, '0');
   const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
   const seconds = String(total % 60).padStart(2, '0');
-  return { hours, minutes, seconds };
+  return { days, hours, minutes, seconds };
 });
 </script>
 
