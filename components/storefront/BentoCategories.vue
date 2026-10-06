@@ -1,6 +1,6 @@
 <!-- components/storefront/BentoCategories.vue -->
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import {
   BookOpen,
   GraduationCap,
@@ -10,64 +10,35 @@ import {
   Star,
   ArrowRight,
 } from 'lucide-vue-next';
-import type { Book } from '~/types';
 
 const emit = defineEmits<{
   select: [category: string];
 }>();
 
-// Fetch live catalog books to dynamically calculate inventory counts
-const { data: catalogResponse } = await useFetch<any>('/api/products');
-
+// Each tile opens a real catalogue category (query = exact category name) and shows its true total.
 const CATEGORIES = [
-  {
-    name: 'Fiction',
-    icon: BookOpen,
-    fallbackCount: '2,450+',
-    query: 'Fiction',
-  },
-  {
-    name: 'Non-Fiction',
-    icon: GraduationCap,
-    fallbackCount: '1,630+',
-    query: 'Non-Fiction',
-  },
-  {
-    name: 'Self Help',
-    icon: Heart,
-    fallbackCount: '980+',
-    query: 'Self-Help',
-  },
-  {
-    name: 'Business',
-    icon: Briefcase,
-    fallbackCount: '760+',
-    query: 'Business',
-  },
-  {
-    name: 'Technology',
-    icon: Laptop,
-    fallbackCount: '540+',
-    query: 'Technology',
-  },
-  {
-    name: 'Classic',
-    icon: Star,
-    fallbackCount: '320+',
-    query: 'Classic',
-  },
+  { name: 'Fiction', icon: BookOpen, query: 'Fiction', image: '/images/fiction.png' },
+  { name: 'History', icon: GraduationCap, query: 'History & Politics', image: '/images/non-fiction.png' },
+  { name: 'Self Help', icon: Heart, query: 'Self-Help', image: '/images/self help.png' },
+  { name: 'Business', icon: Briefcase, query: 'Business & Finance', image: '/images/business.png' },
+  { name: 'Technology', icon: Laptop, query: 'Technology', image: '/images/technology.png' },
+  { name: 'Romance', icon: Star, query: 'Romance', image: '/images/classics.png' },
 ];
 
-// Resolves category images from public/images using categoryName.png convention
-function getCategoryImageUrl(name: string): string {
-  const clean = name.trim().toLowerCase();
-  if (clean === 'classic' || clean === 'classics') return '/images/classics.png';
-  if (clean === 'self help' || clean === 'self-help') return '/images/self help.png';
-  if (clean === 'non-fiction' || clean === 'nonfiction') return '/images/non-fiction.png';
-  if (clean === 'fiction') return '/images/fiction.png';
-  if (clean === 'technology' || clean === 'tech') return '/images/technology.png';
-  return `/images/${clean}.png`;
-}
+// Live per-category totals (one lightweight request per tile, limit=1 reads just the total)
+const { data: totals } = await useAsyncData('category-tile-totals', async () => {
+  const entries = await Promise.all(
+    CATEGORIES.map(async (c) => {
+      try {
+        const res = await $fetch<{ total?: number }>('/api/products', { query: { category: c.query, limit: 1 } });
+        return [c.query, res?.total ?? 0] as const;
+      } catch {
+        return [c.query, 0] as const;
+      }
+    }),
+  );
+  return Object.fromEntries(entries) as Record<string, number>;
+});
 
 // Track image failures to gracefully apply fallback gradients without broken image icons
 const failedImages = ref<Set<string>>(new Set());
@@ -76,28 +47,9 @@ function onImageError(catName: string): void {
   failedImages.value.add(catName);
 }
 
-const countMap = computed(() => {
-  const map = new Map<string, number>();
-  const list: Book[] = Array.isArray(catalogResponse.value)
-    ? catalogResponse.value
-    : catalogResponse.value?.products || [];
-
-  for (const b of list) {
-    const cat = (b?.category_name || 'General').toLowerCase();
-    map.set(cat, (map.get(cat) || 0) + 1);
-  }
-  return map;
-});
-
-function getDisplayCount(query: string, fallback: string): string {
-  const q = query.toLowerCase();
-  let total = 0;
-  for (const [cat, count] of countMap.value.entries()) {
-    if (cat.includes(q) || q.includes(cat)) {
-      total += count;
-    }
-  }
-  return total > 0 ? `${total} titles` : `${fallback} titles`;
+function getDisplayCount(query: string): string {
+  const total = totals.value?.[query] ?? 0;
+  return total > 0 ? `${total.toLocaleString('en-KE')} titles` : 'Browse titles';
 }
 
 function handleCategoryClick(catQuery: string): void {
@@ -141,7 +93,7 @@ function handleCategoryClick(catQuery: string): void {
 				class="relative overflow-hidden rounded-xl p-3.5 sm:p-4 md:p-5 flex flex-col items-center justify-center text-center transition-all duration-300 group cursor-pointer shadow-md hover:shadow-xl hover:-translate-y-1 min-h-[110px] sm:min-h-[135px] md:min-h-[155px] border border-black/10 hover:border-[#E8750D]/80"
 				@click="handleCategoryClick(cat.query)">
 				<!-- Background Image with smooth zoom on hover -->
-				<img v-if="!failedImages.has(cat.name)" :src="getCategoryImageUrl(cat.name)" :alt="`${cat.name} Books`"
+				<img v-if="!failedImages.has(cat.name)" :src="cat.image" :alt="`${cat.name} Books`"
 					class="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-110 pointer-events-none"
 					loading="lazy" @error="onImageError(cat.name)" />
 
@@ -170,7 +122,7 @@ function handleCategoryClick(catQuery: string): void {
 						</h3>
 						<p
 							class="text-[9px] sm:text-[10px] md:text-[11px] text-white/90 font-semibold font-mono truncate drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-							{{ getDisplayCount(cat.query, cat.fallbackCount) }}
+							{{ getDisplayCount(cat.query) }}
 						</p>
 					</div>
 				</div>
