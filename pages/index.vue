@@ -14,7 +14,7 @@ import CartDrawer from '~/components/storefront/CartDrawer.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
 import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
 import Pagination from '~/components/ui/Pagination.vue';
-import { BookOpen, ChevronDown, Check, Sparkles, Filter, X, Zap, ArrowUpDown } from 'lucide-vue-next';
+import { ChevronDown, Check, Sparkles, Filter, X, Zap, ArrowUpDown, ChevronLeft, ChevronRight, Clock } from 'lucide-vue-next';
 import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
 import type { Book } from '~/types';
 
@@ -24,12 +24,12 @@ type SortOption = 'first_added' | 'newest' | 'price_asc' | 'price_desc' | 'title
 const currentPage = ref(1);
 const itemsPerPage = ref(50);
 const activeCategoryFilter = ref<string>('General');
-const activeSort = ref<SortOption>('first_added'); // FIFO default: foundational bestsellers first
+const activeSort = ref<SortOption>('first_added');
 const searchQuery = ref<string>('');
 const debouncedSearch = ref<string>('');
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Reactive Catalogue Query (orders by first_added by default)
+// Reactive Catalogue Query
 const { data: catalogData, status: booksStatus } = await useFetch<{
   products: Book[];
   total: number;
@@ -46,6 +46,10 @@ const { data: catalogData, status: booksStatus } = await useFetch<{
   })),
   watch: [currentPage, activeCategoryFilter, debouncedSearch, activeSort],
 });
+
+// Dynamic Curated Campaign Shelves & Genre Rails
+const { data: dynamicCuratedSections } = await useFetch<any[]>('/api/curated-sections');
+const { data: dynamicCategoryShelves } = await useFetch<any[]>('/api/category-shelves');
 
 // Dedicated database-backed Flash Sale query across the entire store catalogue
 const { data: flashSaleData } = await useFetch<{
@@ -70,7 +74,6 @@ const { data: heroTopSellersData } = await useFetch<{
   },
 });
 
-// Showcase fetch for Bestseller shelf
 const { data: showcaseBooks } = await useFetch<any>('/api/products?limit=50&sort=first_added');
 const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
 
@@ -145,10 +148,6 @@ const isFilterActive = computed(() => {
   return (cat !== 'general' && cat !== 'all') || debouncedSearch.value.trim().length > 0 || activeSort.value !== 'first_added';
 });
 
-/**
- * Direct catalogue query resolution: Any book marked with FLASH_SALE
- * anywhere in the database surfaces cleanly without relying on page-1 items.
- */
 const flashSaleBooks = computed<Book[]>(() => {
   const fromApi = flashSaleData.value?.products;
   if (Array.isArray(fromApi) && fromApi.length > 0) {
@@ -168,10 +167,6 @@ const flashSaleBooks = computed<Book[]>(() => {
   });
 });
 
-/**
- * Resolves 4 Top Selling books for Hero right flank:
- * Sourced directly from database via badge=BESTSELLER.
- */
 const heroTopSellers = computed<Book[]>(() => {
   const fromApi = heroTopSellersData.value?.products;
   if (Array.isArray(fromApi) && fromApi.length > 0) {
@@ -321,6 +316,27 @@ function handleOutsideClickCatalogue(event: MouseEvent): void {
   }
 }
 
+function isDarkHex(hex: string): boolean {
+  if (!hex || !hex.startsWith('#')) return true;
+  const c = hex.replace('#', '');
+  if (c.length !== 6) return true;
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.55;
+}
+
+function scrollShelfTrack(trackId: string, direction: 'left' | 'right'): void {
+  if (!process.client) return;
+  const el = document.getElementById(trackId);
+  if (!el) return;
+  const cardWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).clientWidth : 280;
+  const isDesktop = window.innerWidth >= 1024;
+  const distance = (cardWidth + 20) * (isDesktop ? 3 : 2);
+  el.scrollBy({ left: direction === 'left' ? -distance : distance, behavior: 'smooth' });
+}
+
 onMounted(() => {
   if (process.client) {
     window.addEventListener('click', handleOutsideClickCatalogue);
@@ -344,19 +360,134 @@ onUnmounted(() => {
 		<StoreNavbar @search="handleSearch" @select-category="handleCategorySelect"
 			@request-book="() => handleRequestSeed()" />
 
-		<!-- Dynamic Tripartite Hero Stage (Left 1fr : Center 2fr : Right 1fr; Sides Hidden on Mobile) -->
+		<!-- Dynamic Tripartite Hero Stage -->
 		<HeroCarousel :top-sellers="heroTopSellers" @search="handleSearch" @select-category="handleCategorySelect"
 			@navigate-flash-sale="scrollToSection('flash-sale')" />
 
-		<!-- Deliberate Flash Sale Shelf: Renders if products with FLASH_SALE exist -->
-		<FlashSaleStrip v-if="flashSaleBooks.length > 0" :books="flashSaleBooks" title="FLASH SALE DEALS"
+		<!-- DYNAMIC CURATED CAMPAIGN SHELVES (Rendered from Admin Desk) -->
+		<template v-if="dynamicCuratedSections && dynamicCuratedSections.length > 0">
+			<section v-for="section in dynamicCuratedSections" :key="section.id" :id="`curated-shelf-${section.id}`"
+				class="py-10 sm:py-14 select-none transition-colors border-y border-black/10"
+				:style="{ backgroundColor: section.bg_color || '#17171C' }" :aria-label="section.title">
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<!-- Shelf Header -->
+					<div
+						class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 pb-4 border-b border-white/15">
+						<div class="space-y-1">
+							<span
+								class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#E8750D] flex items-center gap-1.5">
+								<Zap :size="12" class="fill-current" />
+								{{ section.badge_trigger }}
+							</span>
+							<h2 class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase tracking-wide leading-none"
+								:class="isDarkHex(section.bg_color) ? 'text-white' : 'text-forest-950'">
+								{{ section.title }}
+							</h2>
+							<p v-if="section.subtitle" class="text-xs sm:text-sm mt-1"
+								:class="isDarkHex(section.bg_color) ? 'text-white/80' : 'text-ink-muted'">
+								{{ section.subtitle }}
+							</p>
+						</div>
+
+						<!-- Optional Live Countdown Timer -->
+						<div v-if="section.countdown_ends_at"
+							class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border font-mono text-xs font-bold shrink-0 self-start sm:self-auto shadow-xs"
+							:class="isDarkHex(section.bg_color) ? 'bg-white/10 text-white border-white/20' : 'bg-black/5 text-forest-950 border-black/10'">
+							<Clock :size="13" class="text-[#E8750D]" />
+							<span>ENDS: {{ new Date(section.countdown_ends_at).toLocaleDateString() }}</span>
+						</div>
+					</div>
+
+					<!-- Carousel Track with Side Chevrons -->
+					<div class="relative group">
+						<button type="button"
+							class="absolute -left-3 sm:-left-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:border-[#E8750D] hover:bg-[#FFF7ED] border border-slate-300 shadow-[0_4px_18px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all cursor-pointer active:scale-95"
+							aria-label="Scroll left" @click="scrollShelfTrack(`track-${section.id}`, 'left')">
+							<ChevronLeft :size="24" class="stroke-[2.5]" />
+						</button>
+
+						<button type="button"
+							class="absolute -right-3 sm:-right-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:border-[#E8750D] hover:bg-[#FFF7ED] border border-slate-300 shadow-[0_4px_18px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all cursor-pointer active:scale-95"
+							aria-label="Scroll right" @click="scrollShelfTrack(`track-${section.id}`, 'right')">
+							<ChevronRight :size="24" class="stroke-[2.5]" />
+						</button>
+
+						<div :id="`track-${section.id}`"
+							class="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto scroll-smooth no-scrollbar py-2 snap-x snap-mandatory"
+							style="touch-action: pan-y;">
+							<div v-for="book in section.products" :key="book.id"
+								class="w-[calc((100%-0.75rem)/2)] sm:w-[calc((100%-1rem*2)/3)] lg:w-[calc((100%-1.5rem*3)/4)] flex-shrink-0 snap-start flex">
+								<BookCard :book="book" class="h-full" @request-seed="handleRequestSeed" />
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+		</template>
+
+		<!-- FALLBACK FLASH SALE STRIP (Renders if no custom dynamic sections override it) -->
+		<FlashSaleStrip v-else-if="flashSaleBooks.length > 0" :books="flashSaleBooks" title="FLASH SALE DEALS"
 			badge-label="LIMITED TIME OFFERS" @request-seed="handleRequestSeed" />
 
 		<!-- Categories Bento Grid -->
 		<BentoCategories @select="handleCategorySelect" />
 
+		<!-- DYNAMIC CATEGORY SHOWCASE RAILS (Configured via "Show as Shelf") -->
+
+		<template v-if="dynamicCategoryShelves && dynamicCategoryShelves.length > 0">
+			<section v-for="catShelf in dynamicCategoryShelves" :key="catShelf.categoryId"
+				:id="`cat-rail-${catShelf.categorySlug}`"
+				class="py-10 sm:py-14 select-none bg-slate-50/70 border-t border-slate-200"
+				:aria-label="catShelf.categoryName">
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div
+						class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
+						<div class="space-y-1">
+							<span
+								class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#E8750D] block">
+								GENRE SHOWCASE
+							</span>
+							<h2
+								class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
+								{{ catShelf.categoryName }}
+							</h2>
+						</div>
+						<button type="button"
+							class="text-xs sm:text-sm font-bold text-[#E8750D] hover:underline cursor-pointer flex items-center gap-1 self-start sm:self-auto"
+							@click="handleCategorySelect(catShelf.categoryName)">
+							<span>View all {{ catShelf.totalProductsCount }} titles</span>
+							<span>â†’</span>
+						</button>
+					</div>
+
+					<div class="relative group">
+						<button type="button"
+							class="absolute -left-3 sm:-left-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:border-[#E8750D] hover:bg-[#FFF7ED] border border-slate-300 shadow-[0_4px_18px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all cursor-pointer active:scale-95"
+							aria-label="Scroll left" @click="scrollShelfTrack(`rail-${catShelf.categoryId}`, 'left')">
+							<ChevronLeft :size="24" class="stroke-[2.5]" />
+						</button>
+
+						<button type="button"
+							class="absolute -right-3 sm:-right-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:border-[#E8750D] hover:bg-[#FFF7ED] border border-slate-300 shadow-[0_4px_18px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all cursor-pointer active:scale-95"
+							aria-label="Scroll right" @click="scrollShelfTrack(`rail-${catShelf.categoryId}`, 'right')">
+							<ChevronRight :size="24" class="stroke-[2.5]" />
+						</button>
+
+						<div :id="`rail-${catShelf.categoryId}`"
+							class="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto scroll-smooth no-scrollbar py-2 snap-x snap-mandatory"
+							style="touch-action: pan-y;">
+							<div v-for="book in catShelf.products" :key="book.id"
+								class="w-[calc((100%-0.75rem)/2)] sm:w-[calc((100%-1rem*2)/3)] lg:w-[calc((100%-1.5rem*3)/4)] flex-shrink-0 snap-start flex">
+								<BookCard :book="book" class="h-full" @request-seed="handleRequestSeed" />
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+		</template>
+
 		<!-- Visual Bridge Banner -->
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-4">
 			<div
 				class="rounded-2xl bg-gradient-to-r from-[#052219] via-[#0C3A2B] to-[#124E38] p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 text-white shadow-md border border-[#2EE59D]/30 relative overflow-hidden">
 				<div class="flex items-center gap-3 relative z-10">
@@ -370,8 +501,8 @@ onUnmounted(() => {
 								class="text-[9.5px] font-mono font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#2EE59D] text-[#052219]">
 								Live Storefront Shelf
 							</span>
-							<span class="text-xs text-white/80 font-mono hidden sm:inline">• Free Nairobi Delivery above
-								KSh 2,500</span>
+							<span class="text-xs text-white/80 font-mono hidden sm:inline">â€¢ Free Nairobi Delivery
+								above KSh 2,500</span>
 						</div>
 						<h3 class="font-display font-bold text-sm sm:text-base text-white mt-0.5">
 							Original Print Editions &amp; Instant Cloudflare R2 eBooks
@@ -383,18 +514,16 @@ onUnmounted(() => {
 					class="bg-[#E8750D] hover:bg-[#D45B05] text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0 active:scale-95"
 					@click="scrollToSection('catalog-results')">
 					<span>Explore All Books</span>
-					<span>↓</span>
+					<span>â†“</span>
 				</button>
 			</div>
 		</div>
-
 		<!-- Bestsellers of the Week (DealsWeek) -->
 		<DealsWeek :books="bestsellersOfWeek" @request-seed="handleRequestSeed" />
 
 		<!-- Complete Bookstore Catalogue Archive -->
 		<section id="catalog-results"
 			class="pt-10 sm:pt-14 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6">
-			<!-- Section Title & Dynamic Filter/Sort Row -->
 			<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-slate-200">
 				<div class="space-y-1">
 					<div class="flex items-center gap-2">
@@ -415,7 +544,6 @@ onUnmounted(() => {
 
 				<!-- Filter Dropdown, Sort Dropdown & Search Status Indicator -->
 				<div class="flex items-center gap-2.5 flex-wrap">
-					<!-- Category Filter Dropdown -->
 					<div class="relative">
 						<button id="catalogue-category-trigger" type="button"
 							class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
@@ -427,7 +555,6 @@ onUnmounted(() => {
 								:class="{ 'rotate-180 text-[#E8750D]': isCatalogueDropdownOpen }" />
 						</button>
 
-						<!-- Dropdown Menu -->
 						<Transition name="dropdown-fade">
 							<div v-if="isCatalogueDropdownOpen" id="catalogue-category-dropdown"
 								class="absolute right-0 sm:left-0 sm:right-auto mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl py-2 z-50 text-left">
@@ -454,7 +581,6 @@ onUnmounted(() => {
 						</Transition>
 					</div>
 
-					<!-- Sort Dropdown (Defaults strictly to first_added) -->
 					<div class="relative">
 						<button id="catalogue-sort-trigger" type="button"
 							class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
@@ -466,7 +592,6 @@ onUnmounted(() => {
 								:class="{ 'rotate-180 text-[#E8750D]': isSortDropdownOpen }" />
 						</button>
 
-						<!-- Sort Menu -->
 						<Transition name="dropdown-fade">
 							<div v-if="isSortDropdownOpen" id="catalogue-sort-dropdown"
 								class="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl py-2 z-50 text-left">
@@ -491,7 +616,6 @@ onUnmounted(() => {
 						</Transition>
 					</div>
 
-					<!-- Reset Filter Button -->
 					<button v-if="isFilterActive" type="button"
 						class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
 						title="Reset Search, Sort and Category Filters" @click="clearAllFilters">
@@ -501,7 +625,6 @@ onUnmounted(() => {
 				</div>
 			</div>
 
-			<!-- Typo Hit Notice -->
 			<div v-if="isTypoCorrectionActive"
 				class="p-3.5 bg-[#FFF7ED] border border-orange-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-[#C25E00]">
 				<div class="flex items-center gap-2">
@@ -514,7 +637,6 @@ onUnmounted(() => {
 					View All Books
 				</button>
 			</div>
-
 			<!-- SKELETON LOADING GRID -->
 			<div v-if="booksStatus === 'pending'"
 				class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full">
@@ -559,7 +681,6 @@ onUnmounted(() => {
 				</button>
 			</div>
 
-			<!-- NUMBERED PAGINATION CONTROLS -->
 			<Pagination :page="currentPage" :total-pages="totalPages" :disabled="booksStatus === 'pending'"
 				@change="handlePageChange" />
 		</section>
