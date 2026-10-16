@@ -1,6 +1,6 @@
 // =============================================================================
 // server/api/curated-sections/index.get.ts
-// Public storefront proxy fetching active curated sections with items
+// Public storefront proxy fetching active curated sections
 // =============================================================================
 
 import { sokoClient } from '../../utils/sokoClient';

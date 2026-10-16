@@ -1,6 +1,6 @@
 // =============================================================================
 // server/api/admin/curated-sections/index.ts
-// Proxy endpoint: List and create promotional curated sections via Soko API
+// Proxy: List and create curated sections via Soko API
 // =============================================================================
 
 import { sokoClient } from '../../../utils/sokoClient';

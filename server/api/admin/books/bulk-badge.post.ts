@@ -1,6 +1,6 @@
 // =============================================================================
 // server/api/admin/books/bulk-badge.post.ts
-// Proxy endpoint: Bulk assigns or clears product badges and sale schedules
+// Proxy: Assigns or clears badges across products in catalog
 // =============================================================================
 
 import { sokoClient } from '../../../utils/sokoClient';

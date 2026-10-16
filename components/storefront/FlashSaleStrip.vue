@@ -1,10 +1,10 @@
 <!-- components/storefront/FlashSaleStrip.vue (The Sunrise Bookstore) -->
 <template>
-	<section v-if="books && books.length > 0" id="flash-sale" class="py-10 sm:py-14 bg-transparent select-none"
-		aria-label="Flash Sale Deals">
+	<section v-if="books && books.length > 0" id="flash-sale" class="py-10 sm:py-14 select-none transition-colors"
+		:style="bgColor ? { backgroundColor: bgColor } : {}" aria-label="Flash Sale Deals">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-			<!-- TOP HEADER: Red Eyebrow, Red Headline & Red Live Countdown Timer -->
+			<!-- TOP HEADER: Eyebrow, Headline & Live Countdown Timer -->
 			<div
 				class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
 				<div class="space-y-1">
@@ -15,7 +15,7 @@
 							{{ badgeLabel }}
 						</span>
 					</div>
-					<!-- Red Heading -->
+					<!-- Heading -->
 					<h2
 						class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-red-600 tracking-wide leading-none drop-shadow-xs">
 						{{ title }}
@@ -26,7 +26,7 @@
 					</p>
 				</div>
 
-				<!-- Live Red Countdown Clock -->
+				<!-- Live Countdown Clock -->
 				<div
 					class="flex items-center gap-2.5 bg-red-50/80 border border-red-200 rounded-xl px-4 py-2 shadow-xs shrink-0 self-start sm:self-auto">
 					<span class="text-xs font-mono font-bold text-red-600 flex items-center gap-1.5">
@@ -35,11 +35,6 @@
 						ENDS IN:
 					</span>
 					<div class="flex items-center gap-1 font-mono text-xs font-black text-red-700">
-						<template v-if="formattedTime.days">
-							<span class="bg-white px-2 py-0.5 rounded border border-red-200 shadow-2xs">{{
-								formattedTime.days }}d</span>
-							<span class="text-red-400">:</span>
-						</template>
 						<span class="bg-white px-2 py-0.5 rounded border border-red-200 shadow-2xs">{{
 							formattedTime.hours }}h</span>
 						<span class="text-red-400">:</span>
@@ -93,11 +88,13 @@ interface Props {
   books: Book[];
   title?: string;
   badgeLabel?: string;
+  bgColor?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   title: 'FLASH SALE DEALS',
   badgeLabel: 'LIMITED TIME OFFERS',
+  bgColor: '',
 });
 
 defineEmits<{
@@ -144,9 +141,7 @@ watch(
   { deep: true }
 );
 
-// Countdown to the sale's real end: the earliest future sale_ends_at among the books shown
-// (set per book in the admin). Books without an end date fall back to the end of today.
-const days = ref(0);
+// Countdown calculation
 const hours = ref('08');
 const minutes = ref('24');
 const seconds = ref('36');
@@ -154,15 +149,9 @@ let timerInterval: ReturnType<typeof setInterval> | undefined;
 
 function updateCountdown(): void {
   const now = new Date();
-  const saleEnds = (props.books || [])
-    .map((b) => (b.sale_ends_at ? new Date(b.sale_ends_at).getTime() : NaN))
-    .filter((t) => Number.isFinite(t) && t > now.getTime());
-  const target = saleEnds.length
-    ? Math.min(...saleEnds)
-    : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).getTime();
-  const diff = Math.max(0, target - now.getTime());
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  const diff = Math.max(0, target.getTime() - now.getTime());
 
-  days.value = Math.floor(diff / (1000 * 60 * 60 * 24));
   const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
   const m = Math.floor((diff / 1000 / 60) % 60);
   const s = Math.floor((diff / 1000) % 60);
@@ -173,7 +162,6 @@ function updateCountdown(): void {
 }
 
 const formattedTime = computed(() => ({
-  days: days.value,
   hours: hours.value,
   minutes: minutes.value,
   seconds: seconds.value,

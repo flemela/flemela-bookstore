@@ -1,6 +1,6 @@
 // =============================================================================
 // server/api/admin/curated-sections/[id].ts
-// Proxy endpoint: Update and delete individual curated sections
+// Proxy: Update and delete individual curated sections
 // =============================================================================
 
 import { sokoClient } from '../../../utils/sokoClient';
