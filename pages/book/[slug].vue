@@ -8,6 +8,7 @@ import {
   Download,
   BookOpen,
   CheckCircle2,
+  Check,
 } from 'lucide-vue-next';
 import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
 import CartDrawer from '~/components/storefront/CartDrawer.vue';
@@ -26,6 +27,8 @@ const { push: pushToast } = useToast();
 
 const selectedFormatId = ref<string>('');
 const quantity = ref<number>(1);
+const isRecentlyAdded = ref(false);
+let addedTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Filter available digital formats
 const availableDigitalFormats = computed<ProductFormat[]>(() => {
@@ -181,18 +184,19 @@ function formatFileSize(bytes: number | null | undefined): string {
 
 const formatNoticeText = computed(() => {
   return isPhysicalHardcopy.value
-    ? 'Physical Hardcopy eligible for Doorstep Delivery or Free Diamond Mall Store Pickup.'
-    : 'Instant download links issued for eBooks upon M-Pesa confirmation.';
+    ? 'Physical copies dispatched for Doorstep Delivery or Free Store Pickup at Diamond Mall.'
+    : 'Instant download links issued for eBooks immediately upon payment.';
 });
 
 const addToCartButtonLabel = computed(() => {
+  if (isRecentlyAdded.value) return 'Added to Cart ✓';
   const actionText = isPhysicalHardcopy.value ? 'Add Hardcopy to Cart' : 'Add eBook to Cart';
   const priceMultiplier = isPhysicalHardcopy.value ? quantity.value : 1;
   const priceText = activeFormat.value ? ` • ${formatCurrency(activePricing.value.currentPrice * priceMultiplier)}` : '';
   return `${actionText}${priceText}`;
 });
 
-// Book Detail SEO & Product Rich Snippets
+// Book Detail SEO
 const pageTitle = computed(() => `${book.value?.name || 'Book'} — The Sunrise Bookstore`);
 const pageDescription = computed(() => {
   const authorText = book.value?.author ? `by ${book.value.author}. ` : '';
@@ -204,9 +208,7 @@ const canonicalUrl = computed(() => `https://www.thesunrisebookstore.com/book/${
 
 useHead(() => ({
   title: pageTitle.value,
-  link: [
-    { rel: 'canonical', href: canonicalUrl.value },
-  ],
+  link: [{ rel: 'canonical', href: canonicalUrl.value }],
   meta: [
     { name: 'description', content: pageDescription.value },
     { property: 'og:title', content: pageTitle.value },
@@ -218,39 +220,6 @@ useHead(() => ({
     { name: 'twitter:title', content: pageTitle.value },
     { name: 'twitter:description', content: pageDescription.value },
     { name: 'twitter:image', content: primaryImage.value },
-  ],
-  script: [
-    {
-      type: 'application/ld+json',
-      innerHTML: JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': ['Book', 'Product'],
-        name: book.value?.name,
-        image: primaryImage.value,
-        description: pageDescription.value,
-        sku: book.value?.sku || slug.value,
-        author: book.value?.author
-          ? {
-              '@type': 'Person',
-              name: book.value.author,
-            }
-          : undefined,
-        offers: {
-          '@type': 'Offer',
-          url: canonicalUrl.value,
-          priceCurrency: 'KES',
-          price: activePricing.value.currentPrice || 999,
-          priceValidUntil: '2027-12-31',
-          itemCondition: 'https://schema.org/NewCondition',
-          availability: 'https://schema.org/InStock',
-          seller: {
-            '@type': 'BookStore',
-            name: 'The Sunrise Bookstore',
-            url: 'https://www.thesunrisebookstore.com',
-          },
-        },
-      }),
-    },
   ],
 }));
 
@@ -275,6 +244,13 @@ function handleAddToCart(): void {
     author: book.value.author,
   });
 
+  // Tactile feedback on button
+  isRecentlyAdded.value = true;
+  if (addedTimer) clearTimeout(addedTimer);
+  addedTimer = setTimeout(() => {
+    isRecentlyAdded.value = false;
+  }, 1400);
+
   pushToast({
     message: `Added "${book.value.name}" (${activeFormat.value.format.toUpperCase()}) to cart!`,
     variant: 'success',
@@ -283,42 +259,43 @@ function handleAddToCart(): void {
 </script>
 
 <template>
-	<div class="min-h-screen flex flex-col bg-paper text-ink antialiased">
+	<div class="min-h-screen flex flex-col bg-paper-canvas text-[#141E1A] antialiased">
 		<BookstoreHeader />
 
 		<main class="max-w-5xl mx-auto w-full py-6 sm:py-10 px-4 sm:px-6 space-y-6 flex-1">
 			<NuxtLink to="/"
-				class="inline-flex items-center gap-1.5 text-xs font-semibold text-forest-900 hover:text-forest-700">
+				class="inline-flex items-center gap-1.5 text-xs font-semibold text-[#141E1A] hover:text-[#E8750D] transition-colors">
 				<ArrowLeft :size="13" /> Back to Catalog
 			</NuxtLink>
 
 			<div v-if="error || !book"
-				class="bg-paper-surface rounded-lg border border-ink-border p-12 text-center space-y-3 shadow-subtle">
-				<BookOpen :size="36" class="mx-auto text-ink-subtle opacity-40" />
-				<h2 class="font-display font-bold text-lg text-forest-950">Book Not Found</h2>
-				<p class="text-xs text-ink-muted">The requested title may have been unlisted or moved.</p>
-				<NuxtLink to="/" class="inline-block text-xs font-bold text-forest-900 underline pt-2">Return to
-					homepage</NuxtLink>
+				class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-subtle">
+				<BookOpen :size="36" class="mx-auto text-slate-400 opacity-40" />
+				<h2 class="font-display font-bold text-lg text-[#141E1A]">Book Not Found</h2>
+				<p class="text-xs text-[#5F6964]">The requested title may have been unlisted or moved.</p>
+				<NuxtLink to="/" class="inline-block text-xs font-bold text-[#E8750D] underline pt-2">
+					Return to homepage
+				</NuxtLink>
 			</div>
 
 			<!-- Main Editorial Book Card -->
 			<div v-else
-				class="bg-paper-surface rounded-lg border border-ink-border p-6 sm:p-10 grid md:grid-cols-12 gap-8 lg:gap-12 shadow-subtle">
+				class="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-10 grid md:grid-cols-12 gap-8 lg:gap-12 shadow-card">
 				<!-- Cover Art Frame (5 cols) -->
 				<div class="md:col-span-5 flex justify-center items-start">
 					<div
-						class="w-full max-w-[280px] sm:max-w-[320px] aspect-[3/4] bg-paper-cream rounded overflow-hidden shadow-medium border border-ink-border relative">
+						class="w-full max-w-[280px] sm:max-w-[320px] aspect-[3/4] bg-slate-50 rounded-xl overflow-hidden shadow-medium border border-slate-200 relative">
 						<img :src="primaryImage" :alt="`Cover for ${book.name}`" class="w-full h-full object-cover"
 							width="320" height="426"
 							@error="($event.target as HTMLImageElement).src = '/images/book-placeholder.svg'" />
 						<div v-if="activePricing.discountPercentage > 0 || book.badge"
-							class="absolute top-3 left-3 z-10 flex flex-col gap-1">
+							class="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
 							<span v-if="activePricing.discountPercentage > 0"
-								class="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-red-600 text-white shadow-sm">
+								class="text-[9.5px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-red-600 text-white shadow-xs">
 								-{{ activePricing.discountPercentage }}% OFF
 							</span>
 							<span v-if="book.badge"
-								class="text-[9px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded bg-forest-950 text-white shadow-sm">
+								class="text-[9.5px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded bg-[#141E1A] text-white shadow-xs">
 								★ {{ book.badge }}
 							</span>
 						</div>
@@ -328,39 +305,41 @@ function handleAddToCart(): void {
 				<!-- Details & Selector (7 cols) -->
 				<div class="md:col-span-7 space-y-5 text-left">
 					<div class="space-y-1">
-						<span class="text-[10px] uppercase font-mono font-bold tracking-widest text-gold-600 block">
+						<span class="text-[10px] uppercase font-mono font-bold tracking-widest text-[#E8750D] block">
 							{{ book.category_name || 'General' }}
 						</span>
-						<h1 class="font-display text-2xl sm:text-3xl font-bold text-forest-950 leading-tight">
+						<h1 class="font-display text-2xl sm:text-3xl font-bold text-[#141E1A] leading-tight">
 							{{ book.name }}
 						</h1>
-						<p class="text-xs text-ink-muted">
-							By <strong class="text-forest-950 font-semibold">{{ book.author || 'Original Edition'
+						<p class="text-xs text-[#5F6964]">
+							By <strong class="text-[#141E1A] font-semibold">{{ book.author || 'Original Edition'
 								}}</strong>
 						</p>
 					</div>
 
-					<!-- Format Choice -->
-					<div class="space-y-2.5 pt-3 border-t border-ink-border">
-						<label class="text-xs font-bold uppercase text-forest-950 tracking-wider block font-sans">
+					<!-- Format Choice (Apple Grouped Style with Brand Orange Highlights) -->
+					<div class="space-y-2.5 pt-3 border-t border-slate-200/80">
+						<label class="text-xs font-bold uppercase text-[#141E1A] tracking-wider block font-sans">
 							Choose Reading Format:
 						</label>
 
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
 							<label v-for="fmt in displayFormats" :key="fmt.id"
-								class="border rounded p-3 flex flex-col justify-between cursor-pointer transition-all text-left"
-								:class="selectedFormatId === fmt.id ? 'border-emerald-600 bg-emerald-50/60 ring-1 ring-emerald-600' : 'border-ink-border hover:border-slate-300 bg-paper-surface'">
+								class="border rounded-xl p-3 flex flex-col justify-between cursor-pointer transition-all text-left select-none"
+								:class="selectedFormatId === fmt.id
+                  ? 'border-[#E8750D] bg-[#FFF7ED] ring-1 ring-[#E8750D]/30 shadow-xs'
+                  : 'border-slate-200 hover:border-slate-300 bg-white'">
 								<input type="radio" :value="fmt.id" v-model="selectedFormatId" class="sr-only" />
 
 								<div class="space-y-1">
 									<div
-										class="flex justify-between items-center text-xs font-bold text-forest-950 uppercase">
+										class="flex justify-between items-center text-xs font-bold text-[#141E1A] uppercase">
 										<span>{{ fmt.format === 'hardcopy' ? 'Hardcopy' : fmt.format.toUpperCase()
 											}}</span>
-										<component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="12"
-											class="text-emerald-700" />
+										<component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="13"
+											:class="selectedFormatId === fmt.id ? 'text-[#C25E00]' : 'text-slate-400'" />
 									</div>
-									<span class="text-[9px] text-ink-muted block leading-tight font-mono">
+									<span class="text-[9.5px] text-[#5F6964] block leading-tight font-mono">
 										<template v-if="fmt.format === 'hardcopy'">
 											{{ `${fmt.stock || 0} in stock` }}
 										</template>
@@ -371,12 +350,13 @@ function handleAddToCart(): void {
 								</div>
 
 								<div
-									class="pt-2 mt-2 border-t border-ink-border/50 flex items-center justify-between gap-1 font-mono text-xs">
-									<span class="font-extrabold text-forest-950">
+									class="pt-2 mt-2 border-t border-slate-200/60 flex items-center justify-between gap-1 font-mono text-xs">
+									<span class="font-extrabold"
+										:class="selectedFormatId === fmt.id ? 'text-[#B84A00]' : 'text-[#141E1A]'">
 										{{ formatCurrency(fmt.price) }}
 									</span>
 									<span v-if="fmt.compare_at_price && fmt.compare_at_price > fmt.price"
-										class="text-[10px] text-ink-muted line-through opacity-70">
+										class="text-[10px] text-slate-400 line-through opacity-70">
 										{{ formatCurrency(fmt.compare_at_price) }}
 									</span>
 								</div>
@@ -384,30 +364,34 @@ function handleAddToCart(): void {
 						</div>
 					</div>
 
-					<!-- Quantity & Purchase Action -->
+					<!-- Quantity & Purchase Action with Instant In-Place Feedback -->
 					<div class="pt-3 flex items-center gap-3">
 						<div v-if="isPhysicalHardcopy" class="space-y-1">
-							<span class="text-[9px] font-bold text-ink-subtle uppercase block font-mono">Qty</span>
+							<span class="text-[9px] font-bold text-[#5F6964] uppercase block font-mono">Qty</span>
 							<QuantityStepper v-model="quantity" />
 						</div>
 
 						<button type="button"
-							class="flex-1 bg-forest-950 hover:bg-forest-900 text-white font-sans font-bold text-xs uppercase py-3.5 px-5 rounded shadow-subtle transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98]"
+							class="flex-1 font-sans font-bold text-xs uppercase py-3.5 px-6 rounded-xl shadow-medium hover:shadow-high transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98]"
+							:class="isRecentlyAdded
+                ? 'bg-emerald-600 text-white'
+                : 'bg-gradient-to-b from-[#F07514] via-[#E86C0E] to-[#D85F06] hover:from-[#E86C0E] hover:to-[#C85202] text-white'"
 							@click="handleAddToCart">
-							<ShoppingBag :size="15" />
+							<Check v-if="isRecentlyAdded" :size="16" class="stroke-[3]" />
+							<ShoppingBag v-else :size="15" />
 							<span>{{ addToCartButtonLabel }}</span>
 						</button>
 					</div>
 
-					<!-- Dynamic Notice -->
-					<div class="flex items-center gap-2 text-xs text-forest-900 pt-1">
+					<!-- Dynamic Reassurance Notice -->
+					<div class="flex items-center gap-2 text-xs text-[#5F6964] pt-1">
 						<CheckCircle2 :size="14" class="text-emerald-700 flex-shrink-0" />
 						<span>{{ formatNoticeText }}</span>
 					</div>
 
 					<!-- Description -->
 					<div v-if="book.description"
-						class="pt-4 border-t border-ink-border space-y-1.5 text-xs text-ink-muted leading-relaxed"
+						class="pt-4 border-t border-slate-200/80 space-y-1.5 text-xs text-[#5F6964] leading-relaxed"
 						v-html="book.description" />
 				</div>
 			</div>

@@ -1,7 +1,7 @@
 <!-- components/storefront/BookCard.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { ShoppingCart, Plus, Star, Zap, Flame, Tag, Clock } from 'lucide-vue-next';
+import { ShoppingCart, Plus, Check, Star, Zap, Flame, Tag, Clock } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat, BookFormatType } from '~/types';
@@ -19,13 +19,15 @@ const emit = defineEmits<{
   requestSeed: [title: string, author?: string];
 }>();
 
-const { addItem, openDrawer } = useCart();
+const { addItem } = useCart();
 const { push: pushToast } = useToast();
 
 const imageFailed = ref(false);
 const selectedFormatId = ref<string>('');
+const isRecentlyAdded = ref(false);
+let addedTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Deterministic rating between 4.0 and 5.0 (used in full mode)
+// Rating between 4.0 and 5.0
 const bookRating = computed(() => {
   const str = props.book.id || props.book.name || 'book';
   let hash = 0;
@@ -257,19 +259,24 @@ function handleAddToCart(event: Event): void {
     author: props.book.author,
   });
 
+  // Tactile in-place feedback without opening the cart drawer
+  isRecentlyAdded.value = true;
+  if (addedTimer) clearTimeout(addedTimer);
+  addedTimer = setTimeout(() => {
+    isRecentlyAdded.value = false;
+  }, 1400);
+
   pushToast({
     message: `Added "${props.book.name}" to cart`,
     variant: 'success',
   });
-
-  openDrawer();
 }
 </script>
 
 <template>
 	<!-- COMPACT CARD WITH 3D COVER & RED DISCOUNT MEDALLION (Flash Sale & Deals Strips) -->
 	<div v-if="compact"
-		class="w-full h-full bg-white text-theme-ink rounded-xl p-2 sm:p-2.5 shadow-subtle hover:shadow-card hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group select-none text-left border border-slate-200/80 relative">
+		class="w-full h-full bg-white text-[#141E1A] rounded-xl p-2 sm:p-2.5 shadow-subtle hover:shadow-card hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group select-none text-left border border-slate-200/80 relative">
 		<div class="flex flex-col flex-1">
 			<!-- 3D Book Stage (Scaled Down for Sleek Thin Strip) -->
 			<div
@@ -283,10 +290,10 @@ function handleAddToCart(event: Event): void {
 
 					<div class="sunrise-3d-front bg-stone-100">
 						<div v-if="imageFailed || !coverImage"
-							class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none">
+							class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-[#141E1A] to-[#242D28] text-white text-left select-none">
 							<div class="space-y-0.5">
 								<span
-									class="text-[8px] font-mono uppercase tracking-wider text-theme-turquoise font-bold block truncate">
+									class="text-[8px] font-mono uppercase tracking-wider text-[#FFD29D] font-bold block truncate">
 									{{ book.category_name || 'Book' }}
 								</span>
 								<h4 class="font-display font-bold text-[10.5px] leading-tight line-clamp-2 text-white">
@@ -308,7 +315,7 @@ function handleAddToCart(event: Event): void {
 					</div>
 
 					<span v-if="badgeInfo"
-						class="absolute top-1 left-1.5 bg-[#052219]/95 text-theme-turquoise font-mono font-bold text-[8px] px-1 py-0.2 rounded uppercase z-20 flex items-center gap-0.5 shadow-xs border border-theme-turquoise/20 pointer-events-none">
+						class="absolute top-1 left-1.5 bg-[#141E1A]/95 text-[#FFD29D] font-mono font-bold text-[8px] px-1 py-0.2 rounded uppercase z-20 flex items-center gap-0.5 shadow-xs border border-white/10 pointer-events-none">
 						<component :is="badgeInfo.icon" :size="7.5" />
 						{{ badgeInfo.label }}
 					</span>
@@ -331,19 +338,19 @@ function handleAddToCart(event: Event): void {
 
 			<!-- Title -->
 			<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block mt-0.5" @click="handleCardClick">
-				<h3 class="font-display text-[11px] sm:text-xs font-bold text-theme-ink group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug"
+				<h3 class="font-display text-[11px] sm:text-xs font-bold text-[#141E1A] group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug"
 					:title="book.name">
 					{{ book.name }}
 				</h3>
 			</NuxtLink>
 
 			<!-- Author -->
-			<p class="text-[10px] sm:text-[10.5px] text-theme-muted italic truncate mt-0.5 leading-tight">
+			<p class="text-[10px] sm:text-[10.5px] text-[#5F6964] italic truncate mt-0.5 leading-tight">
 				{{ displayAuthor }}
 			</p>
 		</div>
 
-		<!-- Bottom Row: Prices & Compact Cart Action -->
+		<!-- Bottom Row: Prices & Compact Cart Action with In-Place Feedback -->
 		<div class="pt-1.5 mt-1.5 border-t border-slate-100 flex items-center justify-between gap-1.5">
 			<div class="flex items-baseline gap-1 min-w-0">
 				<span v-if="originalPrice && originalPrice > currentPrice"
@@ -351,23 +358,28 @@ function handleAddToCart(event: Event): void {
 					{{ formatCurrency(originalPrice) }}
 				</span>
 				<span
-					class="text-xs sm:text-[13px] font-black font-mono leading-tight text-theme-ink tracking-tight flex-shrink-0">
+					class="text-xs sm:text-[13px] font-black font-mono leading-tight text-[#141E1A] tracking-tight flex-shrink-0">
 					{{ formatCurrency(currentPrice) }}
 				</span>
 			</div>
 
-			<!-- Compact 32px Action Button -->
+			<!-- Compact 32px Action Button with Instant Feedback -->
 			<button type="button"
-				class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 hover:bg-[#E8750D] hover:text-white active:scale-95 text-slate-800 flex items-center justify-center transition-all cursor-pointer shadow-2xs shrink-0"
-				title="Add to cart" aria-label="Add to cart" @click="handleAddToCart">
-				<Plus :size="15" class="stroke-[2.5]" />
+				class="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
+				:class="isRecentlyAdded
+          ? 'bg-emerald-600 text-white'
+          : 'bg-slate-100 hover:bg-[#E8750D] hover:text-white text-slate-800'"
+				:title="isRecentlyAdded ? 'Added to cart' : 'Add to cart'"
+				:aria-label="isRecentlyAdded ? 'Added to cart' : 'Add to cart'" @click="handleAddToCart">
+				<Check v-if="isRecentlyAdded" :size="14" class="stroke-[3]" />
+				<Plus v-else :size="15" class="stroke-[2.5]" />
 			</button>
 		</div>
 	</div>
 
 	<!-- FULL CARD (Main Catalog Archive) -->
 	<div v-else
-		class="w-full h-full bg-white text-theme-ink rounded-2xl p-2.5 sm:p-3 shadow-card hover:shadow-xl hover:-translate-y-1 hover:border-[#E8750D]/60 transition-all duration-200 flex flex-col justify-between group select-none text-left border border-theme-border relative">
+		class="w-full h-full bg-white text-[#141E1A] rounded-2xl p-2.5 sm:p-3 shadow-card hover:shadow-xl hover:-translate-y-1 hover:border-[#E8750D]/60 transition-all duration-200 flex flex-col justify-between group select-none text-left border border-slate-200/80 relative">
 		<div class="flex flex-col flex-1">
 			<div
 				class="sunrise-book-stage relative mb-2 w-full aspect-[1/1.18] max-h-[210px] rounded-xl flex items-center justify-center p-2">
@@ -380,10 +392,10 @@ function handleAddToCart(event: Event): void {
 
 					<div class="sunrise-3d-front bg-stone-100">
 						<div v-if="imageFailed || !coverImage"
-							class="w-full h-full flex flex-col justify-between p-2.5 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none">
+							class="w-full h-full flex flex-col justify-between p-2.5 bg-gradient-to-br from-[#141E1A] to-[#242D28] text-white text-left select-none">
 							<div class="space-y-0.5">
 								<span
-									class="text-[9.5px] font-mono uppercase tracking-widest text-theme-turquoise font-bold block truncate">
+									class="text-[9.5px] font-mono uppercase tracking-widest text-[#FFD29D] font-bold block truncate">
 									{{ book.category_name || 'Book' }}
 								</span>
 								<h4
@@ -406,7 +418,7 @@ function handleAddToCart(event: Event): void {
 					</div>
 
 					<span v-if="badgeInfo"
-						class="absolute top-1.5 left-2 bg-[#052219]/95 text-theme-turquoise font-mono font-bold text-[9px] px-1.5 py-0.5 rounded uppercase z-20 flex items-center gap-1 shadow-xs border border-theme-turquoise/20 pointer-events-none">
+						class="absolute top-1.5 left-2 bg-[#141E1A]/95 text-[#FFD29D] font-mono font-bold text-[9px] px-1.5 py-0.5 rounded uppercase z-20 flex items-center gap-1 shadow-xs border border-white/10 pointer-events-none">
 						<component :is="badgeInfo.icon" :size="9" />
 						{{ badgeInfo.label }}
 					</span>
@@ -428,13 +440,13 @@ function handleAddToCart(event: Event): void {
 			</div>
 
 			<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
-				<h3 class="font-display text-sm sm:text-base font-bold text-theme-ink group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug"
+				<h3 class="font-display text-sm sm:text-base font-bold text-[#141E1A] group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug"
 					:title="book.name">
 					{{ book.name }}
 				</h3>
 			</NuxtLink>
 
-			<p class="text-xs text-theme-muted italic truncate mt-0.5">
+			<p class="text-xs text-[#5F6964] italic truncate mt-0.5">
 				{{ displayAuthor }}
 			</p>
 
@@ -451,6 +463,7 @@ function handleAddToCart(event: Event): void {
 				</span>
 			</div>
 
+			<!-- Format Selection -->
 			<div class="mt-2 space-y-1" role="radiogroup" aria-label="Reading format selection">
 				<template v-if="availableFormats.length > 1">
 					<button v-for="fmt in availableFormats" :key="fmt.id" type="button" role="radio"
@@ -478,22 +491,29 @@ function handleAddToCart(event: Event): void {
 			</div>
 		</div>
 
-		<div class="pt-2 mt-2 border-t border-theme-border flex flex-col gap-1.5">
+		<!-- Bottom Action Row with In-Place Added Feedback -->
+		<div class="pt-2 mt-2 border-t border-slate-200/80 flex flex-col gap-1.5">
 			<div class="flex items-baseline gap-1.5">
 				<span v-if="originalPrice && originalPrice > currentPrice"
 					class="text-xs sm:text-sm text-slate-400 line-through decoration-slate-400 decoration-1 font-mono font-bold leading-none">
 					{{ formatCurrency(originalPrice) }}
 				</span>
-				<span class="text-base sm:text-lg font-black font-mono leading-tight text-theme-ink tracking-tight">
+				<span class="text-base sm:text-lg font-black font-mono leading-tight text-[#141E1A] tracking-tight">
 					{{ formatCurrency(currentPrice) }}
 				</span>
 			</div>
 
 			<button type="button"
-				class="w-full flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-b from-[#F07514] via-[#E86C0E] to-[#D85F06] hover:from-[#E86C0E] hover:via-[#DE6007] hover:to-[#C85202] active:from-[#C85202] active:to-[#B24400] text-white font-bold text-xs sm:text-sm py-2 sm:py-2.5 transition-all duration-200 cursor-pointer active:scale-95 shadow-xs hover:shadow border-t border-white/20 focus-visible:outline-2 focus-visible:outline-[#E8750D]"
+				class="w-full flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs sm:text-sm py-2 sm:py-2.5 transition-all duration-200 cursor-pointer active:scale-95 shadow-xs hover:shadow border-t border-white/20"
+				:class="isRecentlyAdded
+          ? 'bg-emerald-600 text-white'
+          : 'bg-gradient-to-b from-[#F07514] via-[#E86C0E] to-[#D85F06] hover:from-[#E86C0E] hover:to-[#C85202] text-white'"
 				@click="handleAddToCart">
-				<ShoppingCart :size="15" fill="currentColor" class="transition-transform group-hover:scale-105" />
-				<span>{{ book.isSeed ? 'Request' : 'Add' }}</span>
+				<Check v-if="isRecentlyAdded" :size="16" class="stroke-[3]" />
+				<ShoppingCart v-else :size="15" fill="currentColor"
+					class="transition-transform group-hover:scale-105" />
+				<span>{{ isRecentlyAdded ? 'Added to Cart âœ“' : (book.isSeed ? 'Request Book' : 'Add to Cart')
+					}}</span>
 			</button>
 		</div>
 	</div>

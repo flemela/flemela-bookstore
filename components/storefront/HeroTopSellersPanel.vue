@@ -44,10 +44,10 @@ function resolveSellingPrice(book: Book): number {
 
 <template>
 	<aside
-		class="w-full h-full rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-md p-3 sm:p-3.5 bg-white text-theme-ink flex flex-col justify-between overflow-hidden select-none"
+		class="w-full h-full rounded-2xl md:rounded-3xl border border-black/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.06)] p-3 sm:p-3.5 bg-white text-theme-ink flex flex-col justify-between overflow-hidden select-none"
 		aria-label="Top Selling Books Spotlight">
-		<!-- Panel Header -->
-		<div class="flex items-center justify-between pb-2 border-b border-slate-100 flex-shrink-0">
+		<!-- Panel Header: Inset Hairline -->
+		<div class="flex items-center justify-between pb-2 border-b border-black/[0.05] flex-shrink-0">
 			<div class="flex items-center gap-1.5 min-w-0">
 				<div
 					class="w-5.5 h-5.5 rounded-md bg-orange-100 text-[#E8750D] flex items-center justify-center flex-shrink-0">
@@ -68,10 +68,10 @@ function resolveSellingPrice(book: Book): number {
 		<!-- 4 Rows Proportionally Scaled to Fit 352px/368px Container -->
 		<div class="flex-1 flex flex-col justify-between py-1 space-y-1 min-h-0">
 			<NuxtLink v-for="book in displayBooks" :key="book.id" :to="`/book/${book.slug}`"
-				class="flex items-center gap-2 p-1 rounded-lg hover:bg-paper-cream/60 transition-colors group cursor-pointer flex-1 min-h-0">
+				class="flex items-center gap-2 p-1 rounded-lg hover:bg-black/[0.025] transition-colors group cursor-pointer flex-1 min-h-0">
 				<!-- Book Cover Art (Left) -->
 				<div
-					class="w-9 sm:w-10 h-full max-h-[62px] aspect-[3/4] rounded-md bg-paper-cream border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center shadow-2xs">
+					class="w-9 sm:w-10 h-full max-h-[62px] aspect-[3/4] rounded-md bg-paper-cream border border-black/[0.08] overflow-hidden flex-shrink-0 flex items-center justify-center shadow-2xs">
 					<img :src="resolveCoverUrl(book)" :alt="book.name"
 						class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
 						loading="lazy"
@@ -102,9 +102,9 @@ function resolveSellingPrice(book: Book): number {
 			</NuxtLink>
 		</div>
 
-		<!-- Panel Footer -->
+		<!-- Panel Footer: Inset Hairline -->
 		<div
-			class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[9.5px] font-mono text-ink-muted flex-shrink-0">
+			class="pt-1.5 border-t border-black/[0.05] flex items-center justify-between text-[9.5px] font-mono text-ink-muted flex-shrink-0">
 			<span class="flex items-center gap-1">
 				<Star :size="9" class="fill-amber-400 text-amber-400" />
 				<span class="font-bold">Verified Bestsellers</span>

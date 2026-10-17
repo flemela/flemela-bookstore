@@ -276,9 +276,9 @@ onUnmounted(() => {
 				<HeroLeftBanner :banner="heroLeftBanner" />
 			</div>
 
-			<!-- 2. CENTER STAGE: Hero Carousel (20% reduced height across all viewports) -->
+			<!-- 2. CENTER STAGE: Hero Carousel (Apple Hairline Rim & 20% Height Reduction) -->
 			<section
-				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-md border border-slate-200/20 h-[176px] sm:h-[224px] md:h-[272px] lg:h-[352px] xl:h-[368px]"
+				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.16)] border border-white/[0.10] h-[176px] sm:h-[224px] md:h-[272px] lg:h-[352px] xl:h-[368px]"
 				:class="centerCarouselSpanClass" aria-roledescription="carousel"
 				aria-label="Promotions and Announcements" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave"
 				@focusin="handleMouseEnter" @focusout="handleMouseLeave">

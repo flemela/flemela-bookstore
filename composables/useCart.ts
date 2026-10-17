@@ -68,7 +68,7 @@ export function useCart() {
       });
     }
 
-    isDrawerOpen.value = true;
+    // Drawer remains closed so the shopper can keep browsing uninterrupted
   }
 
   function updateQuantity(productId: string, formatId: string, quantity: number): void {

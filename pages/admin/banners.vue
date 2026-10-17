@@ -126,7 +126,7 @@ async function handleSaveTicker(): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// 2. Hero Left Flank Banner State
+// 2. Hero Left Flank Banner State (Fixed Direct Cloudflare R2 Upload)
 // -----------------------------------------------------------------------------
 const leftBanner = ref<StoreHeroLeftBanner>({
   is_active: false,
@@ -148,6 +148,7 @@ async function loadLeftBanner(): Promise<void> {
   }
 }
 
+// Direct Presigned Cloudflare R2 Upload Flow (Zero Multipart Proxy Corruption)
 async function handleUploadLeftImage(event: Event): Promise<void> {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
@@ -155,20 +156,42 @@ async function handleUploadLeftImage(event: Event): Promise<void> {
 
   isUploadingLeftImage.value = true;
   try {
-    const formData = new FormData();
-    formData.append('file', file);
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const mime = file.type || (ext === 'png' ? 'image/png' : 'image/jpeg');
 
-    const res = await $fetch<{ url: string }>('/api/admin/banners/upload', {
-      method: 'POST',
-      body: formData,
+    // 1. Acquire direct presigned upload slot
+    const slot = await $fetch<{ uploadUrl: string; publicUrl: string; key: string }>(
+      '/api/admin/upload-signature',
+      {
+        method: 'POST',
+        body: {
+          target: 'banners',
+          filename: file.name,
+          contentType: mime,
+        },
+      }
+    );
+
+    if (!slot?.uploadUrl || !slot?.publicUrl) {
+      throw new Error('Could not acquire Cloudflare R2 upload authorization slot');
+    }
+
+    // 2. Direct binary PUT straight from browser to R2 bucket
+    const putRes = await fetch(slot.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': mime },
+      body: file,
     });
 
-    if (res?.url) {
-      leftBanner.value.image_url = res.url;
-      pushToast({ message: 'Left flank banner uploaded to Cloudflare R2!', variant: 'success' });
+    if (!putRes.ok) {
+      throw new Error(`Cloudflare R2 storage upload rejected with HTTP ${putRes.status}`);
     }
+
+    // 3. Immediately assign the verified public CDN URL
+    leftBanner.value.image_url = slot.publicUrl;
+    pushToast({ message: 'Left flank poster uploaded directly to Cloudflare R2!', variant: 'success' });
   } catch (err: any) {
-    pushToast({ message: err.data?.statusMessage || err.message || 'Image upload failed', variant: 'error' });
+    pushToast({ message: err.data?.message || err.message || 'Image upload failed', variant: 'error' });
   } finally {
     isUploadingLeftImage.value = false;
     target.value = '';
@@ -188,7 +211,7 @@ async function handleSaveLeftBanner(): Promise<void> {
       },
     });
     leftBanner.value = res;
-    pushToast({ message: 'Hero Left Flank banner updated!', variant: 'success' });
+    pushToast({ message: 'Hero Left Flank poster updated!', variant: 'success' });
   } catch (err: any) {
     pushToast({
       message: err.data?.statusMessage || err.statusMessage || 'Failed to save left banner',
@@ -242,7 +265,7 @@ async function handleSaveHeroNotes(updated: StoreHeroNotes): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// 4. Hero Carousel Banners Modal & State
+// 4. Hero Carousel Banners Modal & State (Direct R2 Upload)
 // -----------------------------------------------------------------------------
 const showModal = ref(false);
 const editingBannerId = ref<string | null>(null);
@@ -302,6 +325,7 @@ function openEditModal(banner: StoreBanner): void {
   showModal.value = true;
 }
 
+// Direct R2 Presigned Upload for Carousel Desktop & Mobile Slides
 async function handleImageUpload(event: Event, targetField: 'image_url' | 'mobile_image_url'): Promise<void> {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
@@ -311,23 +335,38 @@ async function handleImageUpload(event: Event, targetField: 'image_url' | 'mobil
   else isUploadingMobile.value = true;
 
   try {
-    const formData = new FormData();
-    formData.append('file', file);
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const mime = file.type || (ext === 'png' ? 'image/png' : 'image/jpeg');
 
-    const res = await $fetch<{ url: string }>('/api/admin/banners/upload', {
-      method: 'POST',
-      body: formData,
+    const slot = await $fetch<{ uploadUrl: string; publicUrl: string; key: string }>(
+      '/api/admin/upload-signature',
+      {
+        method: 'POST',
+        body: {
+          target: 'banners',
+          filename: file.name,
+          contentType: mime,
+        },
+      }
+    );
+
+    const putRes = await fetch(slot.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': mime },
+      body: file,
     });
 
-    if (res?.url) {
-      form.value[targetField] = res.url;
-      pushToast({
-        message: `${targetField === 'image_url' ? 'Desktop' : 'Mobile'} banner uploaded to Cloudflare R2!`,
-        variant: 'success',
-      });
+    if (!putRes.ok) {
+      throw new Error(`Cloudflare R2 upload rejected with HTTP ${putRes.status}`);
     }
+
+    form.value[targetField] = slot.publicUrl;
+    pushToast({
+      message: `${targetField === 'image_url' ? 'Desktop' : 'Mobile'} slide uploaded to Cloudflare R2!`,
+      variant: 'success',
+    });
   } catch (err: any) {
-    const message = err.data?.statusMessage || err.message || 'Image upload failed.';
+    const message = err.data?.message || err.message || 'Image upload failed.';
     pushToast({ message, variant: 'error' });
   } finally {
     if (targetField === 'image_url') isUploadingDesktop.value = false;
@@ -449,10 +488,10 @@ onMounted(() => {
 				<div>
 					<span
 						class="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-gold-600 font-bold block">
-						Merchandising & Announcements
+						Merchandising &amp; Announcements
 					</span>
 					<h1 class="font-display text-2xl sm:text-3xl font-bold text-forest-950">
-						Promotions & Announcements
+						Promotions &amp; Announcements
 					</h1>
 					<p class="text-xs text-ink-muted mt-0.5">
 						Configure the gold announcement ribbon, hero carousel slides, left flank poster, and right-side
@@ -553,7 +592,7 @@ onMounted(() => {
 
 							<div class="flex-1 w-full space-y-1">
 								<input v-model="item.text" type="text"
-									placeholder="e.g. ⚡ FREE DELIVERY across Nairobi on orders above KSh 2,500"
+									placeholder="e.g. âš¡ FREE DELIVERY across Nairobi on orders above KSh 2,500"
 									class="w-full px-3 py-2 bg-white border border-paper-border rounded-xl text-xs font-semibold outline-none focus:border-forest-900 text-forest-950"
 									maxlength="200" />
 							</div>
@@ -591,7 +630,6 @@ onMounted(() => {
 					</div>
 				</div>
 			</div>
-
 			<!-- TAB 2: HERO CAROUSEL BANNERS -->
 			<div v-else-if="activeTab === 'banners'" class="space-y-6 animate-in fade-in duration-200">
 				<div class="flex justify-end gap-2.5">
@@ -622,7 +660,7 @@ onMounted(() => {
 						</div>
 						<h3 class="font-display font-bold text-sm text-forest-950">No Promotional Banners Yet</h3>
 						<p class="text-xs text-ink-muted max-w-sm mx-auto">
-							Upload 4:1 banner graphics directly to Cloudflare R2.
+							Upload banner graphics directly to Cloudflare R2 public storage.
 						</p>
 						<button type="button"
 							class="bg-forest-950 text-paper text-xs font-bold px-4 py-2 rounded-xl cursor-pointer"
@@ -705,7 +743,7 @@ onMounted(() => {
 					</div>
 				</div>
 			</div>
-			<!-- TAB 3: HERO LEFT FLANK POSTER (NEW FEATURE) -->
+			<!-- TAB 3: HERO LEFT FLANK POSTER (Fixed Direct R2 Upload & Apple Styling) -->
 			<div v-else-if="activeTab === 'left-flank'" class="space-y-6 animate-in fade-in duration-200">
 				<div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft p-6 sm:p-7 space-y-6">
 					<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-paper-border">
@@ -746,19 +784,20 @@ onMounted(() => {
 
 							<div class="space-y-1.5 pt-1">
 								<div class="flex justify-between items-baseline">
-									<label class="text-xs font-bold text-forest-950">Poster Image (Cloudflare
-										R2)</label>
+									<label class="text-xs font-bold text-forest-950">Poster Image (Cloudflare R2 Direct
+										Upload)</label>
 									<span class="text-[10px] text-gold-600 font-mono font-bold uppercase">
-										Aspect: ~3:4 or Portrait Poster
+										Aspect: ~3:4 Portrait Poster
 									</span>
 								</div>
 
 								<div class="flex gap-2 items-center">
 									<input v-model="leftBanner.image_url" type="text" placeholder="https://..."
-										class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900" />
+										class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 font-mono" />
 									<label
-										class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0">
-										<Upload :size="13" />
+										class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1.5 cursor-pointer flex-shrink-0 transition-colors shadow-2xs">
+										<RefreshCw v-if="isUploadingLeftImage" :size="13" class="animate-spin" />
+										<Upload v-else :size="13" />
 										<span>{{ isUploadingLeftImage ? 'Uploading...' : 'Upload' }}</span>
 										<input type="file" accept="image/*" class="hidden"
 											:disabled="isUploadingLeftImage" @change="handleUploadLeftImage" />
@@ -777,14 +816,14 @@ onMounted(() => {
 							</div>
 						</div>
 
-						<!-- Live Card Preview (5 cols) -->
+						<!-- Apple-Styled Card Preview (5 cols) -->
 						<div class="sm:col-span-5 space-y-2">
 							<span class="text-[10px] uppercase font-mono font-bold text-ink-muted tracking-wider block">
 								Live Poster Preview (Desktop 1fr)
 							</span>
 
 							<div
-								class="relative w-full aspect-[3/4] max-h-[380px] rounded-2xl overflow-hidden border border-paper-border bg-forest-950 flex items-center justify-center shadow-md">
+								class="relative w-full aspect-[3/4] max-h-[352px] rounded-2xl overflow-hidden border border-white/[0.12] bg-forest-950 flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.14)]">
 								<img v-if="leftBanner.image_url" :src="leftBanner.image_url" :alt="leftBanner.title"
 									class="w-full h-full object-cover" />
 								<div v-else class="text-center p-4 text-white/50 space-y-1">
@@ -793,13 +832,23 @@ onMounted(() => {
 								</div>
 
 								<div
-									class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
-								<div class="absolute bottom-3 left-3 right-3 text-white">
-									<p class="text-xs font-bold line-clamp-1 drop-shadow-sm">{{ leftBanner.title ||
-										'Special Promotion' }}</p>
+									class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/5 pointer-events-none" />
+
+								<!-- Apple-Styled Frosted Pill Badge -->
+								<div class="absolute top-3.5 left-3.5 z-10">
 									<span
-										class="text-[9px] font-mono text-gold-300 uppercase tracking-widest font-bold">Featured
-										Spotlight</span>
+										class="backdrop-blur-md bg-black/45 text-white/95 border border-white/20 text-[9px] font-mono font-bold uppercase px-3 py-1 rounded-full shadow-xs tracking-wider">
+										Featured Spotlight
+									</span>
+								</div>
+
+								<div class="absolute bottom-3 left-3 right-3 text-white space-y-1">
+									<p class="text-xs font-bold line-clamp-1 drop-shadow-sm leading-tight">
+										{{ leftBanner.title || 'Special Promotion' }}
+									</p>
+									<span class="text-[10px] font-mono text-gold-300 font-bold block">
+										Explore Collection â†’
+									</span>
 								</div>
 							</div>
 						</div>
@@ -845,11 +894,12 @@ onMounted(() => {
 
 							<div class="flex gap-2 items-center">
 								<input v-model="form.image_url" type="text" placeholder="https://..."
-									class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900"
+									class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 font-mono"
 									required />
 								<label
-									class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0">
-									<Upload :size="13" />
+									class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0 transition-colors shadow-2xs">
+									<RefreshCw v-if="isUploadingDesktop" :size="13" class="animate-spin" />
+									<Upload v-else :size="13" />
 									<span>{{ isUploadingDesktop ? 'Uploading...' : 'Upload' }}</span>
 									<input type="file" accept="image/*" class="hidden" :disabled="isUploadingDesktop"
 										@change="handleImageUpload($event, 'image_url')" />
@@ -878,10 +928,11 @@ onMounted(() => {
 
 							<div class="flex gap-2 items-center">
 								<input v-model="form.mobile_image_url" type="text" placeholder="https://..."
-									class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900" />
+									class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 font-mono" />
 								<label
-									class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0">
-									<Upload :size="13" />
+									class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1 cursor-pointer flex-shrink-0 transition-colors shadow-2xs">
+									<RefreshCw v-if="isUploadingMobile" :size="13" class="animate-spin" />
+									<Upload v-else :size="13" />
 									<span>{{ isUploadingMobile ? 'Uploading...' : 'Upload' }}</span>
 									<input type="file" accept="image/*" class="hidden" :disabled="isUploadingMobile"
 										@change="handleImageUpload($event, 'mobile_image_url')" />

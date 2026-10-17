@@ -104,8 +104,8 @@ function computeHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lo
 }
 
 const fullDeliveryAddress = computed(() => {
-  if (!hasPhysicalItems.value) return 'Instant Digital Delivery (eBook)';
-  if (deliveryType.value === 'pickup') return 'Store Pickup — Diamond Mall Hub, Parklands, Nairobi';
+  if (!hasPhysicalItems.value) return 'Instant digital delivery (eBook)';
+  if (deliveryType.value === 'pickup') return 'Store pickup — Diamond Mall Hub, Parklands, Nairobi';
 
   const parts = [
     estate.value.trim(),
@@ -113,7 +113,7 @@ const fullDeliveryAddress = computed(() => {
     houseNumber.value.trim() ? `House/Door: ${houseNumber.value.trim()}` : '',
   ].filter(Boolean);
 
-  return parts.join(' • ') || 'Nairobi Delivery';
+  return parts.join(' • ') || 'Nairobi delivery';
 });
 
 const isFormValid = computed(() => {
@@ -143,24 +143,24 @@ const totalToPay = computed(() => {
 
 const payOnDeliveryLabel = computed(() => {
   return deliveryType.value === 'delivery'
-    ? 'Pay on Delivery / Courier Handover'
-    : 'Pay at Store Pickup';
+    ? 'Pay on delivery / courier handover'
+    : 'Pay at store pickup';
 });
 
 const submitButtonLabel = computed(() => {
   if (paymentMethod.value === 'mpesa_manual') {
-    return `Complete Order • ${formatCurrency(totalToPay.value)}`;
+    return `Complete order • ${formatCurrency(totalToPay.value)}`;
   }
   if (paymentMethod.value === 'mpesa') {
     return `Pay ${formatCurrency(totalToPay.value)} via M-Pesa`;
   }
-  return `Confirm Order • ${formatCurrency(totalToPay.value)}`;
+  return `Confirm order • ${formatCurrency(totalToPay.value)}`;
 });
 
 function handleMapPinUpdate(coords: { lat: number; lng: number }): void {
   customerLat.value = coords.lat;
   customerLng.value = coords.lng;
-  if (!estate.value) estate.value = 'Pinned Map Location';
+  if (!estate.value) estate.value = 'Pinned map location';
 
   const distance = computeHaversineDistanceKm(HUB_COORDS.lat, HUB_COORDS.lng, coords.lat, coords.lng);
   if (distance > HUB_COORDS.maxRadiusKm) {
@@ -173,7 +173,6 @@ function handleMapPinUpdate(coords: { lat: number; lng: number }): void {
   }
 }
 
-// Customer Geolocation Trigger
 function handleUseCustomerLocation(): void {
   if (!process.client || !navigator.geolocation) {
     pushToast({ message: 'Geolocation is not supported by your browser.', variant: 'error' });
@@ -188,18 +187,18 @@ function handleUseCustomerLocation(): void {
       customerLat.value = latitude;
       customerLng.value = longitude;
       if (!estate.value.trim()) {
-        estate.value = `Current Location (±${Math.round(accuracy)}m GPS)`;
+        estate.value = `Current location (±${Math.round(accuracy)}m GPS)`;
       }
       handleMapPinUpdate({ lat: latitude, lng: longitude });
-      pushToast({ message: 'Pin set to your current device location!', variant: 'success' });
+      pushToast({ message: 'Pin set to your device location!', variant: 'success' });
     },
     (err) => {
       isLocatingCustomer.value = false;
-      let msg = 'Could not acquire your GPS location. Please tap the map directly.';
+      let msg = 'Could not acquire GPS position. Please tap the map directly.';
       if (err.code === err.PERMISSION_DENIED) {
-        msg = 'Location permission denied. Please enable GPS in your browser settings.';
+        msg = 'Location permission denied. Please allow location access in your browser.';
       } else if (err.code === err.TIMEOUT) {
-        msg = 'GPS request timed out. Please tap the map to drop your delivery pin.';
+        msg = 'GPS request timed out. Please tap the map to place your delivery pin.';
       }
       pushToast({ message: msg, variant: 'error' });
     },
@@ -216,7 +215,6 @@ async function handlePlaceOrder(): Promise<void> {
   try {
     const cleanPhone = normalizeKenyanPhone(customerPhone.value);
 
-    // Persist phone and email in session storage for verification
     if (process.client) {
       sessionStorage.setItem('flemela_last_checkout_phone', cleanPhone);
       if (customerEmail.value.trim()) {
@@ -274,7 +272,7 @@ async function handlePlaceOrder(): Promise<void> {
 </script>
 
 <template>
-	<div class="min-h-screen flex flex-col bg-paper-canvas text-ink antialiased">
+	<div class="min-h-screen flex flex-col bg-paper-canvas text-[#141E1A] antialiased font-sans">
 		<TopUtilityBar />
 		<BookstoreHeader />
 
@@ -282,10 +280,10 @@ async function handlePlaceOrder(): Promise<void> {
 			<!-- Top Navigation -->
 			<div class="flex items-center justify-between">
 				<NuxtLink to="/"
-					class="inline-flex items-center gap-1.5 text-xs font-semibold text-forest-900 hover:text-gold-600 transition-colors">
+					class="inline-flex items-center gap-1.5 text-xs font-semibold text-[#141E1A] hover:text-[#E8750D] transition-colors">
 					<ArrowLeft :size="14" /> Return to Catalog
 				</NuxtLink>
-				<span class="text-[11px] font-mono uppercase tracking-widest text-ink-muted">Secure Checkout</span>
+				<span class="text-[11px] font-mono uppercase tracking-widest text-[#5F6964]">Secure Checkout</span>
 			</div>
 
 			<div class="grid lg:grid-cols-12 gap-8 items-start">
@@ -294,38 +292,41 @@ async function handlePlaceOrder(): Promise<void> {
 
 					<!-- Pure Digital eBook Notice -->
 					<div v-if="hasDigitalItems && !hasPhysicalItems"
-						class="bg-emerald-50/80 border border-emerald-300/80 rounded-2xl p-4 flex items-center gap-3.5 text-xs text-emerald-950 shadow-soft">
+						class="bg-[#FFF7ED] border border-[#FFEDD5] rounded-2xl p-4 flex items-center gap-3.5 text-xs text-[#C25E00] shadow-soft">
 						<div
-							class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center flex-shrink-0">
+							class="w-9 h-9 rounded-full bg-[#FFEDD5] text-[#C25E00] flex items-center justify-center flex-shrink-0">
 							<Download :size="18" />
 						</div>
 						<div>
-							<strong class="font-semibold text-emerald-900 block">Instant Digital Delivery</strong>
-							<span class="text-emerald-950/80">
-								Your eBook download links are unlocked immediately upon payment approval.
+							<strong class="font-bold text-[#141E1A] block">Instant Digital Delivery</strong>
+							<span class="text-[#5F6964]">
+								Your eBook download links are unlocked immediately upon payment confirmation.
 							</span>
 						</div>
 					</div>
 
 					<!-- Step 1: Customer Details -->
 					<section aria-labelledby="step-contact-heading"
-						class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-5">
-						<div class="flex items-center gap-3 pb-3.5 border-b border-paper-border">
+						class="bg-white rounded-2xl shadow-card border border-slate-200/80 p-6 sm:p-7 space-y-5">
+						<div class="flex items-center gap-3 pb-3.5 border-b border-slate-100">
 							<span
-								class="w-6 h-6 rounded-full bg-forest-950 text-gold-300 text-xs font-mono font-bold flex items-center justify-center shadow-xs">1</span>
+								class="w-6 h-6 rounded-full bg-[#141E1A] text-white text-xs font-mono font-bold flex items-center justify-center shadow-xs">
+								1
+							</span>
 							<h2 id="step-contact-heading"
-								class="font-display text-base sm:text-lg font-bold text-forest-950">Reader &amp; Contact
-								Details</h2>
+								class="font-display text-base sm:text-lg font-bold text-[#141E1A]">
+								Reader &amp; Contact Details
+							</h2>
 						</div>
 
 						<div class="space-y-4">
 							<!-- Full Name -->
 							<div class="space-y-1.5">
-								<label class="text-xs font-semibold text-forest-950">Full Name *</label>
+								<label class="text-xs font-semibold text-[#141E1A]">Full Name *</label>
 								<div class="relative flex items-center">
-									<User :size="15" class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+									<User :size="15" class="absolute left-3.5 text-slate-400 pointer-events-none" />
 									<input v-model="customerName" type="text" placeholder="e.g. Amani Wanjiku"
-										class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 transition-all text-forest-950 placeholder:text-ink-subtle"
+										class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-[#E8750D] focus:ring-2 focus:ring-[#E8750D]/10 transition-all text-[#141E1A] placeholder:text-slate-400"
 										required />
 								</div>
 							</div>
@@ -333,12 +334,12 @@ async function handlePlaceOrder(): Promise<void> {
 							<!-- Phone & Email -->
 							<div class="grid sm:grid-cols-2 gap-4">
 								<div class="space-y-1.5">
-									<label class="text-xs font-semibold text-forest-950">M-Pesa Phone Number *</label>
+									<label class="text-xs font-semibold text-[#141E1A]">M-Pesa Phone Number *</label>
 									<div class="relative flex items-center">
 										<Phone :size="15"
-											class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+											class="absolute left-3.5 text-slate-400 pointer-events-none" />
 										<input v-model="customerPhone" type="tel" placeholder="07XXXXXXXX"
-											class="w-full pl-10 pr-20 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 font-mono text-forest-950 transition-all placeholder:text-ink-subtle"
+											class="w-full pl-10 pr-20 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-[#E8750D] focus:ring-2 focus:ring-[#E8750D]/10 font-mono text-[#141E1A] transition-all placeholder:text-slate-400"
 											required />
 										<span v-if="detectedCarrier"
 											class="absolute right-2.5 text-[9px] font-mono font-extrabold uppercase px-1.5 py-0.5 rounded-md tracking-wider"
@@ -353,13 +354,12 @@ async function handlePlaceOrder(): Promise<void> {
 								</div>
 
 								<div class="space-y-1.5">
-									<label class="text-xs font-semibold text-forest-950">Email Address (For eBook
+									<label class="text-xs font-semibold text-[#141E1A]">Email Address (For eBook
 										Delivery)</label>
 									<div class="relative flex items-center">
-										<Mail :size="15"
-											class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+										<Mail :size="15" class="absolute left-3.5 text-slate-400 pointer-events-none" />
 										<input v-model="customerEmail" type="email" placeholder="name@email.com"
-											class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 transition-all text-forest-950 placeholder:text-ink-subtle" />
+											class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-[#E8750D] focus:ring-2 focus:ring-[#E8750D]/10 transition-all text-[#141E1A] placeholder:text-slate-400" />
 									</div>
 								</div>
 							</div>
@@ -368,43 +368,45 @@ async function handlePlaceOrder(): Promise<void> {
 
 					<!-- Step 2: Physical Delivery with GPS Pin -->
 					<section v-if="hasPhysicalItems" aria-labelledby="step-fulfillment-heading"
-						class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-5">
-						<div class="flex items-center gap-3 pb-3.5 border-b border-paper-border">
+						class="bg-white rounded-2xl shadow-card border border-slate-200/80 p-6 sm:p-7 space-y-5">
+						<div class="flex items-center gap-3 pb-3.5 border-b border-slate-100">
 							<span
-								class="w-6 h-6 rounded-full bg-forest-950 text-gold-300 text-xs font-mono font-bold flex items-center justify-center shadow-xs">2</span>
+								class="w-6 h-6 rounded-full bg-[#141E1A] text-white text-xs font-mono font-bold flex items-center justify-center shadow-xs">
+								2
+							</span>
 							<h2 id="step-fulfillment-heading"
-								class="font-display text-base sm:text-lg font-bold text-forest-950">Fulfillment &amp;
-								Delivery Destination</h2>
+								class="font-display text-base sm:text-lg font-bold text-[#141E1A]">
+								Fulfillment &amp; Delivery Destination
+							</h2>
 						</div>
 
 						<DeliveryTypeStep v-model="deliveryType" />
 
 						<div v-if="deliveryType === 'delivery'" class="space-y-4 pt-2">
 							<div class="space-y-1.5">
-								<label class="text-xs font-semibold text-forest-950">Estate / Neighborhood *</label>
+								<label class="text-xs font-semibold text-[#141E1A]">Estate / Neighborhood *</label>
 								<div class="relative flex items-center">
-									<MapPin :size="15" class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+									<MapPin :size="15" class="absolute left-3.5 text-slate-400 pointer-events-none" />
 									<input v-model="estate" type="text"
 										placeholder="e.g. Parklands, Kilimani, Westlands, South C, Roysambu"
-										class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 focus:ring-2 focus:ring-forest-900/5 transition-all text-forest-950 placeholder:text-ink-subtle"
+										class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-[#E8750D] focus:ring-2 focus:ring-[#E8750D]/10 transition-all text-[#141E1A] placeholder:text-slate-400"
 										required />
 								</div>
 							</div>
 
-							<!-- Map Pin + "Use My Current Location" Action Row -->
+							<!-- Map Pin + Geolocation Button -->
 							<div class="space-y-2">
 								<div class="flex items-center justify-between gap-2 pb-1">
-									<label class="text-[11px] font-semibold text-ink-muted flex items-center gap-1.5">
-										<MapPin :size="12" class="text-emerald-700" />
-										<span>Drop-off Pin (Calculated from Diamond Mall):</span>
+									<label class="text-[11px] font-semibold text-[#5F6964] flex items-center gap-1.5">
+										<MapPin :size="12" class="text-[#E8750D]" />
+										<span>Drop-off Pin (Calculated from Diamond Mall Hub):</span>
 									</label>
 
-									<!-- Customer GPS Current Location Button -->
 									<button type="button"
-										class="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 flex-shrink-0"
+										class="px-3 py-1.5 rounded-xl bg-[#FFF7ED] hover:bg-[#FFEDD5] border border-[#FFEDD5] text-[#C25E00] text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 flex-shrink-0"
 										:disabled="isLocatingCustomer" @click="handleUseCustomerLocation">
 										<RefreshCw v-if="isLocatingCustomer" :size="12" class="animate-spin" />
-										<Navigation v-else :size="12" class="text-emerald-700" />
+										<Navigation v-else :size="12" class="text-[#E8750D]" />
 										<span>{{ isLocatingCustomer ? 'Locating...' : 'Use My Current Location'
 											}}</span>
 									</button>
@@ -417,23 +419,22 @@ async function handlePlaceOrder(): Promise<void> {
 							<!-- Building & Door Details -->
 							<div class="grid sm:grid-cols-2 gap-4">
 								<div class="space-y-1.5">
-									<label class="text-xs font-semibold text-forest-950">Building / Landmark</label>
+									<label class="text-xs font-semibold text-[#141E1A]">Building / Landmark</label>
 									<div class="relative flex items-center">
 										<Building :size="15"
-											class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+											class="absolute left-3.5 text-slate-400 pointer-events-none" />
 										<input v-model="landmark" type="text"
 											placeholder="e.g. Near Aga Khan, Chaka Place"
-											class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle" />
+											class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-[#E8750D] transition-all text-[#141E1A] placeholder:text-slate-400" />
 									</div>
 								</div>
 
 								<div class="space-y-1.5">
-									<label class="text-xs font-semibold text-forest-950">House / Apartment #</label>
+									<label class="text-xs font-semibold text-[#141E1A]">House / Apartment #</label>
 									<div class="relative flex items-center">
-										<Home :size="15"
-											class="absolute left-3.5 text-ink-subtle pointer-events-none" />
+										<Home :size="15" class="absolute left-3.5 text-slate-400 pointer-events-none" />
 										<input v-model="houseNumber" type="text" placeholder="e.g. Flat 3B, 2nd Floor"
-											class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle" />
+											class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-[#E8750D] transition-all text-[#141E1A] placeholder:text-slate-400" />
 									</div>
 								</div>
 							</div>
@@ -441,77 +442,84 @@ async function handlePlaceOrder(): Promise<void> {
 
 						<!-- Store Pickup Info -->
 						<div v-else
-							class="p-4 bg-paper-cream/70 rounded-xl border border-paper-border text-xs text-ink-muted space-y-1">
-							<span class="font-bold text-forest-950 block font-sans">Pickup Hub:</span>
+							class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 text-xs text-[#5F6964] space-y-1">
+							<span class="font-bold text-[#141E1A] block">Pickup Hub:</span>
 							<p>The Sunrise Bookstore Main Counter, Diamond Mall / Diamond Plaza, 4th Parklands Ave,
 								Nairobi.</p>
-							<span class="text-[11px] text-emerald-800 font-semibold block pt-1">âœ“ Ready for collection
-								within 2 hours of payment confirmation.</span>
+							<span class="text-[11px] text-emerald-800 font-semibold block pt-1">
+								âœ“ Ready for collection within 2 hours of payment confirmation.
+							</span>
 						</div>
 					</section>
 
 					<!-- Step 3: Payment Channel Selection -->
 					<section aria-labelledby="step-payment-heading"
-						class="bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-5">
-						<div class="flex items-center gap-3 pb-3.5 border-b border-paper-border">
+						class="bg-white rounded-2xl shadow-card border border-slate-200/80 p-6 sm:p-7 space-y-5">
+						<div class="flex items-center gap-3 pb-3.5 border-b border-slate-100">
 							<span
-								class="w-6 h-6 rounded-full bg-forest-950 text-gold-300 text-xs font-mono font-bold flex items-center justify-center shadow-xs">
+								class="w-6 h-6 rounded-full bg-[#141E1A] text-white text-xs font-mono font-bold flex items-center justify-center shadow-xs">
 								{{ hasPhysicalItems ? '3' : '2' }}
 							</span>
 							<h2 id="step-payment-heading"
-								class="font-display text-base sm:text-lg font-bold text-forest-950">Payment Method</h2>
+								class="font-display text-base sm:text-lg font-bold text-[#141E1A]">
+								Payment Method
+							</h2>
 						</div>
 
 						<div class="space-y-3.5">
 							<!-- OPTION A: DIRECT MANUAL M-PESA TILL -->
 							<label
-								class="border-2 rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5 cursor-pointer transition-all relative overflow-hidden"
-								:class="paymentMethod === 'mpesa_manual' ? 'border-emerald-600 bg-emerald-50/50 shadow-soft ring-1 ring-emerald-600' : 'border-paper-border bg-white hover:border-slate-300'">
+								class="border rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5 cursor-pointer transition-all relative overflow-hidden"
+								:class="paymentMethod === 'mpesa_manual'
+                  ? 'border-[#E8750D] bg-[#FFF7ED] shadow-xs ring-1 ring-[#E8750D]/30'
+                  : 'border-slate-200 bg-white hover:border-slate-300'">
 								<div class="flex items-start gap-3.5">
 									<input type="radio" value="mpesa_manual" v-model="paymentMethod" class="sr-only" />
-									<div
-										class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 mt-0.5">
-										<CheckCircle2 :size="18" />
+									<div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors"
+										:class="paymentMethod === 'mpesa_manual' ? 'bg-[#FFEDD5] text-[#C25E00]' : 'bg-slate-100 text-slate-500'">
+										<CheckCircle2 :size="19" />
 									</div>
 									<div class="flex-1 min-w-0">
 										<div class="flex items-center gap-2">
-											<strong class="text-xs sm:text-sm font-bold text-forest-950 block">Pay
-												Directly to Buy Goods Till</strong>
+											<strong class="text-xs sm:text-sm font-bold text-[#141E1A] block">
+												Pay Directly to Buy Goods Till
+											</strong>
 											<span
-												class="bg-emerald-700 text-white text-[9px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+												class="bg-[#E8750D] text-white text-[9.5px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
 												Instant
 											</span>
 										</div>
-										<p class="text-xs text-ink-muted mt-0.5 leading-relaxed">
-											Send payment to our store Till Number and paste your Safaricom transaction
+										<p class="text-xs text-[#5F6964] mt-0.5 leading-relaxed">
+											Deposit to our store till number and paste your Safaricom transaction
 											confirmation code below.
 										</p>
 									</div>
 								</div>
 
 								<div v-if="paymentMethod === 'mpesa_manual'"
-									class="pt-3 border-t border-paper-border/80 space-y-3 pl-0 sm:pl-12">
+									class="pt-3 border-t border-orange-200/60 space-y-3 pl-0 sm:pl-13">
 									<!-- Till Number Copy Box -->
 									<div
-										class="bg-white rounded-xl p-3.5 border border-paper-border flex flex-wrap items-center justify-between gap-3 shadow-xs">
+										class="bg-white rounded-xl p-3.5 border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
 										<div class="space-y-0.5">
 											<span
-												class="text-[10px] uppercase font-mono font-bold text-ink-subtle tracking-widest block">Lipa
-												Na M-Pesa â€¢ Buy Goods Till</span>
+												class="text-[10px] uppercase font-mono font-bold text-[#5F6964] tracking-widest block">
+												Lipa Na M-Pesa â€¢ Buy Goods Till
+											</span>
 											<div class="flex items-baseline gap-2">
-												<span
-													class="font-mono text-lg font-bold text-forest-950 tracking-wider">{{
-													STORE_TILL_NUMBER }}</span>
-												<span class="text-xs font-semibold text-ink-muted">(The Sunrise
+												<span class="font-mono text-xl font-bold text-[#141E1A] tracking-wider">
+													{{ STORE_TILL_NUMBER }}
+												</span>
+												<span class="text-xs font-semibold text-[#5F6964]">(The Sunrise
 													Bookstore)</span>
 											</div>
 										</div>
 
 										<button type="button"
-											class="px-3 py-1.5 bg-paper-cream hover:bg-forest-950 hover:text-white rounded-lg text-xs font-bold font-sans transition-colors flex items-center gap-1.5 border border-paper-border cursor-pointer shadow-2xs"
+											class="px-3.5 py-2 bg-slate-100 hover:bg-[#E8750D] hover:text-white rounded-xl text-xs font-bold font-sans transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
 											@click="copyTillNumber">
 											<component :is="isTillCopied ? Check : Copy" :size="13"
-												:class="isTillCopied ? 'text-emerald-700' : 'text-forest-950'" />
+												:class="isTillCopied ? 'text-emerald-700' : 'text-[#141E1A]'" />
 											<span>{{ isTillCopied ? 'Copied!' : 'Copy Till' }}</span>
 										</button>
 									</div>
@@ -519,31 +527,33 @@ async function handlePlaceOrder(): Promise<void> {
 									<!-- Reference Code Input -->
 									<div class="space-y-1.5">
 										<label
-											class="text-xs font-bold text-forest-950 flex items-center justify-between">
+											class="text-xs font-bold text-[#141E1A] flex items-center justify-between">
 											<span>Safaricom Confirmation Code *</span>
-											<span class="text-[10px] text-ink-muted font-normal">Found in your M-Pesa
+											<span class="text-[10px] text-[#5F6964] font-normal">Found in your M-Pesa
 												SMS</span>
 										</label>
 										<input v-model="mpesaCode" type="text" placeholder="e.g. SH12AB34CD"
-											class="w-full px-3.5 py-2.5 bg-white border border-paper-border rounded-xl text-sm font-mono font-bold uppercase tracking-widest outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10 transition-all text-forest-950 placeholder:text-ink-subtle"
+											class="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm font-mono font-bold uppercase tracking-widest outline-none focus:border-[#E8750D] focus:ring-2 focus:ring-[#E8750D]/10 transition-all text-[#141E1A] placeholder:text-slate-400"
 											required />
 									</div>
 								</div>
 							</label>
-
 							<!-- OPTION B: AUTOMATED DARAJA STK PUSH -->
 							<label
-								class="border rounded-2xl p-4 sm:p-4.5 flex items-start gap-3.5 cursor-pointer transition-all"
-								:class="paymentMethod === 'mpesa' ? 'border-emerald-600 bg-emerald-50/50 shadow-soft ring-1 ring-emerald-600' : 'border-paper-border bg-white hover:border-slate-300'">
+								class="border rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 cursor-pointer transition-all"
+								:class="paymentMethod === 'mpesa'
+                  ? 'border-[#E8750D] bg-[#FFF7ED] shadow-xs ring-1 ring-[#E8750D]/30'
+                  : 'border-slate-200 bg-white hover:border-slate-300'">
 								<input type="radio" value="mpesa" v-model="paymentMethod" class="sr-only" />
-								<div
-									class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 mt-0.5">
-									<Zap :size="18" />
+								<div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors"
+									:class="paymentMethod === 'mpesa' ? 'bg-[#FFEDD5] text-[#C25E00]' : 'bg-slate-100 text-slate-500'">
+									<Zap :size="19" />
 								</div>
 								<div>
-									<strong class="text-xs sm:text-sm font-bold text-forest-950 block">Automated M-Pesa
-										STK Push</strong>
-									<p class="text-xs text-ink-muted mt-0.5 leading-relaxed">
+									<strong class="text-xs sm:text-sm font-bold text-[#141E1A] block">
+										Automated M-Pesa STK Push
+									</strong>
+									<p class="text-xs text-[#5F6964] mt-0.5 leading-relaxed">
 										Dispatches an automated PIN prompt to your Safaricom mobile handset.
 									</p>
 								</div>
@@ -551,18 +561,20 @@ async function handlePlaceOrder(): Promise<void> {
 
 							<!-- OPTION C: PAY ON DELIVERY (HARDCOPY ONLY) -->
 							<label v-if="hasPhysicalItems"
-								class="border rounded-2xl p-4 sm:p-4.5 flex items-start gap-3.5 cursor-pointer transition-all"
-								:class="paymentMethod === 'mpesa_cash' ? 'border-emerald-600 bg-emerald-50/50 shadow-soft ring-1 ring-emerald-600' : 'border-paper-border bg-white hover:border-slate-300'">
+								class="border rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 cursor-pointer transition-all"
+								:class="paymentMethod === 'mpesa_cash'
+                  ? 'border-[#E8750D] bg-[#FFF7ED] shadow-xs ring-1 ring-[#E8750D]/30'
+                  : 'border-slate-200 bg-white hover:border-slate-300'">
 								<input type="radio" value="mpesa_cash" v-model="paymentMethod" class="sr-only" />
-								<div
-									class="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-									<CreditCard :size="18" />
+								<div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors"
+									:class="paymentMethod === 'mpesa_cash' ? 'bg-[#FFEDD5] text-[#C25E00]' : 'bg-slate-100 text-slate-500'">
+									<CreditCard :size="19" />
 								</div>
 								<div>
-									<strong class="text-xs sm:text-sm font-bold text-forest-950 block">
+									<strong class="text-xs sm:text-sm font-bold text-[#141E1A] block">
 										{{ payOnDeliveryLabel }}
 									</strong>
-									<p class="text-xs text-ink-muted mt-0.5 leading-relaxed">
+									<p class="text-xs text-[#5F6964] mt-0.5 leading-relaxed">
 										Settle via M-Pesa or cash upon physical collection of your print copies.
 									</p>
 								</div>
@@ -571,14 +583,13 @@ async function handlePlaceOrder(): Promise<void> {
 
 						<!-- Notes -->
 						<div class="space-y-1.5 pt-2">
-							<label class="text-xs font-semibold text-forest-950">Delivery Instructions
-								(Optional)</label>
+							<label class="text-xs font-semibold text-[#141E1A]">Delivery Instructions (Optional)</label>
 							<div class="relative flex items-start">
 								<FileText :size="15"
-									class="absolute left-3.5 top-3 text-ink-subtle pointer-events-none" />
+									class="absolute left-3.5 top-3 text-slate-400 pointer-events-none" />
 								<textarea v-model="notes" rows="2"
 									placeholder="e.g. Leave with building security, call upon gate arrival..."
-									class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle resize-none" />
+									class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-[#E8750D] transition-all text-[#141E1A] placeholder:text-slate-400 resize-none" />
 							</div>
 						</div>
 					</section>
@@ -586,64 +597,64 @@ async function handlePlaceOrder(): Promise<void> {
 
 				<!-- Right: Order Summary Sidebar (5 Cols) -->
 				<div
-					class="lg:col-span-5 bg-paper-surface rounded-2xl shadow-soft border border-paper-border p-6 sm:p-7 space-y-6 sticky top-24">
-					<div class="pb-3.5 border-b border-paper-border flex justify-between items-center">
-						<h3 class="font-display font-bold text-base sm:text-lg text-forest-950">Order Summary</h3>
-						<span class="text-xs font-semibold font-mono text-ink-muted">{{ totalItems }} edition(s)</span>
+					class="lg:col-span-5 bg-white rounded-2xl shadow-card border border-slate-200/80 p-6 sm:p-7 space-y-6 sticky top-24">
+					<div class="pb-3.5 border-b border-slate-100 flex justify-between items-center">
+						<h3 class="font-display font-bold text-base sm:text-lg text-[#141E1A]">Order Summary</h3>
+						<span class="text-xs font-semibold font-mono text-[#5F6964]">{{ totalItems }} edition(s)</span>
 					</div>
 
 					<!-- Items Breakdown -->
-					<div class="space-y-3.5 max-h-72 overflow-y-auto divide-y divide-paper-border/60 pr-1">
+					<div class="space-y-3.5 max-h-72 overflow-y-auto divide-y divide-slate-100 pr-1">
 						<div v-for="item in items" :key="`${item.productId}-${item.formatId}`"
 							class="pt-3 first:pt-0 flex gap-3.5 items-center">
 							<div
-								class="w-12 h-16 bg-paper-cream rounded-book border border-paper-border overflow-hidden flex-shrink-0 flex items-center justify-center shadow-xs">
+								class="w-12 h-16 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center shadow-2xs">
 								<img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title"
 									class="w-full h-full object-cover" />
-								<ShoppingBag v-else :size="18" class="text-ink-muted opacity-40" />
+								<ShoppingBag v-else :size="18" class="text-slate-400 opacity-40" />
 							</div>
 							<div class="flex-1 min-w-0 space-y-0.5">
-								<h4 class="text-xs sm:text-sm font-bold text-forest-950 truncate">{{ item.title }}</h4>
-								<div class="flex items-center gap-2 text-[10px] text-ink-muted">
+								<h4 class="text-xs sm:text-sm font-bold text-[#141E1A] truncate">{{ item.title }}</h4>
+								<div class="flex items-center gap-2 text-[10px] text-[#5F6964]">
 									<span
-										class="font-mono font-bold uppercase text-forest-900 bg-paper-cream px-1.5 py-0.2 rounded">
+										class="font-mono font-bold uppercase text-[#C25E00] bg-[#FFF7ED] px-1.5 py-0.2 rounded">
 										{{ item.format === 'hardcopy' ? 'Hardcopy' : `eBook
 										(${item.format.toUpperCase()})` }}
 									</span>
 									<span>â€¢ Qty: {{ item.quantity }}</span>
 								</div>
 							</div>
-							<span class="text-xs sm:text-sm font-bold text-forest-950 font-mono tabular-figure">
+							<span class="text-xs sm:text-sm font-bold text-[#141E1A] font-mono tabular-figure">
 								{{ formatCurrency(item.price * item.quantity) }}
 							</span>
 						</div>
 					</div>
 
 					<!-- Totals -->
-					<div class="space-y-2.5 border-t border-paper-border pt-4 text-xs">
-						<div class="flex justify-between text-ink-muted font-medium">
+					<div class="space-y-2.5 border-t border-slate-100 pt-4 text-xs">
+						<div class="flex justify-between text-[#5F6964] font-medium">
 							<span>Books Subtotal</span>
-							<span class="font-semibold text-forest-950 font-mono tabular-figure">{{
+							<span class="font-semibold text-[#141E1A] font-mono tabular-figure">{{
 								formatCurrency(subtotal) }}</span>
 						</div>
 
-						<div class="flex justify-between text-ink-muted font-medium">
+						<div class="flex justify-between text-[#5F6964] font-medium">
 							<span>Delivery Fee (from Diamond Mall)</span>
 							<span v-if="!hasPhysicalItems || deliveryType === 'pickup'"
 								class="text-emerald-800 font-bold font-mono">
 								FREE
 							</span>
 							<span v-else-if="deliveryFeeStatus === 'known'"
-								class="font-semibold text-forest-950 font-mono tabular-figure">
+								class="font-semibold text-[#141E1A] font-mono tabular-figure">
 								{{ formatCurrency(deliveryFee) }}
 							</span>
-							<span v-else class="text-ink-subtle italic">To be confirmed</span>
+							<span v-else class="text-[#5F6964] italic">To be confirmed</span>
 						</div>
 
-						<div class="flex justify-between items-baseline pt-3 border-t border-paper-border text-base">
-							<span class="font-bold text-forest-950 font-sans">Total Bill</span>
+						<div class="flex justify-between items-baseline pt-3 border-t border-slate-100 text-base">
+							<span class="font-bold text-[#141E1A]">Total Bill</span>
 							<span
-								class="font-display font-extrabold text-xl sm:text-2xl text-forest-950 font-mono tabular-figure">
+								class="font-display font-extrabold text-xl sm:text-2xl text-[#141E1A] font-mono tabular-figure">
 								{{ formatCurrency(totalToPay) }}
 							</span>
 						</div>
@@ -658,14 +669,14 @@ async function handlePlaceOrder(): Promise<void> {
 
 					<!-- Checkout Action -->
 					<button type="button"
-						class="w-full bg-forest-950 hover:bg-forest-900 active:bg-forest-950 text-paper font-sans font-bold text-xs uppercase tracking-wider py-4 px-6 rounded-xl shadow-medium hover:shadow-high transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+						class="w-full bg-gradient-to-b from-[#F07514] via-[#E86C0E] to-[#D85F06] hover:from-[#E86C0E] hover:to-[#C85202] text-white font-sans font-bold text-xs uppercase tracking-wider py-4 px-6 rounded-xl shadow-medium hover:shadow-high transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
 						:disabled="!isFormValid || isSubmitting" @click="handlePlaceOrder">
 						<span v-if="isSubmitting"
 							class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
 						<span v-else>{{ submitButtonLabel }}</span>
 					</button>
 
-					<div class="flex items-center justify-center gap-2 text-[11px] text-ink-muted pt-1">
+					<div class="flex items-center justify-center gap-2 text-[11px] text-[#5F6964] pt-1">
 						<ShieldCheck :size="14" class="text-emerald-700 flex-shrink-0" />
 						<span>Instant Digital Fulfillment &amp; Verified Delivery</span>
 					</div>

@@ -4,25 +4,26 @@
 		:style="bgColor ? { backgroundColor: bgColor } : {}" :class="[
       isDark ? 'border-white/10' : 'border-slate-200',
       !bgColor ? 'bg-transparent' : ''
-    ]">
+    ]" aria-label="Deals of the Week">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-			<!-- TOP HEADER: Compact Thin Strip Header -->
+			<!-- TOP HEADER: Dynamic Contrast (Pure White on Dark, Rich Black on Light) -->
 			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 pb-2.5 border-b"
 				:class="isDark ? 'border-white/15' : 'border-slate-200'">
 				<div class="space-y-0.5">
 					<div class="flex items-center gap-1.5">
-						<span
-							class="text-[9.5px] sm:text-[10px] font-mono font-bold uppercase tracking-widest text-[#E8750D] block">
+						<span class="text-[9.5px] sm:text-[10px] font-mono font-bold uppercase tracking-widest block"
+							:class="isDark ? 'text-amber-400' : 'text-[#E8750D]'">
 							{{ badgeLabel }}
 						</span>
 					</div>
+
 					<h2 class="font-poster text-2xl sm:text-3xl lg:text-4xl font-extrabold uppercase tracking-wide leading-none"
 						:class="isDark ? 'text-white' : 'text-[#141E1A]'">
 						{{ title }}
 					</h2>
-					<p class="text-[11px] sm:text-xs text-slate-500 line-clamp-1"
-						:class="isDark ? '!text-white/70' : ''">
+
+					<p class="text-[11px] sm:text-xs line-clamp-1" :class="isDark ? 'text-white/70' : 'text-slate-600'">
 						{{ subtitle }}
 					</p>
 				</div>
@@ -30,27 +31,31 @@
 				<!-- Live Countdown Timer -->
 				<div class="flex items-center gap-2 rounded-lg px-3 py-1.5 shadow-2xs shrink-0 self-start sm:self-auto border"
 					:class="isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-theme-surface border-slate-200 text-theme-ink'">
-					<span class="text-[11px] font-mono font-bold text-[#E8750D] flex items-center gap-1.5">
+					<span class="text-[11px] font-mono font-bold flex items-center gap-1"
+						:class="isDark ? 'text-amber-400' : 'text-[#E8750D]'">
 						<span class="w-1.5 h-1.5 rounded-full bg-[#E8750D] animate-pulse" />
 						DEALS END IN:
 					</span>
 					<div class="flex items-center gap-0.5 font-mono text-[11px] font-black">
 						<span class="px-1.5 py-0.2 rounded"
-							:class="isDark ? 'bg-black/40 text-white' : 'bg-slate-100 text-theme-ink'">{{
-							formattedTime.hours }}h</span>
-						<span class="opacity-60">:</span>
+							:class="isDark ? 'bg-black/50 text-white' : 'bg-slate-100 text-theme-ink'">
+							{{ formattedTime.hours }}h
+						</span>
+						<span :class="isDark ? 'text-white/60' : 'opacity-60'">:</span>
 						<span class="px-1.5 py-0.2 rounded"
-							:class="isDark ? 'bg-black/40 text-white' : 'bg-slate-100 text-theme-ink'">{{
-							formattedTime.minutes }}m</span>
-						<span class="opacity-60">:</span>
+							:class="isDark ? 'bg-black/50 text-white' : 'bg-slate-100 text-theme-ink'">
+							{{ formattedTime.minutes }}m
+						</span>
+						<span :class="isDark ? 'text-white/60' : 'opacity-60'">:</span>
 						<span class="px-1.5 py-0.2 rounded"
-							:class="isDark ? 'bg-black/40 text-white' : 'bg-slate-100 text-theme-ink'">{{
-							formattedTime.seconds }}s</span>
+							:class="isDark ? 'bg-black/50 text-white' : 'bg-slate-100 text-theme-ink'">
+							{{ formattedTime.seconds }}s
+						</span>
 					</div>
 				</div>
 			</div>
 
-			<!-- CAROUSEL TRACK (Thin strip layout) -->
+			<!-- CAROUSEL TRACK (Mobile: 2 in view + 1 overflowing on right edge; Desktop: 5 across) -->
 			<div class="relative group">
 				<button type="button"
 					class="absolute -left-2.5 sm:-left-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:border-[#E8750D] hover:bg-[#FFF7ED] border border-slate-300 shadow-md flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed"
@@ -67,8 +72,9 @@
 				<div ref="scrollContainer"
 					class="flex gap-2.5 sm:gap-3 lg:gap-3.5 overflow-x-auto scroll-smooth no-scrollbar py-1 snap-x snap-mandatory"
 					style="touch-action: pan-y;" @scroll="checkScrollButtons">
+					<!-- Sized so 2 cards fit and 3rd card peeks over the edge on mobile -->
 					<div v-for="book in books" :key="book.id"
-						class="w-[calc((100%-0.625rem)/2)] sm:w-[calc((100%-0.75rem*2)/3)] lg:w-[calc((100%-0.875rem*4)/5)] flex-shrink-0 snap-start flex">
+						class="w-[calc((100%-1.25rem)/2.35)] sm:w-[calc((100%-1.5rem)/3.25)] lg:w-[calc((100%-0.875rem*4)/5)] flex-shrink-0 snap-start flex">
 						<BookCard :book="book" :compact="true" class="h-full"
 							@request-seed="(t, a) => $emit('request-seed', t, a)" />
 					</div>
@@ -132,20 +138,20 @@ function checkScrollButtons(): void {
 function scrollLeft(): void {
   if (!scrollContainer.value) return;
   const firstChild = scrollContainer.value.firstElementChild as HTMLElement | null;
-  const cardWidth = firstChild ? firstChild.clientWidth : 180;
+  const cardWidth = firstChild ? firstChild.clientWidth : 160;
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
   const count = isDesktop ? 4 : 2;
-  const scrollDistance = (cardWidth + 14) * count;
+  const scrollDistance = (cardWidth + 12) * count;
   scrollContainer.value.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
 }
 
 function scrollRight(): void {
   if (!scrollContainer.value) return;
   const firstChild = scrollContainer.value.firstElementChild as HTMLElement | null;
-  const cardWidth = firstChild ? firstChild.clientWidth : 180;
+  const cardWidth = firstChild ? firstChild.clientWidth : 160;
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
   const count = isDesktop ? 4 : 2;
-  const scrollDistance = (cardWidth + 14) * count;
+  const scrollDistance = (cardWidth + 12) * count;
   scrollContainer.value.scrollBy({ left: scrollDistance, behavior: 'smooth' });
 }
 
