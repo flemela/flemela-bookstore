@@ -44,34 +44,34 @@ function resolveSellingPrice(book: Book): number {
 
 <template>
 	<aside
-		class="w-full h-full rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-md p-3.5 sm:p-4 bg-white text-theme-ink flex flex-col justify-between overflow-hidden select-none"
+		class="w-full h-full rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-md p-3 sm:p-3.5 bg-white text-theme-ink flex flex-col justify-between overflow-hidden select-none"
 		aria-label="Top Selling Books Spotlight">
 		<!-- Panel Header -->
-		<div class="flex items-center justify-between pb-2.5 border-b border-slate-100 flex-shrink-0">
+		<div class="flex items-center justify-between pb-2 border-b border-slate-100 flex-shrink-0">
 			<div class="flex items-center gap-1.5 min-w-0">
 				<div
-					class="w-6 h-6 rounded-lg bg-orange-100 text-[#E8750D] flex items-center justify-center flex-shrink-0">
-					<Flame :size="14" class="fill-current text-[#E8750D]" />
+					class="w-5.5 h-5.5 rounded-md bg-orange-100 text-[#E8750D] flex items-center justify-center flex-shrink-0">
+					<Flame :size="13" class="fill-current text-[#E8750D]" />
 				</div>
 				<h3
-					class="font-display font-bold text-xs sm:text-[13px] text-forest-950 uppercase tracking-wider truncate">
+					class="font-display font-bold text-xs sm:text-[12.5px] text-forest-950 uppercase tracking-wider truncate">
 					{{ title }}
 				</h3>
 			</div>
 			<NuxtLink to="/#catalog-results"
-				class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#E8750D] hover:underline flex items-center gap-0.5 flex-shrink-0">
+				class="text-[9.5px] font-mono font-bold uppercase tracking-widest text-[#E8750D] hover:underline flex items-center gap-0.5 flex-shrink-0">
 				<span>All</span>
-				<ChevronRight :size="11" />
+				<ChevronRight :size="10" />
 			</NuxtLink>
 		</div>
 
-		<!-- 4 Rows Fitting Evenly Inside Fixed Height (Cover and Title Side by Side) -->
-		<div class="flex-1 flex flex-col justify-between py-1.5 space-y-1.5 min-h-0">
+		<!-- 4 Rows Proportionally Scaled to Fit 352px/368px Container -->
+		<div class="flex-1 flex flex-col justify-between py-1 space-y-1 min-h-0">
 			<NuxtLink v-for="book in displayBooks" :key="book.id" :to="`/book/${book.slug}`"
-				class="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-paper-cream/60 transition-colors group cursor-pointer flex-1 min-h-0">
+				class="flex items-center gap-2 p-1 rounded-lg hover:bg-paper-cream/60 transition-colors group cursor-pointer flex-1 min-h-0">
 				<!-- Book Cover Art (Left) -->
 				<div
-					class="w-11 sm:w-12 h-full max-h-[78px] aspect-[3/4] rounded-lg bg-paper-cream border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center shadow-2xs">
+					class="w-9 sm:w-10 h-full max-h-[62px] aspect-[3/4] rounded-md bg-paper-cream border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center shadow-2xs">
 					<img :src="resolveCoverUrl(book)" :alt="book.name"
 						class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
 						loading="lazy"
@@ -79,21 +79,22 @@ function resolveSellingPrice(book: Book): number {
 				</div>
 
 				<!-- Book Title, Author & Price (Right) -->
-				<div class="flex-1 min-w-0 flex flex-col justify-center space-y-0.5">
+				<div class="flex-1 min-w-0 flex flex-col justify-center space-y-0.2">
 					<h4
-						class="font-display font-bold text-[11px] sm:text-xs text-forest-950 group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-tight">
+						class="font-display font-bold text-[10.5px] sm:text-[11.5px] text-forest-950 group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-tight">
 						{{ book.name }}
 					</h4>
-					<p class="text-[10px] text-ink-muted truncate italic">
+					<p class="text-[9.5px] text-ink-muted truncate italic leading-none">
 						{{ book.author || 'Original Edition' }}
 					</p>
 
 					<div class="flex items-center justify-between pt-0.5">
-						<span class="font-mono font-extrabold text-[11px] sm:text-xs text-forest-950 tabular-figure">
+						<span
+							class="font-mono font-extrabold text-[10.5px] sm:text-[11.5px] text-forest-950 tabular-figure">
 							{{ formatPrice(resolveSellingPrice(book)) }}
 						</span>
 						<span
-							class="text-[9px] font-mono font-bold uppercase text-[#E8750D] bg-orange-50 px-1.5 py-0.2 rounded border border-orange-200">
+							class="text-[8px] font-mono font-bold uppercase text-[#E8750D] bg-orange-50 px-1 py-0.2 rounded border border-orange-200">
 							Hot
 						</span>
 					</div>
@@ -103,9 +104,9 @@ function resolveSellingPrice(book: Book): number {
 
 		<!-- Panel Footer -->
 		<div
-			class="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-mono text-ink-muted flex-shrink-0">
+			class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[9.5px] font-mono text-ink-muted flex-shrink-0">
 			<span class="flex items-center gap-1">
-				<Star :size="10" class="fill-amber-400 text-amber-400" />
+				<Star :size="9" class="fill-amber-400 text-amber-400" />
 				<span class="font-bold">Verified Bestsellers</span>
 			</span>
 			<span>Nairobi Hub</span>

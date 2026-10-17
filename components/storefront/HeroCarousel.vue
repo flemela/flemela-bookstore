@@ -43,7 +43,7 @@ const hasActiveLeftFlank = computed(() => {
   return Boolean(heroLeftBanner.value && heroLeftBanner.value.is_active && heroLeftBanner.value.image_url);
 });
 
-// Right Flank State (Prefers Top Sellers if available, falls back to rich-text Hero Notes)
+// Right Flank State
 const hasTopSellers = computed(() => {
   return Array.isArray(props.topSellers) && props.topSellers.length > 0;
 });
@@ -60,16 +60,10 @@ const hasActiveRightFlank = computed(() => {
   return hasTopSellers.value || hasActiveHeroNotes.value;
 });
 
-// Dynamic Desktop Grid Class (1fr : 2fr : 1fr when both active)
+// Dynamic Desktop Grid Class (1fr : 2fr : 1fr)
 const gridLayoutClass = computed(() => {
-  if (hasActiveLeftFlank.value && hasActiveRightFlank.value) {
-    return 'grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5 items-stretch';
-  }
-  if (hasActiveLeftFlank.value) {
-    return 'grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5 items-stretch';
-  }
-  if (hasActiveRightFlank.value) {
-    return 'grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5 items-stretch';
+  if (hasActiveLeftFlank.value || hasActiveRightFlank.value) {
+    return 'grid grid-cols-1 lg:grid-cols-4 gap-3.5 lg:gap-4.5 items-stretch';
   }
   return '';
 });
@@ -85,12 +79,11 @@ const centerCarouselSpanClass = computed(() => {
   return 'w-full';
 });
 
-// Outer Wrapper Padding (Small side margins when standalone)
+// Outer Wrapper Margins
 const outerWrapperPaddingClass = computed(() => {
   if (hasActiveLeftFlank.value || hasActiveRightFlank.value) {
     return 'px-3 sm:px-6 lg:px-8 max-w-[1560px] mx-auto';
   }
-  // Standalone: occupies full width leaving modest side margins
   return 'px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto';
 });
 
@@ -274,19 +267,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<div class="w-full py-2.5 sm:py-4 flex justify-center bg-transparent transition-all duration-300"
+	<div class="w-full py-2 sm:py-3 flex justify-center bg-transparent transition-all duration-300"
 		:class="outerWrapperPaddingClass">
 		<div class="w-full" :class="gridLayoutClass">
 
-			<!-- 1. LEFT FLANK: Promotional Poster (Desktop 1fr, Hidden on Mobile) -->
-			<div v-if="hasActiveLeftFlank"
-				class="hidden lg:flex lg:col-span-1 w-full h-[380px] sm:h-[400px] lg:h-[440px] xl:h-[460px]">
+			<!-- 1. LEFT FLANK: Promotional Poster (Desktop 1fr, 20% reduced height) -->
+			<div v-if="hasActiveLeftFlank" class="hidden lg:flex lg:col-span-1 w-full lg:h-[352px] xl:h-[368px]">
 				<HeroLeftBanner :banner="heroLeftBanner" />
 			</div>
 
-			<!-- 2. CENTER STAGE: Hero Carousel (Desktop 2fr when both active, Full Width on Mobile) -->
+			<!-- 2. CENTER STAGE: Hero Carousel (20% reduced height across all viewports) -->
 			<section
-				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-md border border-slate-200/20 h-[220px] sm:h-[280px] md:h-[340px] lg:h-[440px] xl:h-[460px]"
+				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-md border border-slate-200/20 h-[176px] sm:h-[224px] md:h-[272px] lg:h-[352px] xl:h-[368px]"
 				:class="centerCarouselSpanClass" aria-roledescription="carousel"
 				aria-label="Promotions and Announcements" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave"
 				@focusin="handleMouseEnter" @focusout="handleMouseLeave">
@@ -324,34 +316,33 @@ onUnmounted(() => {
 
 					<!-- Navigation Arrows -->
 					<div v-if="totalSlides > 1"
-						class="absolute inset-y-0 inset-x-3 sm:inset-x-4 z-20 flex items-center justify-between pointer-events-none">
+						class="absolute inset-y-0 inset-x-2.5 sm:inset-x-3.5 z-20 flex items-center justify-between pointer-events-none">
 						<button type="button"
-							class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer border border-white/20"
+							class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer border border-white/20"
 							aria-label="Previous banner" @click.stop="prevSlide">
-							<ChevronLeft :size="20" />
+							<ChevronLeft :size="18" />
 						</button>
 
 						<button type="button"
-							class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer border border-white/20"
+							class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer border border-white/20"
 							aria-label="Next banner" @click.stop="nextSlide">
-							<ChevronRight :size="20" />
+							<ChevronRight :size="18" />
 						</button>
 					</div>
 
 					<!-- Pagination Indicators -->
 					<div v-if="totalSlides > 1"
-						class="absolute bottom-3 sm:bottom-3.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/35 backdrop-blur-xs px-3 py-1.5 rounded-full border border-white/10 pointer-events-auto">
+						class="absolute bottom-2.5 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/35 backdrop-blur-xs px-2.5 py-1 rounded-full border border-white/10 pointer-events-auto">
 						<button v-for="(_, idx) in totalSlides" :key="idx" type="button"
 							class="h-1.5 rounded-full cursor-pointer transition-all duration-300"
-							:class="idx === activeIndex ? 'w-6 bg-[#E8750D]' : 'w-2 bg-white/50 hover:bg-white/80'"
+							:class="idx === activeIndex ? 'w-5 bg-[#E8750D]' : 'w-1.5 bg-white/50 hover:bg-white/80'"
 							:aria-label="`Navigate to slide ${idx + 1}`" @click.stop="goToSlide(idx)" />
 					</div>
 				</div>
 			</section>
 
-			<!-- 3. RIGHT FLANK: 4 Top Selling Books / Editorial Notes (Desktop 1fr, Hidden on Mobile) -->
-			<div v-if="hasActiveRightFlank"
-				class="hidden lg:flex lg:col-span-1 w-full h-[380px] sm:h-[400px] lg:h-[440px] xl:h-[460px]">
+			<!-- 3. RIGHT FLANK: 4 Top Selling Books / Editorial Notes (Desktop 1fr, 20% reduced height) -->
+			<div v-if="hasActiveRightFlank" class="hidden lg:flex lg:col-span-1 w-full lg:h-[352px] xl:h-[368px]">
 				<HeroTopSellersPanel v-if="hasTopSellers" :books="topSellers" />
 				<HeroNotesPanel v-else-if="hasActiveHeroNotes" :notes="heroNotes" />
 			</div>
