@@ -22,8 +22,9 @@ import {
   Navigation,
   RefreshCw,
 } from 'lucide-vue-next';
-import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
-import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
+import PromoTickerStrip from '~/components/storefront/PromoTickerStrip.vue';
+import StoreNavbar from '~/components/storefront/StoreNavbar.vue';
+import Breadcrumbs from '~/components/storefront/Breadcrumbs.vue';
 import DeliveryTypeStep, { type DeliveryType } from '~/components/storefront/DeliveryTypeStep.vue';
 import LeafletPinPicker from '~/components/storefront/LeafletPinPicker.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
@@ -34,6 +35,15 @@ import { normalizeKenyanPhone, isValidKenyanPhone, detectKenyanCarrier } from '~
 const router = useRouter();
 const { items, totalItems, subtotal, hasPhysicalItems, hasDigitalItems, clearCart } = useCart();
 const { push: pushToast } = useToast();
+
+const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
+const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
+
+const breadcrumbItems = [
+  { label: 'Home', to: '/' },
+  { label: 'Reading Cart', to: '/#catalog-results' },
+  { label: 'Secure Checkout' },
+];
 
 onMounted(() => {
   if (items.value.length === 0) {
@@ -206,6 +216,14 @@ function handleUseCustomerLocation(): void {
   );
 }
 
+function handleSearch(queryText: string): void {
+  router.push({ path: '/', query: { q: queryText } });
+}
+
+function handleCategorySelect(category: string): void {
+  router.push({ path: '/', query: { category } });
+}
+
 async function handlePlaceOrder(): Promise<void> {
   if (!isFormValid.value || isSubmitting.value) return;
 
@@ -273,17 +291,16 @@ async function handlePlaceOrder(): Promise<void> {
 
 <template>
 	<div class="min-h-screen flex flex-col bg-paper-canvas text-[#141E1A] antialiased font-sans">
-		<TopUtilityBar />
-		<BookstoreHeader />
+		<PromoTickerStrip :messages="tickerItems" />
+		<StoreNavbar @search="handleSearch" @select-category="handleCategorySelect" />
 
-		<main class="max-w-6xl mx-auto w-full py-8 px-4 sm:px-6 flex-1 space-y-6">
-			<!-- Top Navigation -->
+		<main class="max-w-6xl mx-auto w-full py-4 sm:py-6 px-4 sm:px-6 flex-1 space-y-4">
 			<div class="flex items-center justify-between">
+				<Breadcrumbs :items="breadcrumbItems" />
 				<NuxtLink to="/"
-					class="inline-flex items-center gap-1.5 text-xs font-semibold text-[#141E1A] hover:text-[#E8750D] transition-colors">
-					<ArrowLeft :size="14" /> Return to Catalog
+					class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-[#141E1A] hover:text-[#E8750D] transition-colors">
+					<ArrowLeft :size="13" /> Back to Catalog
 				</NuxtLink>
-				<span class="text-[11px] font-mono uppercase tracking-widest text-[#5F6964]">Secure Checkout</span>
 			</div>
 
 			<div class="grid lg:grid-cols-12 gap-8 items-start">

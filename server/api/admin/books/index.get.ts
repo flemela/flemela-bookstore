@@ -1,6 +1,6 @@
 // =============================================================================
 // server/api/admin/books/index.get.ts
-// Proxies books catalog query with search, category filtering & pagination.
+// Proxies books catalog query with search, category filtering, badges & pagination.
 // =============================================================================
 
 import { sokoClient } from '../../../utils/sokoClient';
@@ -30,6 +30,7 @@ export default defineEventHandler(async (event) => {
         limit: query.limit || 50,
         q: query.q || undefined,
         category_id: query.category_id || undefined,
+        badge: query.badge ? String(query.badge).trim().toUpperCase() : undefined,
       },
     });
 

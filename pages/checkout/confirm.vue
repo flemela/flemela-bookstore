@@ -16,8 +16,9 @@ import {
   Zap,
   MailCheck,
 } from 'lucide-vue-next';
-import TopUtilityBar from '~/components/storefront/TopUtilityBar.vue';
-import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
+import PromoTickerStrip from '~/components/storefront/PromoTickerStrip.vue';
+import StoreNavbar from '~/components/storefront/StoreNavbar.vue';
+import Breadcrumbs from '~/components/storefront/Breadcrumbs.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
 import { useToast } from '~/composables/useToast';
 import { normalizeKenyanPhone, isValidKenyanPhone, buildWhatsAppLink } from '~/utils/phone';
@@ -28,6 +29,9 @@ const { push: pushToast } = useToast();
 
 const orderId = computed(() => (route.query.orderId as string) || '');
 const phoneParam = computed(() => (route.query.phone as string) || '');
+
+const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
+const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
 
 // Hydrate phone from URL or checkout session storage
 const savedPhone = process.client ? sessionStorage.getItem('flemela_last_checkout_phone') || '' : '';
@@ -126,6 +130,12 @@ const formattedConfirmationCode = computed(() => {
 const orderReferenceDisplay = computed(() => {
   return orderData.value?.orderId ? `#${orderData.value.orderId.slice(0, 8).toUpperCase()}` : '';
 });
+
+const breadcrumbItems = computed(() => [
+  { label: 'Home', to: '/' },
+  { label: 'Orders', to: '/#catalog-results' },
+  { label: orderReferenceDisplay.value || 'Confirmation' },
+]);
 
 async function fetchStatus(phoneToUse = activePhone.value): Promise<void> {
   if (!orderId.value) return;
@@ -258,6 +268,14 @@ async function handleRetryOrSwitchPayment(): Promise<void> {
   }
 }
 
+function handleSearch(queryText: string): void {
+  router.push({ path: '/', query: { q: queryText } });
+}
+
+function handleCategorySelect(category: string): void {
+  router.push({ path: '/', query: { category } });
+}
+
 onMounted(() => {
   if (!orderId.value) {
     router.replace('/');
@@ -295,10 +313,12 @@ const whatsappHelpUrl = computed(() => {
 
 <template>
 	<div class="min-h-screen flex flex-col bg-paper-canvas text-[#141E1A] antialiased font-sans">
-		<TopUtilityBar />
-		<BookstoreHeader />
+		<PromoTickerStrip :messages="tickerItems" />
+		<StoreNavbar @search="handleSearch" @select-category="handleCategorySelect" />
 
-		<main class="max-w-3xl mx-auto w-full py-8 sm:py-12 px-4 sm:px-6 flex-1">
+		<main class="max-w-3xl mx-auto w-full py-4 sm:py-6 px-4 sm:px-6 flex-1 space-y-4">
+			<Breadcrumbs :items="breadcrumbItems" />
+
 			<div class="bg-white rounded-2xl shadow-card border border-slate-200/80 p-6 sm:p-9 space-y-7">
 
 				<!-- STATE A: PAYMENT PENDING (STK / DIRECT TILL) -->
@@ -538,7 +558,6 @@ const whatsappHelpUrl = computed(() => {
 							</span>
 						</div>
 					</div>
-
 					<!-- 3. Digital Downloads Vault -->
 					<div v-if="hasDigitalDownloads" class="space-y-3.5">
 						<div class="flex items-center justify-between">

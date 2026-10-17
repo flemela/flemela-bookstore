@@ -1,19 +1,26 @@
 <!-- components/storefront/DealsWeek.vue -->
 <template>
-	<section id="bestsellers-week" class="py-4 sm:py-5 select-none transition-colors border-y"
+	<section id="bestsellers-week" class="relative py-4 sm:py-5 select-none transition-colors border-y overflow-hidden"
 		:style="bgColor ? { backgroundColor: bgColor } : {}" :class="[
       isDark ? 'border-white/10' : 'border-slate-200',
       !bgColor ? 'bg-transparent' : ''
     ]" aria-label="Deals of the Week">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+		<!-- Subtle 30% - 15% - 0% Ambient Backdrop Scrim -->
+		<div class="absolute inset-0 pointer-events-none" :style="{
+        background: isDark
+          ? 'linear-gradient(to bottom, rgba(0, 0, 0, 0.30) 0%, rgba(0, 0, 0, 0.15) 50%, rgba(0, 0, 0, 0) 100%)'
+          : 'linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.02) 50%, rgba(0, 0, 0, 0) 100%)'
+      }" aria-hidden="true" />
 
-			<!-- TOP HEADER: Dynamic Contrast (Pure White on Dark, Rich Black on Light) -->
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+
+			<!-- TOP HEADER: Strict Monochrome Contrast -->
 			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 pb-2.5 border-b"
 				:class="isDark ? 'border-white/15' : 'border-slate-200'">
 				<div class="space-y-0.5">
 					<div class="flex items-center gap-1.5">
 						<span class="text-[9.5px] sm:text-[10px] font-mono font-bold uppercase tracking-widest block"
-							:class="isDark ? 'text-amber-400' : 'text-[#E8750D]'">
+							:class="isDark ? 'text-white' : 'text-[#141E1A]'">
 							{{ badgeLabel }}
 						</span>
 					</div>
@@ -23,32 +30,32 @@
 						{{ title }}
 					</h2>
 
-					<p class="text-[11px] sm:text-xs line-clamp-1" :class="isDark ? 'text-white/70' : 'text-slate-600'">
+					<p class="text-[11px] sm:text-xs line-clamp-1" :class="isDark ? 'text-white/80' : 'text-slate-600'">
 						{{ subtitle }}
 					</p>
 				</div>
 
-				<!-- Live Countdown Timer -->
+				<!-- Live Countdown Timer: Strict Monochrome -->
 				<div class="flex items-center gap-2 rounded-lg px-3 py-1.5 shadow-2xs shrink-0 self-start sm:self-auto border"
-					:class="isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-theme-surface border-slate-200 text-theme-ink'">
+					:class="isDark ? 'bg-white/15 border-white/25 text-white' : 'bg-black/5 border-black/10 text-[#141E1A]'">
 					<span class="text-[11px] font-mono font-bold flex items-center gap-1"
-						:class="isDark ? 'text-amber-400' : 'text-[#E8750D]'">
-						<span class="w-1.5 h-1.5 rounded-full bg-[#E8750D] animate-pulse" />
+						:class="isDark ? 'text-white' : 'text-[#141E1A]'">
+						<Clock :size="12" />
 						DEALS END IN:
 					</span>
 					<div class="flex items-center gap-0.5 font-mono text-[11px] font-black">
 						<span class="px-1.5 py-0.2 rounded"
-							:class="isDark ? 'bg-black/50 text-white' : 'bg-slate-100 text-theme-ink'">
+							:class="isDark ? 'bg-black/50 text-white' : 'bg-white text-[#141E1A] border border-slate-200'">
 							{{ formattedTime.hours }}h
 						</span>
-						<span :class="isDark ? 'text-white/60' : 'opacity-60'">:</span>
+						<span :class="isDark ? 'text-white/70' : 'text-black/60'">:</span>
 						<span class="px-1.5 py-0.2 rounded"
-							:class="isDark ? 'bg-black/50 text-white' : 'bg-slate-100 text-theme-ink'">
+							:class="isDark ? 'bg-black/50 text-white' : 'bg-white text-[#141E1A] border border-slate-200'">
 							{{ formattedTime.minutes }}m
 						</span>
-						<span :class="isDark ? 'text-white/60' : 'opacity-60'">:</span>
+						<span :class="isDark ? 'text-white/70' : 'text-black/60'">:</span>
 						<span class="px-1.5 py-0.2 rounded"
-							:class="isDark ? 'bg-black/50 text-white' : 'bg-slate-100 text-theme-ink'">
+							:class="isDark ? 'bg-black/50 text-white' : 'bg-white text-[#141E1A] border border-slate-200'">
 							{{ formattedTime.seconds }}s
 						</span>
 					</div>
@@ -72,9 +79,8 @@
 				<div ref="scrollContainer"
 					class="flex gap-2.5 sm:gap-3 lg:gap-3.5 overflow-x-auto scroll-smooth no-scrollbar py-1 snap-x snap-mandatory"
 					style="touch-action: pan-y;" @scroll="checkScrollButtons">
-					<!-- Sized so 2 cards fit and 3rd card peeks over the edge on mobile -->
 					<div v-for="book in books" :key="book.id"
-						class="w-[calc((100%-1.25rem)/2.35)] sm:w-[calc((100%-1.5rem)/3.25)] lg:w-[calc((100%-0.875rem*4)/5)] flex-shrink-0 snap-start flex">
+						class="w-[calc((100%-1rem)/2.35)] sm:w-[calc((100%-1.25rem)/3.25)] lg:w-[calc((100%-0.875rem*4)/5)] flex-shrink-0 snap-start flex">
 						<BookCard :book="book" :compact="true" class="h-full"
 							@request-seed="(t, a) => $emit('request-seed', t, a)" />
 					</div>
@@ -87,7 +93,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-vue-next';
 import BookCard from './BookCard.vue';
 
 interface Props {
@@ -138,7 +144,7 @@ function checkScrollButtons(): void {
 function scrollLeft(): void {
   if (!scrollContainer.value) return;
   const firstChild = scrollContainer.value.firstElementChild as HTMLElement | null;
-  const cardWidth = firstChild ? firstChild.clientWidth : 160;
+  const cardWidth = firstChild ? firstChild.clientWidth : 150;
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
   const count = isDesktop ? 4 : 2;
   const scrollDistance = (cardWidth + 12) * count;
@@ -148,7 +154,7 @@ function scrollLeft(): void {
 function scrollRight(): void {
   if (!scrollContainer.value) return;
   const firstChild = scrollContainer.value.firstElementChild as HTMLElement | null;
-  const cardWidth = firstChild ? firstChild.clientWidth : 160;
+  const cardWidth = firstChild ? firstChild.clientWidth : 150;
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
   const count = isDesktop ? 4 : 2;
   const scrollDistance = (cardWidth + 12) * count;

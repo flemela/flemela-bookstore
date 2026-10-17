@@ -43,9 +43,20 @@ const hasActiveLeftFlank = computed(() => {
   return Boolean(heroLeftBanner.value && heroLeftBanner.value.is_active && heroLeftBanner.value.image_url);
 });
 
+// Top Sellers Visibility Toggle (respects store settings/metadata)
+const heroTopSellersEnabled = computed(() => {
+  if (storeMetadata.value?.hero_top_sellers && typeof storeMetadata.value.hero_top_sellers.is_active === 'boolean') {
+    return storeMetadata.value.hero_top_sellers.is_active;
+  }
+  if (storeMetadata.value?.settings && typeof storeMetadata.value.settings.hero_top_sellers === 'boolean') {
+    return storeMetadata.value.settings.hero_top_sellers;
+  }
+  return true;
+});
+
 // Right Flank State
 const hasTopSellers = computed(() => {
-  return Array.isArray(props.topSellers) && props.topSellers.length > 0;
+  return heroTopSellersEnabled.value && Array.isArray(props.topSellers) && props.topSellers.length > 0;
 });
 
 const heroNotes = computed(() => {
@@ -341,7 +352,7 @@ onUnmounted(() => {
 				</div>
 			</section>
 
-			<!-- 3. RIGHT FLANK: 4 Top Selling Books / Editorial Notes (Desktop 1fr, 20% reduced height) -->
+			<!-- 3. RIGHT FLANK: 4 Top Selling Books / Editorial Notes (Desktop 1fr, 20% reduced height, Hideable) -->
 			<div v-if="hasActiveRightFlank" class="hidden lg:flex lg:col-span-1 w-full lg:h-[352px] xl:h-[368px]">
 				<HeroTopSellersPanel v-if="hasTopSellers" :books="topSellers" />
 				<HeroNotesPanel v-else-if="hasActiveHeroNotes" :notes="heroNotes" />

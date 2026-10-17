@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Zap,
   Tag,
+  X,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import { useToast } from '~/composables/useToast';
@@ -33,7 +34,6 @@ interface CuratedShelfConfig {
   is_active: boolean;
 }
 
-// Deterministic baseline shelves that always render on screen
 const SHELF_DEFINITIONS: Record<ShelfKey, { defaultTitle: string; defaultColor: string; subtitle: string }> = {
   FLASH_SALE: {
     defaultTitle: 'FLASH SALE DEALS',
@@ -49,7 +49,6 @@ const SHELF_DEFINITIONS: Record<ShelfKey, { defaultTitle: string; defaultColor: 
 
 const activeTab = ref<ShelfKey>('FLASH_SALE');
 
-// Shelf configuration state
 const shelfConfigs = ref<Record<ShelfKey, CuratedShelfConfig>>({
   FLASH_SALE: {
     badge_trigger: 'FLASH_SALE',
@@ -67,7 +66,6 @@ const shelfConfigs = ref<Record<ShelfKey, CuratedShelfConfig>>({
 
 const currentConfig = computed(() => shelfConfigs.value[activeTab.value]);
 
-// Background luminance calculation for contrast
 function isDarkColor(hex?: string | null): boolean {
   if (!hex || !hex.startsWith('#')) return false;
   const clean = hex.replace('#', '');
@@ -101,6 +99,25 @@ const PRESET_SWATCHES = [
 const assignedBooks = ref<Book[]>([]);
 const isLoadingAssigned = ref(false);
 
+const flashSaleTabSubtitle = computed(() => {
+  return activeTab.value === 'FLASH_SALE'
+    ? `${assignedBooks.value.length} book(s) assigned`
+    : 'Badge: FLASH_SALE';
+});
+
+const dealOfWeekTabSubtitle = computed(() => {
+  return activeTab.value === 'DEAL_OF_WEEK'
+    ? `${assignedBooks.value.length} book(s) assigned`
+    : 'Badge: DEAL_OF_WEEK';
+});
+
+// Reactive Set of assigned book IDs — single source of truth for shelf membership
+const assignedBookIdSet = computed(() => new Set(assignedBooks.value.map((b) => b.id)));
+
+function isBookOnShelf(bookId: string): boolean {
+  return assignedBookIdSet.value.has(bookId);
+}
+
 // Live catalog search state
 const catalogQuery = ref('');
 const searchResults = ref<Book[]>([]);
@@ -113,7 +130,13 @@ function getBookAuthor(book: Book): string {
   return book.author?.trim() || 'Original Edition';
 }
 
-// Load remote section settings from API and merge cleanly
+function resolveCover(book: Book): string {
+  const img = book.images?.[0];
+  if (!img) return (book as any).cover_image_url || '/images/book-placeholder.svg';
+  if (typeof img === 'string') return img;
+  return img.image_url || (book as any).cover_image_url || '/images/book-placeholder.svg';
+}
+
 async function loadRemoteSections(): Promise<void> {
   try {
     const remote = await $fetch<any[]>('/api/admin/curated-sections');
@@ -132,11 +155,10 @@ async function loadRemoteSections(): Promise<void> {
       }
     }
   } catch {
-    // Falls back gracefully to default state
+    // Falls back gracefully
   }
 }
 
-// Load books carrying the active badge
 async function loadAssignedBooks(): Promise<void> {
   isLoadingAssigned.value = true;
   try {
@@ -151,7 +173,6 @@ async function loadAssignedBooks(): Promise<void> {
   }
 }
 
-// Search catalog as admin types
 watch(catalogQuery, (val) => {
   if (searchDebounce) clearTimeout(searchDebounce);
   const q = val.trim();
@@ -175,14 +196,12 @@ watch(catalogQuery, (val) => {
   }, 220);
 });
 
-// Switch active tab and reload assigned books
 watch(activeTab, () => {
   catalogQuery.value = '';
   searchResults.value = [];
   loadAssignedBooks();
 });
 
-// Save shelf appearance (title, background color, active status)
 async function handleSaveSettings(): Promise<void> {
   const cfg = currentConfig.value;
   if (!cfg.title.trim()) {
@@ -222,8 +241,12 @@ async function handleSaveSettings(): Promise<void> {
   }
 }
 
-// Add book to active shelf (assign badge)
+// Optimistic Add with Rollback Safety
 async function handleAddBook(book: Book): Promise<void> {
+  if (isBookOnShelf(book.id)) return;
+
+  assignedBooks.value = [book, ...assignedBooks.value];
+
   try {
     await $fetch('/api/admin/books/bulk-badge', {
       method: 'POST',
@@ -234,14 +257,18 @@ async function handleAddBook(book: Book): Promise<void> {
     });
 
     pushToast({ message: `"${book.name}" added to ${currentConfig.value.title}!`, variant: 'success' });
-    await loadAssignedBooks();
   } catch (err: any) {
-    pushToast({ message: err.data?.message || 'Failed to add book', variant: 'error' });
+    assignedBooks.value = assignedBooks.value.filter((b) => b.id !== book.id);
+    pushToast({ message: err.data?.message || 'Failed to add book to shelf', variant: 'error' });
   }
 }
 
-// Remove book from active shelf (clear badge)
+// Optimistic Removal with Rollback Safety
 async function handleRemoveBook(book: Book): Promise<void> {
+  const previousList = [...assignedBooks.value];
+
+  assignedBooks.value = assignedBooks.value.filter((b) => b.id !== book.id);
+
   try {
     await $fetch('/api/admin/books/bulk-badge', {
       method: 'POST',
@@ -252,17 +279,10 @@ async function handleRemoveBook(book: Book): Promise<void> {
     });
 
     pushToast({ message: `"${book.name}" removed from shelf`, variant: 'info' });
-    await loadAssignedBooks();
   } catch (err: any) {
-    pushToast({ message: err.data?.message || 'Failed to remove book', variant: 'error' });
+    assignedBooks.value = previousList;
+    pushToast({ message: err.data?.message || 'Failed to remove book from shelf', variant: 'error' });
   }
-}
-
-function resolveCover(book: Book): string {
-  const img = book.images?.[0];
-  if (!img) return (book as any).cover_image_url || '/images/book-placeholder.svg';
-  if (typeof img === 'string') return img;
-  return img.image_url || (book as any).cover_image_url || '/images/book-placeholder.svg';
 }
 
 onMounted(async () => {
@@ -273,7 +293,7 @@ onMounted(async () => {
 
 <template>
 	<AdminLayout>
-		<div class="space-y-6 max-w-7xl mx-auto">
+		<div class="space-y-6 max-w-7xl mx-auto font-sans">
 
 			<!-- Top Title Bar -->
 			<div class="pb-4 border-b border-paper-border flex flex-wrap items-center justify-between gap-4">
@@ -297,8 +317,8 @@ onMounted(async () => {
 				</button>
 			</div>
 
-			<!-- Core 2-Shelf Tab Switcher (Always Rendered) -->
-			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+			<!-- Apple-Style 2-Shelf Segmented Selector -->
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 select-none">
 				<!-- Tab 1: Flash Sale -->
 				<button type="button"
 					class="p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 shadow-2xs"
@@ -314,7 +334,9 @@ onMounted(async () => {
 							<strong class="text-sm font-bold text-forest-950 block truncate">
 								{{ shelfConfigs.FLASH_SALE.title }}
 							</strong>
-							<span class="text-[11px] text-ink-muted">Badge: FLASH_SALE</span>
+							<span class="text-[11px] text-ink-muted">
+								{{ flashSaleTabSubtitle }}
+							</span>
 						</div>
 					</div>
 
@@ -339,7 +361,9 @@ onMounted(async () => {
 							<strong class="text-sm font-bold text-forest-950 block truncate">
 								{{ shelfConfigs.DEAL_OF_WEEK.title }}
 							</strong>
-							<span class="text-[11px] text-ink-muted">Badge: DEAL_OF_WEEK</span>
+							<span class="text-[11px] text-ink-muted">
+								{{ dealOfWeekTabSubtitle }}
+							</span>
 						</div>
 					</div>
 
@@ -350,7 +374,7 @@ onMounted(async () => {
 				</button>
 			</div>
 
-			<!-- Main Workspace: Shelf Appearance (Left 4 cols) & Catalog Search / Assigned Books (Right 8 cols) -->
+			<!-- Main Workspace -->
 			<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
 				<!-- LEFT: Appearance & Contrast Controls (4 cols) -->
@@ -366,7 +390,6 @@ onMounted(async () => {
 					</div>
 
 					<form class="space-y-4" @submit.prevent="handleSaveSettings">
-						<!-- Shelf Heading -->
 						<div class="space-y-1">
 							<label class="text-xs font-semibold text-forest-950">Section Headline *</label>
 							<input v-model="currentConfig.title" type="text"
@@ -438,7 +461,7 @@ onMounted(async () => {
 					</form>
 				</div>
 
-				<!-- RIGHT: Live Catalog Search & Assigned Shelf Books (8 cols) -->
+				<!-- RIGHT: Catalog Search & Assigned Shelf Books (8 cols) -->
 				<div class="lg:col-span-8 space-y-6">
 
 					<!-- SEARCH CATALOG TO ADD BOOKS -->
@@ -456,10 +479,16 @@ onMounted(async () => {
 							<Search :size="15" class="absolute left-3.5 top-3 text-ink-subtle pointer-events-none" />
 							<input v-model="catalogQuery" type="text"
 								placeholder="Search catalog (e.g. Atomic Habits, James Clear, SR-B0001)..."
-								class="w-full pl-10 pr-3.5 py-2.5 bg-paper-canvas border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle" />
+								class="w-full pl-10 pr-9 py-2.5 bg-paper-canvas border border-paper-border rounded-xl text-xs sm:text-sm outline-none focus:bg-white focus:border-forest-900 transition-all text-forest-950 placeholder:text-ink-subtle"
+								@keydown.esc="catalogQuery = ''" />
+							<button v-if="catalogQuery" type="button"
+								class="absolute right-3 top-2.5 text-slate-400 hover:text-black p-0.5 cursor-pointer"
+								@click="catalogQuery = ''">
+								<X :size="14" />
+							</button>
 						</div>
 
-						<!-- Instant Search Dropdown Results -->
+						<!-- Instant Search Dropdown Results with True Set Membership Verification -->
 						<div v-if="catalogQuery.trim()"
 							class="border border-paper-border rounded-xl bg-white overflow-hidden shadow-2xs divide-y divide-paper-border/60">
 							<div v-if="isSearching" class="p-5 text-center text-xs text-ink-muted">
@@ -486,21 +515,22 @@ onMounted(async () => {
 									</div>
 								</div>
 
+								<!-- True Set Membership Button: Disabled only if truly in assigned list -->
 								<button type="button"
-									class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0 border shadow-2xs"
-									:class="book.badge === activeTab
+									class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 flex-shrink-0 border shadow-2xs"
+									:class="isBookOnShelf(book.id)
                     ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed'
-                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300'"
-									:disabled="book.badge === activeTab" @click="handleAddBook(book)">
-									<CheckCircle2 v-if="book.badge === activeTab" :size="13" />
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300 cursor-pointer active:scale-95'"
+									:disabled="isBookOnShelf(book.id)" @click="handleAddBook(book)">
+									<CheckCircle2 v-if="isBookOnShelf(book.id)" :size="13" />
 									<PlusCircle v-else :size="13" />
-									<span>{{ book.badge === activeTab ? 'On Shelf' : '+ Add to Shelf' }}</span>
+									<span>{{ isBookOnShelf(book.id) ? 'On Shelf' : '+ Add to Shelf' }}</span>
 								</button>
 							</div>
 						</div>
 					</div>
 
-					<!-- BOOKS CURRENTLY ON THIS SHELF -->
+					<!-- ASSIGNED SHELF BOOKS LIST (With Functioning Delete Button) -->
 					<div
 						class="bg-paper-surface rounded-2xl border border-paper-border p-5 sm:p-6 shadow-soft space-y-4">
 						<div class="flex items-center justify-between pb-3 border-b border-paper-border">
@@ -509,7 +539,7 @@ onMounted(async () => {
 									<BookOpen :size="16" class="text-forest-900" />
 									<span>Books on {{ currentConfig.title }} ({{ assignedBooks.length }})</span>
 								</h3>
-								<p class="text-[11px] text-ink-muted">Titles with active badge: {{ activeTab }}</p>
+								<p class="text-[11px] text-ink-muted">Active badge: {{ activeTab }}</p>
 							</div>
 
 							<button type="button"
@@ -526,9 +556,9 @@ onMounted(async () => {
 
 						<div v-else-if="!assignedBooks.length"
 							class="p-10 text-center text-xs text-ink-muted space-y-2">
-							<p>No books currently assigned to this shelf.</p>
+							<p>No books are currently assigned to this shelf.</p>
 							<span class="text-[11px] text-ink-subtle block">
-								Use the search box above to add titles from your store inventory.
+								Type in the search box above to add titles from your catalog.
 							</span>
 						</div>
 
@@ -553,8 +583,9 @@ onMounted(async () => {
 									</div>
 								</div>
 
+								<!-- Functioning Delete / Remove Button -->
 								<button type="button"
-									class="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0 shadow-2xs"
+									class="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0 shadow-2xs active:scale-95"
 									title="Remove from this curated shelf" @click="handleRemoveBook(book)">
 									<Trash2 :size="13" />
 									<span>Remove</span>

@@ -14,7 +14,7 @@ const props = withDefaults(defineProps<Props>(), {
   title: 'Top Selling Books',
 });
 
-// Guaranteed 4 items fit cleanly into the fixed height
+// Guaranteed 4 items fit cleanly into the 20% reduced height
 const displayBooks = computed(() => {
   return props.books.slice(0, 4);
 });
@@ -65,7 +65,7 @@ function resolveSellingPrice(book: Book): number {
 			</NuxtLink>
 		</div>
 
-		<!-- 4 Rows Proportionally Scaled to Fit 352px/368px Container -->
+		<!-- 4 Rows Proportionally Scaled to Fit Container -->
 		<div class="flex-1 flex flex-col justify-between py-1 space-y-1 min-h-0">
 			<NuxtLink v-for="book in displayBooks" :key="book.id" :to="`/book/${book.slug}`"
 				class="flex items-center gap-2 p-1 rounded-lg hover:bg-black/[0.025] transition-colors group cursor-pointer flex-1 min-h-0">

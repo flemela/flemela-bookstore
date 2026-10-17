@@ -2,7 +2,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import {
-  ArrowLeft,
   ShoppingBag,
   Truck,
   Download,
@@ -10,7 +9,9 @@ import {
   CheckCircle2,
   Check,
 } from 'lucide-vue-next';
-import BookstoreHeader from '~/components/storefront/BookstoreHeader.vue';
+import PromoTickerStrip from '~/components/storefront/PromoTickerStrip.vue';
+import StoreNavbar from '~/components/storefront/StoreNavbar.vue';
+import Breadcrumbs from '~/components/storefront/Breadcrumbs.vue';
 import CartDrawer from '~/components/storefront/CartDrawer.vue';
 import QuantityStepper from '~/components/storefront/QuantityStepper.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
@@ -19,9 +20,13 @@ import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat, BookFormatType } from '~/types';
 
 const route = useRoute();
+const router = useRouter();
 const slug = computed(() => route.params.slug as string);
 
 const { data: book, error } = await useFetch<Book>(`/api/products/${slug.value}`);
+const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
+const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
+
 const { addItem } = useCart();
 const { push: pushToast } = useToast();
 
@@ -29,6 +34,13 @@ const selectedFormatId = ref<string>('');
 const quantity = ref<number>(1);
 const isRecentlyAdded = ref(false);
 let addedTimer: ReturnType<typeof setTimeout> | undefined;
+
+// Dynamic Breadcrumb Trail
+const breadcrumbItems = computed(() => [
+  { label: 'Home', to: '/' },
+  { label: book.value?.category_name || 'Catalog', to: '/#catalog-results' },
+  { label: book.value?.name || 'Book Details' },
+]);
 
 // Filter available digital formats
 const availableDigitalFormats = computed<ProductFormat[]>(() => {
@@ -111,7 +123,7 @@ const displayFormats = computed<ProductFormat[]>(() => {
   return list;
 });
 
-// Default to available digital format first; fallback to hardcopy
+// Default to digital format if present, else hardcopy
 watch(
   displayFormats,
   (fmts) => {
@@ -196,32 +208,13 @@ const addToCartButtonLabel = computed(() => {
   return `${actionText}${priceText}`;
 });
 
-// Book Detail SEO
-const pageTitle = computed(() => `${book.value?.name || 'Book'} — The Sunrise Bookstore`);
-const pageDescription = computed(() => {
-  const authorText = book.value?.author ? `by ${book.value.author}. ` : '';
-  const priceText = activePricing.value.currentPrice ? `Only KSh ${activePricing.value.currentPrice.toLocaleString('en-KE')} in Kenya. ` : '';
-  return `${book.value?.name || 'Book'} ${authorText}${priceText}Order physical copies delivered to your door or get instant eBook downloads at The Sunrise Bookstore.`;
-});
+function handleSearch(queryText: string): void {
+  router.push({ path: '/', query: { q: queryText } });
+}
 
-const canonicalUrl = computed(() => `https://www.thesunrisebookstore.com/book/${slug.value}`);
-
-useHead(() => ({
-  title: pageTitle.value,
-  link: [{ rel: 'canonical', href: canonicalUrl.value }],
-  meta: [
-    { name: 'description', content: pageDescription.value },
-    { property: 'og:title', content: pageTitle.value },
-    { property: 'og:description', content: pageDescription.value },
-    { property: 'og:url', content: canonicalUrl.value },
-    { property: 'og:type', content: 'book' },
-    { property: 'og:image', content: primaryImage.value },
-    { name: 'twitter:card', content: 'summary_large_image' },
-    { name: 'twitter:title', content: pageTitle.value },
-    { name: 'twitter:description', content: pageDescription.value },
-    { name: 'twitter:image', content: primaryImage.value },
-  ],
-}));
+function handleCategorySelect(category: string): void {
+  router.push({ path: '/', query: { category } });
+}
 
 function handleAddToCart(): void {
   if (!book.value || !activeFormat.value) return;
@@ -244,7 +237,6 @@ function handleAddToCart(): void {
     author: book.value.author,
   });
 
-  // Tactile feedback on button
   isRecentlyAdded.value = true;
   if (addedTimer) clearTimeout(addedTimer);
   addedTimer = setTimeout(() => {
@@ -260,13 +252,15 @@ function handleAddToCart(): void {
 
 <template>
 	<div class="min-h-screen flex flex-col bg-paper-canvas text-[#141E1A] antialiased">
-		<BookstoreHeader />
+		<!-- Active Dynamic Store Ticker -->
+		<PromoTickerStrip :messages="tickerItems" />
 
-		<main class="max-w-5xl mx-auto w-full py-6 sm:py-10 px-4 sm:px-6 space-y-6 flex-1">
-			<NuxtLink to="/"
-				class="inline-flex items-center gap-1.5 text-xs font-semibold text-[#141E1A] hover:text-[#E8750D] transition-colors">
-				<ArrowLeft :size="13" /> Back to Catalog
-			</NuxtLink>
+		<!-- Unified Storefront Navbar -->
+		<StoreNavbar @search="handleSearch" @select-category="handleCategorySelect" />
+
+		<main class="max-w-5xl mx-auto w-full py-4 sm:py-6 px-4 sm:px-6 space-y-4 flex-1">
+			<!-- Apple-Grade Hierarchical Breadcrumbs -->
+			<Breadcrumbs :items="breadcrumbItems" />
 
 			<div v-if="error || !book"
 				class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-subtle">
@@ -317,7 +311,7 @@ function handleAddToCart(): void {
 						</p>
 					</div>
 
-					<!-- Format Choice (Apple Grouped Style with Brand Orange Highlights) -->
+					<!-- Format Choice -->
 					<div class="space-y-2.5 pt-3 border-t border-slate-200/80">
 						<label class="text-xs font-bold uppercase text-[#141E1A] tracking-wider block font-sans">
 							Choose Reading Format:
@@ -383,7 +377,7 @@ function handleAddToCart(): void {
 						</button>
 					</div>
 
-					<!-- Dynamic Reassurance Notice -->
+					<!-- Reassurance Notice -->
 					<div class="flex items-center gap-2 text-xs text-[#5F6964] pt-1">
 						<CheckCircle2 :size="14" class="text-emerald-700 flex-shrink-0" />
 						<span>{{ formatNoticeText }}</span>
