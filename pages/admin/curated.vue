@@ -2,8 +2,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
 import {
-  Layers,
-  Sparkles,
   Search,
   Trash2,
   Palette,
@@ -51,6 +49,7 @@ let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 // Styling controls for active shelf
 const editTitle = ref('');
 const editBgColor = ref('#052219');
+const editIsActive = ref(true);
 const isSavingStyle = ref(false);
 
 const PRESET_SWATCHES = [
@@ -66,6 +65,7 @@ function selectSection(section: CuratedSection): void {
   selectedSection.value = section;
   editTitle.value = section.title;
   editBgColor.value = section.bg_color || '#052219';
+  editIsActive.value = section.is_active;
   catalogSearchQuery.value = '';
   catalogSearchResults.value = [];
   loadShelfBooks(section.badge_trigger);
@@ -85,7 +85,7 @@ async function loadShelfBooks(badge: string): Promise<void> {
   }
 }
 
-// Search the store catalog as the merchant types
+// Search across the entire store catalog as the merchant types
 watch(catalogSearchQuery, (val) => {
   if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
   const q = val.trim();
@@ -122,6 +122,7 @@ async function handleSaveShelfStyle(): Promise<void> {
     const payload = {
       title,
       bg_color: editBgColor.value || '#052219',
+      is_active: editIsActive.value,
     };
 
     await $fetch(`/api/admin/curated-sections/${selectedSection.value.id}`, {
@@ -131,11 +132,12 @@ async function handleSaveShelfStyle(): Promise<void> {
 
     selectedSection.value.title = title;
     selectedSection.value.bg_color = payload.bg_color;
+    selectedSection.value.is_active = payload.is_active;
 
-    pushToast({ message: `"${title}" appearance saved!`, variant: 'success' });
+    pushToast({ message: `"${title}" settings saved!`, variant: 'success' });
     await refreshSections();
   } catch (err: any) {
-    pushToast({ message: err.data?.message || 'Failed to save appearance', variant: 'error' });
+    pushToast({ message: err.data?.message || 'Failed to save settings', variant: 'error' });
   } finally {
     isSavingStyle.value = false;
   }
@@ -241,8 +243,8 @@ function resolveCover(book: Book): string {
 						Curated Categories &amp; Shelves
 					</h1>
 					<p class="text-xs text-ink-muted mt-0.5">
-						Set custom headings and background colors, and search the entire store catalog to add or remove
-						titles.
+						Set custom headings, background colors, toggle visibility, and search the entire catalog to add
+						books.
 					</p>
 				</div>
 
@@ -284,7 +286,7 @@ function resolveCover(book: Book): string {
 								<span class="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded"
 									:class="section.is_active ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-200 text-slate-700'">
 									<template v-if="section.is_active">Active</template>
-									<template v-else>Off</template>
+									<template v-else>Hidden</template>
 								</span>
 							</button>
 						</div>
@@ -330,13 +332,24 @@ function resolveCover(book: Book): string {
 								</div>
 							</div>
 
+							<!-- Visibility Toggle -->
+							<div class="pt-2 border-t border-paper-border flex items-center justify-between">
+								<span class="text-xs font-semibold text-forest-950">Shelf Visibility</span>
+								<label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold select-none">
+									<input v-model="editIsActive" type="checkbox"
+										class="rounded border-paper-border text-forest-950" />
+									<span v-if="editIsActive" class="text-emerald-700">Visible on Store</span>
+									<span v-else class="text-slate-500">Hidden from Store</span>
+								</label>
+							</div>
+
 							<div class="pt-2">
 								<button type="submit"
 									class="w-full bg-forest-950 hover:bg-forest-900 text-paper font-bold text-xs uppercase tracking-wider py-2.5 rounded-xl shadow-subtle flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
 									:disabled="isSavingStyle">
 									<Save :size="13" class="text-gold-300" />
 									<span v-if="isSavingStyle">Saving...</span>
-									<span v-else>Save Appearance</span>
+									<span v-else>Save Settings</span>
 								</button>
 							</div>
 						</form>
@@ -391,7 +404,7 @@ function resolveCover(book: Book): string {
 									</div>
 								</div>
 
-								<!-- Add Button / Status Indicator -->
+								<!-- Add Button -->
 								<button type="button"
 									class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0 border shadow-2xs"
 									:class="book.badge === selectedSection.badge_trigger ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300'"

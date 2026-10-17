@@ -1,16 +1,20 @@
 <!-- components/storefront/BookCard.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { ShoppingCart, Zap, Flame, Star, Tag, Clock } from 'lucide-vue-next';
+import { ShoppingCart, Plus, Star, Zap, Flame, Tag, Clock } from 'lucide-vue-next';
 import { useCart } from '~/composables/useCart';
 import { useToast } from '~/composables/useToast';
 import type { Book, ProductFormat, BookFormatType } from '~/types';
 
 interface Props {
   book: Book;
+  compact?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  compact: false,
+});
+
 const emit = defineEmits<{
   requestSeed: [title: string, author?: string];
 }>();
@@ -21,7 +25,7 @@ const { push: pushToast } = useToast();
 const imageFailed = ref(false);
 const selectedFormatId = ref<string>('');
 
-// Deterministic rating between 4.0 and 5.0
+// Deterministic rating between 4.0 and 5.0 (used in full mode)
 const bookRating = computed(() => {
   const str = props.book.id || props.book.name || 'book';
   let hash = 0;
@@ -224,11 +228,6 @@ function handleCardClick(event: Event): void {
   }
 }
 
-const buttonAriaLabel = computed(() => {
-  if (props.book.isSeed) return 'Request Book';
-  return activeFormat.value?.format === 'hardcopy' ? 'Add Hardcopy to Cart' : 'Add eBook to Cart';
-});
-
 function handleAddToCart(event: Event): void {
   event.preventDefault();
   event.stopPropagation();
@@ -259,7 +258,7 @@ function handleAddToCart(event: Event): void {
   });
 
   pushToast({
-    message: `Added "${props.book.name}" (${formatType === 'hardcopy' ? 'Hardcopy' : formatType.toUpperCase()}) to cart!`,
+    message: `Added "${props.book.name}" to cart`,
     variant: 'success',
   });
 
@@ -268,31 +267,81 @@ function handleAddToCart(event: Event): void {
 </script>
 
 <template>
-	<!-- Form-fitting Card with snug padding -->
-	<div
+	<!-- COMPACT APPLE-INSPIRED CARD (Used on Flash Sale & Deals Rows) -->
+	<div v-if="compact"
+		class="w-full h-full bg-white text-theme-ink rounded-2xl p-2.5 shadow-subtle hover:shadow-card hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group select-none text-left border border-slate-200/80 relative">
+		<div class="flex flex-col flex-1">
+			<!-- Cover Container -->
+			<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`"
+				class="block w-full aspect-[1/1.38] rounded-xl overflow-hidden bg-slate-50 border border-slate-200/60 relative cursor-pointer mb-2 shadow-2xs"
+				:aria-label="`View details for ${book.name}`" @click="handleCardClick">
+				<img v-if="coverImage && !imageFailed" :src="coverImage" :alt="`Cover for ${book.name}`"
+					class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+					loading="lazy" width="128" height="176" referrerpolicy="no-referrer" @error="handleImageError" />
+				<div v-else
+					class="w-full h-full flex flex-col justify-between p-2 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white">
+					<span class="text-[9px] font-mono uppercase tracking-widest text-emerald-300 font-bold truncate">
+						{{ book.category_name || 'Book' }}
+					</span>
+					<h4 class="font-display font-bold text-xs leading-tight line-clamp-2 text-white">
+						{{ book.name }}
+					</h4>
+					<span class="text-[9px] font-mono text-white/70 truncate block pt-1 border-t border-white/10">
+						{{ book.author || 'Edition' }}
+					</span>
+				</div>
+			</NuxtLink>
+
+			<!-- Title -->
+			<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
+				<h3 class="font-display text-xs sm:text-sm font-bold text-theme-ink group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug"
+					:title="book.name">
+					{{ book.name }}
+				</h3>
+			</NuxtLink>
+
+			<!-- Author -->
+			<p class="text-[11px] text-theme-muted italic truncate mt-0.5">
+				{{ displayAuthor }}
+			</p>
+		</div>
+
+		<!-- Bottom Row: Price & Minimal + Icon Button -->
+		<div class="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+			<div class="flex items-baseline gap-1 min-w-0">
+				<span v-if="originalPrice && originalPrice > currentPrice"
+					class="text-[10px] sm:text-xs text-slate-400 line-through font-mono font-medium leading-none truncate">
+					{{ formatCurrency(originalPrice) }}
+				</span>
+				<span
+					class="text-xs sm:text-sm font-black font-mono leading-tight text-theme-ink tracking-tight flex-shrink-0">
+					{{ formatCurrency(currentPrice) }}
+				</span>
+			</div>
+
+			<!-- Minimal + Button with 44px tap target -->
+			<button type="button"
+				class="w-8 h-8 rounded-full bg-slate-100 hover:bg-[#E8750D] hover:text-white active:scale-95 text-slate-800 flex items-center justify-center transition-all cursor-pointer shadow-2xs shrink-0"
+				title="Add to cart" aria-label="Add to cart" @click="handleAddToCart">
+				<Plus :size="16" class="stroke-[2.5]" />
+			</button>
+		</div>
+	</div>
+
+	<!-- FULL CARD (Used for Main Catalog Archive with Rich Details) -->
+	<div v-else
 		class="w-full h-full bg-white text-theme-ink rounded-2xl p-2.5 sm:p-3 shadow-card hover:shadow-xl hover:-translate-y-1 hover:border-[#E8750D]/60 transition-all duration-200 flex flex-col justify-between group select-none text-left border border-theme-border relative">
 		<div class="flex flex-col flex-1">
-
-			<!-- Streamlined Stage Alcove framing the 3D book cover snugly -->
 			<div
 				class="sunrise-book-stage relative mb-2 w-full aspect-[1/1.18] max-h-[210px] rounded-xl flex items-center justify-center p-2">
-
-				<!-- Multi-Planar 3D Physical Book Assembly (Size preserved at max-width: 128px) -->
 				<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`"
 					class="sunrise-3d-book-assembly block cursor-pointer" :aria-label="`View details for ${book.name}`"
 					@click="handleCardClick">
-					<!-- 1. Directional Perspective Ground Shadow -->
 					<div class="sunrise-3d-cast-shadow" aria-hidden="true" />
-
-					<!-- 2. Back Cover Board (translateZ(-7.5px)) -->
 					<div class="sunrise-3d-back-board" aria-hidden="true" />
-
-					<!-- 3. Fore-Edge Page Block (Tucked between -7px and +7px) -->
 					<div class="sunrise-3d-pages-side" aria-hidden="true" />
 
-					<!-- 4. Front Cover Board (translateZ(7.5px)) -->
 					<div class="sunrise-3d-front bg-stone-100">
-						<!-- Missing Cover Fallback -->
 						<div v-if="imageFailed || !coverImage"
 							class="w-full h-full flex flex-col justify-between p-2.5 bg-gradient-to-br from-[#052219] to-[#0C3A2B] text-white text-left select-none">
 							<div class="space-y-0.5">
@@ -311,19 +360,14 @@ function handleAddToCart(event: Event): void {
 							</span>
 						</div>
 
-						<!-- Cover Jacket Image -->
 						<img v-else :src="coverImage" :alt="`Cover for ${book.name}`" class="w-full h-full object-cover"
 							loading="lazy" width="128" height="186" referrerpolicy="no-referrer"
 							@error="handleImageError" />
 
-						<!-- Spine Roll & Debossed Joint Hinge Crease -->
 						<div class="sunrise-3d-spine-crease" aria-hidden="true" />
-
-						<!-- Laminate Sheen Reflection -->
 						<div class="sunrise-3d-sheen" aria-hidden="true" />
 					</div>
 
-					<!-- Identity Badge (Top Left of Front Cover) -->
 					<span v-if="badgeInfo"
 						class="absolute top-1.5 left-2 bg-[#052219]/95 text-theme-turquoise font-mono font-bold text-[9px] px-1.5 py-0.5 rounded uppercase z-20 flex items-center gap-1 shadow-xs border border-theme-turquoise/20 pointer-events-none">
 						<component :is="badgeInfo.icon" :size="9" />
@@ -331,7 +375,6 @@ function handleAddToCart(event: Event): void {
 					</span>
 				</NuxtLink>
 
-				<!-- Discount Starburst Medallion (Anchored to Stage Top-Right) -->
 				<div v-if="discountPercentage > 0"
 					class="absolute top-2 right-2 z-20 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center pointer-events-none drop-shadow-[0_3px_8px_rgba(232,117,13,0.45)]"
 					aria-hidden="true">
@@ -346,7 +389,6 @@ function handleAddToCart(event: Event): void {
 				</div>
 			</div>
 
-			<!-- Book Title -->
 			<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
 				<h3 class="font-display text-sm sm:text-base font-bold text-theme-ink group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug"
 					:title="book.name">
@@ -354,12 +396,10 @@ function handleAddToCart(event: Event): void {
 				</h3>
 			</NuxtLink>
 
-			<!-- Author -->
 			<p class="text-xs text-theme-muted italic truncate mt-0.5">
 				{{ displayAuthor }}
 			</p>
 
-			<!-- Star Rating Row -->
 			<div class="flex items-center gap-1.5 mt-1 select-none" aria-label="Rating">
 				<div class="flex items-center gap-0.5" aria-hidden="true">
 					<Star v-for="s in 5" :key="s" :size="11"
@@ -373,17 +413,16 @@ function handleAddToCart(event: Event): void {
 				</span>
 			</div>
 
-			<!-- Format Selector Pills -->
 			<div class="mt-2 space-y-1" role="radiogroup" aria-label="Reading format selection">
 				<template v-if="availableFormats.length > 1">
 					<button v-for="fmt in availableFormats" :key="fmt.id" type="button" role="radio"
 						:aria-checked="activeFormat?.id === fmt.id"
 						class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs sm:text-[13px] font-sans transition-all cursor-pointer select-none leading-tight border"
 						:class="
-              activeFormat?.id === fmt.id
-                ? 'border-[#E8750D] bg-[#FFF7ED] text-[#C25E00] font-extrabold shadow-xs ring-1 ring-[#E8750D]/30'
-                : 'border-slate-200 bg-slate-50/90 text-slate-700 hover:border-orange-300 hover:bg-orange-50/40 font-bold'
-            " @click="selectFormat(fmt.id, $event)">
+							activeFormat?.id === fmt.id
+								? 'border-[#E8750D] bg-[#FFF7ED] text-[#C25E00] font-extrabold shadow-xs ring-1 ring-[#E8750D]/30'
+								: 'border-slate-200 bg-slate-50/90 text-slate-700 hover:border-orange-300 hover:bg-orange-50/40 font-bold'
+						" @click="selectFormat(fmt.id, $event)">
 						<span class="truncate pr-1">{{ getFormatDisplayLabel(fmt) }}</span>
 						<span class="font-mono font-black text-xs sm:text-[13px] flex-shrink-0"
 							:class="activeFormat?.id === fmt.id ? 'text-[#B84A00]' : 'text-slate-700'">
@@ -401,7 +440,6 @@ function handleAddToCart(event: Event): void {
 			</div>
 		</div>
 
-		<!-- Bottom Bar: Price Row + Add to Cart Button -->
 		<div class="pt-2 mt-2 border-t border-theme-border flex flex-col gap-1.5">
 			<div class="flex items-baseline gap-1.5">
 				<span v-if="originalPrice && originalPrice > currentPrice"
@@ -415,7 +453,7 @@ function handleAddToCart(event: Event): void {
 
 			<button type="button"
 				class="w-full flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-b from-[#F07514] via-[#E86C0E] to-[#D85F06] hover:from-[#E86C0E] hover:via-[#DE6007] hover:to-[#C85202] active:from-[#C85202] active:to-[#B24400] text-white font-bold text-xs sm:text-sm py-2 sm:py-2.5 transition-all duration-200 cursor-pointer active:scale-95 shadow-xs hover:shadow border-t border-white/20 focus-visible:outline-2 focus-visible:outline-[#E8750D]"
-				:title="buttonAriaLabel" :aria-label="buttonAriaLabel" @click="handleAddToCart">
+				@click="handleAddToCart">
 				<ShoppingCart :size="15" fill="currentColor" class="transition-transform group-hover:scale-105" />
 				<span>{{ book.isSeed ? 'Request' : 'Add' }}</span>
 			</button>

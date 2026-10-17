@@ -50,7 +50,7 @@ const { data: catalogData, status: booksStatus } = await useFetch<{
 // Dynamic Curated Sections from Admin Desk
 const { data: curatedSections } = await useFetch<any[]>('/api/curated-sections');
 
-// Match dynamic settings for Flash Sale and Deals of the Week
+// Resolve section configurations for Flash Sale and Deals of the Week
 const flashSaleSection = computed(() => {
   return (curatedSections.value || []).find((s) => s.badge_trigger === 'FLASH_SALE') || null;
 });
@@ -351,10 +351,11 @@ onUnmounted(() => {
 		<HeroCarousel :top-sellers="heroTopSellers" @search="handleSearch" @select-category="handleCategorySelect"
 			@navigate-flash-sale="scrollToSection('flash-sale')" />
 
-		<!-- FLASH SALE STRIP (Layout held 100% constant; receives dynamic title & bg-color) -->
-		<FlashSaleStrip v-if="flashSaleBooks.length > 0" :books="flashSaleBooks"
-			:title="flashSaleSection?.title || 'FLASH SALE DEALS'" :bg-color="flashSaleSection?.bg_color || ''"
-			badge-label="LIMITED TIME OFFERS" @request-seed="handleRequestSeed" />
+		<!-- FLASH SALE STRIP (Layout held constant; dynamic title, bg-color & hide toggle respected) -->
+		<FlashSaleStrip v-if="flashSaleBooks.length > 0 && flashSaleSection?.is_active !== false"
+			:books="flashSaleBooks" :title="flashSaleSection?.title || 'FLASH SALE DEALS'"
+			:bg-color="flashSaleSection?.bg_color || ''" badge-label="LIMITED TIME OFFERS"
+			@request-seed="handleRequestSeed" />
 
 		<!-- Categories Bento Grid -->
 		<BentoCategories @select="handleCategorySelect" />
@@ -392,8 +393,9 @@ onUnmounted(() => {
 			</div>
 		</div>
 
-		<!-- DEALS OF THE WEEK (Layout held 100% constant; receives dynamic title, subtitle & bg-color) -->
-		<DealsWeek :books="bestsellersOfWeek" :title="dealsWeekSection?.title || 'DEALS OF THE WEEK'"
+		<!-- DEALS OF THE WEEK (Layout held constant; dynamic title, subtitle, bg-color & hide toggle respected) -->
+		<DealsWeek v-if="dealsWeekSection?.is_active !== false" :books="bestsellersOfWeek"
+			:title="dealsWeekSection?.title || 'DEALS OF THE WEEK'"
 			:subtitle="dealsWeekSection?.subtitle || 'Handpicked titles at special discounts — instant digital download or physical delivery.'"
 			:bg-color="dealsWeekSection?.bg_color || ''" @request-seed="handleRequestSeed" />
 
@@ -513,6 +515,7 @@ onUnmounted(() => {
 					View All Books
 				</button>
 			</div>
+
 			<!-- SKELETON LOADING GRID -->
 			<div v-if="booksStatus === 'pending'"
 				class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full">
@@ -539,7 +542,6 @@ onUnmounted(() => {
 				<BookCard v-for="book in displayBooks" :key="book.id" :book="book" class="h-full"
 					@request-seed="handleRequestSeed" />
 			</div>
-
 			<!-- EMPTY STATE -->
 			<div v-else
 				class="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-sm animate-in fade-in duration-200">
