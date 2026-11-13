@@ -31,7 +31,7 @@ let addedTimer: ReturnType<typeof setTimeout> | undefined;
 const availableDigitalFormats = computed<ProductFormat[]>(() => {
   if (!props.book?.formats || props.book.formats.length === 0) return [];
   return props.book.formats.filter((f) => {
-    const isDigital = f.format === 'pdf' || f.format === 'epub';
+    const isDigital = f.format === 'pdf' || f.format === 'epub' || f.format === 'zip';
     if (!isDigital) return false;
     if (props.book.isSeed) return true;
     return Boolean(
@@ -74,8 +74,15 @@ const availableFormats = computed<ProductFormat[]>(() => {
 const formatCaption = computed<string>(() => {
   const captions: string[] = [];
   for (const fmt of availableFormats.value) {
-    const label = fmt.format === 'hardcopy' ? 'Hardcopy' : 'eBook';
-    if (!captions.includes(label)) captions.push(label);
+    const hasCustomLabel = Boolean(fmt.label && fmt.label.trim());
+    const caption = hasCustomLabel
+      ? fmt.label!.trim()
+      : fmt.format === 'hardcopy'
+        ? 'Hardcopy'
+        : fmt.format === 'zip'
+          ? 'Audiobook'
+          : 'eBook';
+    if (!captions.includes(caption)) captions.push(caption);
   }
   return captions.join(' + ');
 });

@@ -13,7 +13,7 @@
           ? 'border-emerald-600 bg-emerald-50/60 scale-[0.99]'
           : 'border-gray-200 hover:border-emerald-700/40 bg-gray-50/50 hover:bg-gray-50'
       ]" @click="triggerFileInput">
-			<input ref="fileInputRef" type="file" accept="application/pdf,.pdf" class="hidden"
+			<input ref="fileInputRef" type="file" :accept="accept" class="hidden"
 				@change="handleFileSelect" />
 
 			<div class="flex flex-col items-center justify-center space-y-2.5">
@@ -26,10 +26,10 @@
 				</div>
 				<div>
 					<p class="text-sm font-semibold text-gray-900">
-						Click to upload PDF or drag and drop
+						{{ formatHint === 'zip' ? 'Click to upload a ZIP or drag and drop' : 'Click to upload PDF or drag and drop' }}
 					</p>
 					<p class="text-xs text-gray-500 mt-0.5">
-						Single eBook file (PDF format, up to {{ maxFileSizeMb }}MB)
+						{{ formatHint === 'zip' ? `Audiobook archive (ZIP, up to ${maxFileSizeMb}MB)` : `Single eBook file (PDF format, up to ${maxFileSizeMb}MB)` }}
 					</p>
 				</div>
 			</div>
@@ -108,7 +108,7 @@
 				</button>
 			</div>
 
-			<input ref="fileInputRef" type="file" accept="application/pdf,.pdf" class="hidden"
+			<input ref="fileInputRef" type="file" :accept="accept" class="hidden"
 				@change="handleFileSelect" />
 		</div>
 
@@ -154,12 +154,16 @@ const props = withDefaults(
     initialFileName?: string | null;
     initialFileSize?: number | null;
     maxFileSizeMb?: number;
+    formatHint?: 'pdf' | 'zip';
+    accept?: string;
   }>(),
   {
     modelValue: null,
     initialFileName: null,
     initialFileSize: 0,
     maxFileSizeMb: 50,
+    formatHint: 'pdf',
+    accept: 'application/pdf,.pdf',
   }
 );
 
@@ -192,7 +196,7 @@ watch(
       activeFileName.value =
         props.initialFileName ||
         val.split('/').pop()?.replace(/^\d+-/, '') ||
-        'Attached eBook.pdf';
+        props.formatHint === 'zip' ? 'Attached Audiobook.zip' : 'Attached eBook.pdf';
       activeFileSize.value = props.initialFileSize || 0;
     } else if (!val && currentState.value === 'success') {
       currentState.value = 'idle';
@@ -220,9 +224,15 @@ function handleFileDrop(e: DragEvent) {
 }
 
 function validateAndInitiate(file: File) {
-  if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+  const expectedExt = props.formatHint === 'zip' ? '.zip' : '.pdf';
+  const expectedMimes = props.formatHint === 'zip'
+    ? ['application/zip', 'application/x-zip-compressed', 'application/octet-stream']
+    : ['application/pdf'];
+  if (!file.name.toLowerCase().endsWith(expectedExt) && !expectedMimes.includes((file.type || '').toLowerCase())) {
     currentState.value = 'error';
-    errorMessage.value = 'Please select a valid PDF file.';
+    errorMessage.value = props.formatHint === 'zip'
+      ? 'Please select a valid ZIP file.'
+      : 'Please select a valid PDF file.';
     return;
   }
 
@@ -256,13 +266,18 @@ async function startUploadProcess() {
       method: 'POST',
       body: {
         filename: activeFile.value.name,
-        format: 'pdf',
-        contentType: 'application/pdf',
+        format: props.formatHint,
+        contentType: props.formatHint === 'zip' ? 'application/zip' : 'application/pdf',
+        sizeBytes: activeFile.value.size,
       },
     });
 
     if (!negotiateRes?.uploadUrl || !negotiateRes?.key) {
-      throw new Error('Failed to prepare eBook upload authorization.');
+      throw new Error(
+        props.formatHint === 'zip'
+          ? 'Failed to prepare audiobook upload authorization.'
+          : 'Failed to prepare eBook upload authorization.'
+      );
     }
 
     currentState.value = 'uploading';
@@ -293,7 +308,7 @@ function uploadDirectToR2(uploadUrl: string, file: File): Promise<void> {
     activeXhr = xhr;
 
     xhr.open('PUT', uploadUrl, true);
-    xhr.setRequestHeader('Content-Type', 'application/pdf');
+    xhr.setRequestHeader('Content-Type', props.formatHint === 'zip' ? 'application/zip' : 'application/pdf');
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {

@@ -29,6 +29,26 @@ const searchQuery = ref<string>('');
 const debouncedSearch = ref<string>('');
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
+// Catalogue reading progress (scroll-linked fill under the heading)
+const catalogProgress = ref(0);
+function updateCatalogProgress(): void {
+  if (typeof window === 'undefined') return;
+  const doc = document.documentElement;
+  const max = Math.max(1, doc.scrollHeight - doc.clientHeight);
+  catalogProgress.value = Math.min(100, Math.max(0, (window.scrollY / max) * 100));
+}
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    updateCatalogProgress();
+    window.addEventListener('scroll', updateCatalogProgress, { passive: true });
+  }
+});
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('scroll', updateCatalogProgress);
+  }
+});
+
 // Reactive Catalogue Query
 const { data: catalogData, status: booksStatus } = await useFetch<{
   products: Book[];
@@ -378,29 +398,33 @@ onUnmounted(() => {
 		<!-- Complete Bookstore Catalogue Archive -->
 		<section id="catalog-results"
 			class="pt-10 sm:pt-14 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6">
-			<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-slate-200">
-				<div class="space-y-1">
+			<div class="flex flex-row items-end justify-between gap-3 sm:gap-4 pb-4 border-b border-slate-200">
+				<div class="space-y-1.5 min-w-0">
 					<div class="flex items-center gap-2">
 						<span
-							class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#E8750D] block">
+							class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#E8750D] block whitespace-nowrap">
 							CATALOGUE ARCHIVE
 						</span>
 						<span
-							class="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-3 py-0.5 rounded-full border border-slate-200">
+							class="text-[10px] sm:text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-2 sm:px-3 py-0.5 rounded-full border border-slate-200 whitespace-nowrap">
 							{{ paginationRangeText }}
 						</span>
 					</div>
 					<h2
-						class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
+						class="font-poster text-2xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
 						{{ catalogueHeading }}
 					</h2>
+					<!-- Reading progress — fills as the shopper scrolls through the archive -->
+					<div class="h-[3px] w-36 sm:w-48 lg:w-64 bg-slate-200 rounded-full overflow-hidden" aria-hidden="true">
+						<div class="h-full bg-[#E8750D] transition-[width] duration-150 ease-out" :style="{ width: `${catalogProgress}%` }" />
+					</div>
 				</div>
 
 				<!-- Filter Dropdown, Sort Dropdown & Search Status Indicator -->
-				<div class="flex items-center gap-2.5 flex-wrap">
+				<div class="flex items-center gap-2 flex-wrap shrink-0">
 					<div class="relative">
 						<button id="catalogue-category-trigger" type="button"
-							class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
+							class="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-[10px] sm:text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
 							:class="{ 'border-[#E8750D] text-[#E8750D] bg-[#FFF7ED]': isCatalogueDropdownOpen }"
 							@click="isCatalogueDropdownOpen = !isCatalogueDropdownOpen">
 							<Filter :size="14" class="text-[#E8750D]" />
@@ -494,7 +518,7 @@ onUnmounted(() => {
 
 			<!-- SKELETON LOADING GRID -->
 			<div v-if="booksStatus === 'pending'"
-				class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full">
+				class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full">
 				<div v-for="n in 8" :key="`skel-catalog-${n}`"
 					class="w-full bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-card flex flex-col justify-between space-y-3">
 					<div class="aspect-[1/1.37] rounded-lg bg-slate-200 animate-pulse" />
@@ -514,7 +538,7 @@ onUnmounted(() => {
 
 			<!-- REAL BOOKS GRID -->
 			<div v-else-if="displayBooks.length > 0"
-				class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300">
+				class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300">
 				<BookCard v-for="book in displayBooks" :key="book.id" :book="book" class="h-full"
 					@request-seed="handleRequestSeed" />
 			</div>

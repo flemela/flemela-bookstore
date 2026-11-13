@@ -58,7 +58,7 @@ const hasActiveRightFlank = computed(() => {
 // Dynamic Desktop Grid Class (1fr : 2fr : 1fr)
 const gridLayoutClass = computed(() => {
   if (hasActiveLeftFlank.value || hasActiveRightFlank.value) {
-    return 'grid grid-cols-1 lg:grid-cols-4 gap-3.5 lg:gap-4.5 items-stretch';
+    return 'grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4.5 items-stretch';
   }
   return '';
 });
@@ -66,10 +66,10 @@ const gridLayoutClass = computed(() => {
 // Center Carousel Column Span
 const centerCarouselSpanClass = computed(() => {
   if (hasActiveLeftFlank.value && hasActiveRightFlank.value) {
-    return 'lg:col-span-2 w-full';
+    return 'md:col-span-2 w-full';
   }
   if (hasActiveLeftFlank.value || hasActiveRightFlank.value) {
-    return 'lg:col-span-3 w-full';
+    return 'md:col-span-3 w-full';
   }
   return 'w-full';
 });
@@ -267,7 +267,7 @@ onUnmounted(() => {
 		<div class="w-full" :class="gridLayoutClass">
 
 			<!-- 1. LEFT FLANK: Promotional Poster (Desktop 1fr, 20% reduced height) -->
-			<div v-if="hasActiveLeftFlank" class="hidden lg:flex lg:col-span-1 w-full lg:h-[352px] xl:h-[368px]">
+			<div v-if="hasActiveLeftFlank" class="hidden md:flex md:col-span-1 w-full md:h-[272px] lg:h-[352px] xl:h-[368px]">
 				<HeroLeftBanner :banner="heroLeftBanner" />
 			</div>
 
@@ -337,7 +337,7 @@ onUnmounted(() => {
 			</section>
 
 			<!-- 3. RIGHT FLANK: 4 Top Selling Books / Editorial Notes (Desktop 1fr, 20% reduced height, Hideable) -->
-			<div v-if="hasActiveRightFlank" class="hidden lg:flex lg:col-span-1 w-full lg:h-[352px] xl:h-[368px]">
+			<div v-if="hasActiveRightFlank" class="hidden md:flex md:col-span-1 w-full md:h-[272px] lg:h-[352px] xl:h-[368px]">
 				<HeroRightBanner v-if="hasActiveRightBanner" :banner="heroRightBanner" />
 				<HeroNotesPanel v-else-if="hasActiveHeroNotes" :notes="heroNotes" />
 			</div>

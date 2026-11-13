@@ -3,7 +3,7 @@
 // Shared TypeScript interfaces with promotion and compare-at discount support.
 // =============================================================================
 
-export type BookFormatType = 'pdf' | 'epub' | 'hardcopy';
+export type BookFormatType = 'pdf' | 'epub' | 'hardcopy' | 'zip';
 export type DeliveryMethodType = 'digital' | 'pickup' | 'delivery';
 export type BookStatus = 'draft' | 'published' | 'archived';
 export type OrderFulfillmentStatus =
@@ -31,6 +31,7 @@ export interface ProductFormat {
   file_public_id: string | null;
   file_size_bytes: number | null;
   stock: number | null;
+  label?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -90,7 +91,7 @@ export interface DigitalDownload {
   download_count: number;
   expires_at: string;
   book_title?: string | null;
-  format?: 'pdf' | 'epub' | null;
+  format?: 'pdf' | 'epub' | 'zip' | null;
   created_at: string;
 }
 

@@ -9,19 +9,19 @@
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
 
 			<!-- TOP HEADER: Strict Monochrome Contrast (Pure White on Dark, Deep Ink on Light) -->
-			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 pb-2.5 border-b"
+			<div class="flex flex-row items-center justify-between gap-2 sm:gap-2.5 mb-3 sm:mb-3.5 pb-2.5 border-b"
 				:class="isDark ? 'border-white/15' : 'border-slate-100'">
 				<div class="space-y-0.5">
-					<h2 class="font-poster text-2xl sm:text-3xl lg:text-4xl font-extrabold uppercase tracking-wide leading-none"
+					<h2 class="font-poster text-xl sm:text-2xl lg:text-4xl font-extrabold uppercase tracking-wide leading-none"
 						:class="isDark ? 'text-white' : 'text-[#141E1A]'">
 						{{ title }}
 					</h2>
 				</div>
 
 				<!-- Live Countdown Clock: High Contrast Monochrome -->
-				<div class="flex items-center gap-2 rounded-lg px-3 py-1.5 shadow-2xs shrink-0 self-start sm:self-auto border"
+				<div class="flex items-center gap-1.5 sm:gap-2 rounded-lg px-2 py-1 sm:px-3 sm:py-1.5 shadow-2xs shrink-0 self-center border"
 					:class="isDark ? 'bg-white/15 border-white/25 text-white' : 'bg-black/5 border-black/10 text-[#141E1A]'">
-					<span class="text-[11px] font-mono font-bold flex items-center gap-1"
+					<span class="text-[10px] sm:text-[11px] font-mono font-bold hidden min-[420px]:inline-flex sm:inline-flex items-center gap-1"
 						:class="isDark ? 'text-white' : 'text-[#141E1A]'">
 						<Clock :size="12" />
 						ENDS IN:
@@ -63,7 +63,7 @@
 					class="flex gap-2.5 sm:gap-3 lg:gap-3.5 overflow-x-auto scroll-smooth no-scrollbar py-1 snap-x snap-mandatory"
 					style="touch-action: pan-y;" @scroll="checkScrollButtons">
 					<div v-for="book in books" :key="book.id"
-						class="w-[min(78vw,250px)] sm:w-[calc((100%-0.75rem)/2)] lg:w-[calc((100%-2.625rem)/4)] flex-shrink-0 snap-start flex">
+						class="w-[min(78vw,250px)] sm:w-[calc((100%-2.625rem)/4)] flex-shrink-0 snap-start flex">
 						<ShelfBookCard :book="book" class="h-full"
 							@request-seed="(t, a) => $emit('request-seed', t, a)" />
 					</div>

@@ -46,6 +46,7 @@ interface DownloadItem {
   expiresAt: string;
   maxDownloads: number;
   downloadCount: number;
+  label?: string | null;
 }
 
 interface OrderStatusPayload {
@@ -94,6 +95,14 @@ const recoveryMpesaCode = ref('');
 const isSubmittingRecovery = ref(false);
 
 const hasTriggeredAutoDownload = ref(false);
+
+function formatDownloadLabel(dl: DownloadItem): string {
+  const clean = (dl.label ?? '').trim();
+  if (clean) return clean;
+  const f = (dl.format || '').toLowerCase();
+  if (f === 'zip') return 'Audiobook';
+  return `${dl.format.toUpperCase()} Ebook`;
+}
 
 function formatCurrency(val: number): string {
   return `KSh ${val.toLocaleString('en-KE')}`;
@@ -177,7 +186,7 @@ function triggerAutomaticDownload(item: DownloadItem): void {
   document.body.removeChild(link);
 
   pushToast({
-    message: `Your eBook download (${item.format.toUpperCase()}) has started automatically!`,
+    message: `Your download (${formatDownloadLabel(item)}) has started automatically!`,
     variant: 'success',
   });
 }
@@ -577,7 +586,7 @@ const whatsappHelpUrl = computed(() => {
 								<div class="space-y-1">
 									<span
 										class="text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded-md bg-[#141E1A] text-white">
-										{{ dl.format.toUpperCase() }} EBOOK
+										{{ formatDownloadLabel(dl) }}
 									</span>
 									<h4 class="text-xs sm:text-sm font-bold text-[#141E1A] mt-1 line-clamp-1">{{
 										dl.bookTitle }}</h4>
@@ -588,7 +597,7 @@ const whatsappHelpUrl = computed(() => {
 								<a :href="`/api/books/download/${dl.token}?redirect=true`" target="_blank"
 									class="bg-[#141E1A] hover:bg-black text-white text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer active:scale-[0.98]">
 									<Download :size="14" class="text-gold-300" />
-									<span>Download {{ dl.format.toUpperCase() }}</span>
+									<span>Download {{ formatDownloadLabel(dl) }}</span>
 								</a>
 							</div>
 						</div>

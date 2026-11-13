@@ -366,6 +366,73 @@
 								</div>
 							</div>
 
+							<!-- C. Audiobook (ZIP) Edition -->
+						<div class="p-5 rounded-xl border border-orange-200 bg-orange-50/20 space-y-4">
+							<div class="flex items-center justify-between flex-wrap gap-2">
+								<div class="flex items-center space-x-2.5">
+									<span class="w-2.5 h-2.5 rounded-full bg-orange-600"></span>
+									<h3 class="text-sm font-bold text-gray-900">Audiobook (ZIP) Edition</h3>
+								</div>
+								<span v-if="audioFormatId"
+									class="text-xs text-orange-800 font-bold bg-orange-50 px-2 py-0.5 rounded">
+									Format Active (ID: {{ audioFormatId.slice(0, 8) }})
+								</span>
+								<span v-else-if="form.audioKey"
+									class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+									Will be generated upon save
+								</span>
+							</div>
+
+							<div>
+								<label class="block text-xs font-semibold text-gray-700 mb-1">
+									Audiobook Name
+									<span class="text-[10px] text-gray-400 font-normal">— shown to customers next to the file</span>
+								</label>
+								<input v-model="form.audioLabel" type="text" maxlength="80"
+									placeholder="e.g. Atomic Habits — Audiobook (MP3)"
+									class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold" />
+							</div>
+
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<div>
+									<label class="block text-xs font-semibold text-gray-700 mb-1">Audiobook Price (KSh)</label>
+									<input v-model.number="form.audioPrice" type="number" min="0"
+										placeholder="e.g. 99"
+										class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono font-bold" />
+								</div>
+
+								<div>
+									<label class="block text-xs font-semibold text-gray-700 mb-1">
+										Audiobook Original Price (KSh)
+										<span class="text-[10px] text-gray-400 font-normal">Strikethrough</span>
+									</label>
+									<input v-model.number="form.audioCompareAtPrice" type="number" min="0"
+										placeholder="e.g. 199 (Must be > Audiobook price)"
+										class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" />
+								</div>
+							</div>
+
+							<div>
+								<label class="block text-xs font-semibold text-gray-700 mb-1.5">Audio ZIP File</label>
+								<SinglePdfUploader v-model="form.audioKey" :initial-file-name="form.audioFileName"
+									:initial-file-size="form.audioFileSize" :max-file-size-mb="200" format-hint="zip"
+									accept=".zip,application/zip,application/x-zip-compressed,application/octet-stream"
+									@success="handleAudioReplaced" @remove="handleAudioRemoved" />
+							</div>
+
+							<div v-if="isAudioDirty"
+								class="p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center space-x-2">
+								<svg class="w-4 h-4 text-orange-700 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+									stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+										d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
+								<p class="text-[11px] text-orange-800 font-medium">
+									New ZIP ready for upload. Click <strong>Save Changes</strong> to make it available to customers for download.
+								</p>
+							</div>
+						</div>
+
 						</div>
 
 					</form>
@@ -409,6 +476,8 @@ const coverFileInputRef = ref<HTMLInputElement | null>(null);
 const categories = ref<Array<{ id: string; name: string; slug?: string }>>([]);
 const hardcopyFormatId = ref<string | null>(null);
 const pdfFormatId = ref<string | null>(null);
+const audioFormatId = ref<string | null>(null);
+const isAudioDirty = ref(false);
 
 const badgeSelectValue = ref<string>('');
 
@@ -432,6 +501,13 @@ const form = reactive({
   pdfFileUrl: null as string | null,
   pdfFileSize: 0,
   pdfFileName: '',
+  audioPrice: 99,
+  audioCompareAtPrice: null as number | null,
+  audioKey: null as string | null,
+  audioFileUrl: null as string | null,
+  audioFileSize: 0,
+  audioFileName: '',
+  audioLabel: '',
 });
 
 const STANDARD_BADGES = ['BESTSELLER', 'FLASH_SALE', 'NO1_PICK', 'DEAL_OF_WEEK', 'LIMITED_TIME'];
@@ -526,6 +602,25 @@ async function loadBookData() {
 
       form.hardcopyCompareAtPrice = cp ?? parentCompareAt ?? null;
       form.hardcopyStock = hardcopy.stock ?? form.hardcopyStock;
+    }
+
+    const audio = formats.find((f) => f.format === 'zip');
+    if (audio) {
+      audioFormatId.value = audio.id;
+      form.audioPrice = Number(audio.price) || 99;
+      const al = (audio as any).label;
+      form.audioLabel = typeof al === 'string' ? al : '';
+      const cp =
+        audio.compare_at_price !== null && audio.compare_at_price !== undefined
+          ? Number(audio.compare_at_price)
+          : null;
+      form.audioCompareAtPrice = cp;
+      form.audioKey = audio.file_public_id || audio.file_url || null;
+      form.audioFileUrl = audio.file_url || null;
+      form.audioFileSize = audio.file_size_bytes ? Number(audio.file_size_bytes) : 0;
+      form.audioFileName = audio.file_public_id
+        ? audio.file_public_id.split('/').pop()?.replace(/^\d+-/, '') || 'audiobook.zip'
+        : `${book.name}.zip`;
     }
 
     const pdf = formats.find((f) => f.format === 'pdf') || formats.find((f) => f.format === 'epub');
@@ -675,6 +770,21 @@ function handlePdfRemoved() {
   isPdfDirty.value = true;
 }
 
+function handleAudioReplaced(payload: { key: string; fileUrl: string; sizeBytes: number; fileName: string }) {
+  form.audioKey = payload.key;
+  form.audioFileUrl = payload.fileUrl;
+  form.audioFileSize = payload.sizeBytes;
+  form.audioFileName = payload.fileName;
+  isAudioDirty.value = true;
+}
+function handleAudioRemoved() {
+  form.audioKey = null;
+  form.audioFileUrl = null;
+  form.audioFileSize = 0;
+  form.audioFileName = '';
+  isAudioDirty.value = true;
+}
+
 async function handleUpdate() {
   formError.value = '';
   successToast.value = '';
@@ -699,6 +809,14 @@ async function handleUpdate() {
 
   const pdfSellingPrice = Math.max(0, Number(form.pdfPrice) || 0);
   const pdfCompareAt = form.pdfCompareAtPrice ? Math.max(0, Number(form.pdfCompareAtPrice)) : null;
+
+  const audioSellingPrice = Math.max(0, Number(form.audioPrice) || 0);
+  const audioCompareAt = form.audioCompareAtPrice ? Math.max(0, Number(form.audioCompareAtPrice)) : null;
+
+  if (audioCompareAt !== null && audioCompareAt <= audioSellingPrice) {
+    formError.value = `Audiobook Original price (KSh ${audioCompareAt}) must be strictly greater than Audiobook selling price (KSh ${audioSellingPrice}).`;
+    return;
+  }
 
   if (pdfCompareAt !== null && pdfCompareAt <= pdfSellingPrice) {
     formError.value = `eBook Original price (KSh ${pdfCompareAt}) must be strictly greater than eBook selling price (KSh ${pdfSellingPrice}).`;
@@ -767,6 +885,42 @@ async function handleUpdate() {
       );
     }
 
+    // 3b. Update OR Create Audiobook (ZIP) Format
+    if (audioFormatId.value) {
+      formatPromises.push(
+        ofetch(`/api/admin/books/${productId}/formats/${audioFormatId.value}`, {
+          method: 'PATCH',
+          body: {
+            price: audioSellingPrice,
+            compare_at_price: audioCompareAt,
+            compareAtPrice: audioCompareAt,
+            file_url: form.audioFileUrl || form.audioKey,
+            file_public_id: form.audioKey,
+            file_size_bytes: form.audioFileSize ? Number(form.audioFileSize) : null,
+            label: form.audioLabel.trim() ? form.audioLabel.trim() : null,
+          },
+        })
+      );
+    } else if (form.audioKey) {
+      formatPromises.push(
+        ofetch(`/api/admin/books/${productId}/formats`, {
+          method: 'POST',
+          body: {
+            format: 'zip',
+            price: audioSellingPrice,
+            compare_at_price: audioCompareAt,
+            compareAtPrice: audioCompareAt,
+            file_url: form.audioFileUrl || form.audioKey,
+            file_public_id: form.audioKey,
+            file_size_bytes: form.audioFileSize ? Number(form.audioFileSize) : null,
+            label: form.audioLabel.trim() ? form.audioLabel.trim() : null,
+          },
+        }).then((res: any) => {
+          audioFormatId.value = res?.id || res?.data?.id || null;
+        })
+      );
+    }
+
     // 3. Update OR Create Digital PDF Format
     if (pdfFormatId.value) {
       formatPromises.push(
@@ -804,6 +958,7 @@ async function handleUpdate() {
     await Promise.all(formatPromises);
 
     isPdfDirty.value = false;
+    isAudioDirty.value = false;
     successToast.value = 'Book details, badges, sale schedule, and formats saved successfully!';
     pushToast({ message: successToast.value, variant: 'success' });
 

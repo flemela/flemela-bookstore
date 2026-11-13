@@ -62,7 +62,7 @@ const availableDigitalFormats = computed<ProductFormat[]>(() => {
   if (!book.value?.formats || book.value.formats.length === 0) return [];
 
   const rawDigitals = book.value.formats.filter((f) => {
-    const isDigital = f.format === 'pdf' || f.format === 'epub';
+    const isDigital = f.format === 'pdf' || f.format === 'epub' || f.format === 'zip';
     if (!isDigital) return false;
     if (book.value?.isSeed) return true;
     return Boolean(
@@ -78,24 +78,16 @@ const availableDigitalFormats = computed<ProductFormat[]>(() => {
   const hasParentSale = Boolean(cpBook && cpBook > pBook && pBook > 0);
   const parentDiscountRatio = hasParentSale && cpBook ? (cpBook - pBook) / cpBook : 0;
 
-  const pdf = rawDigitals.find((f) => f.format === 'pdf');
-  const epub = rawDigitals.find((f) => f.format === 'epub');
-  const digitalPrice = pdf?.price ?? epub?.price ?? 149;
-
-  let digitalCompareAt: number | null = null;
-  if (pdf?.compare_at_price && pdf.compare_at_price > digitalPrice) {
-    digitalCompareAt = pdf.compare_at_price;
-  } else if (epub?.compare_at_price && epub.compare_at_price > digitalPrice) {
-    digitalCompareAt = epub.compare_at_price;
-  } else if (hasParentSale && parentDiscountRatio > 0 && parentDiscountRatio < 1) {
-    digitalCompareAt = Math.round(digitalPrice / (1 - parentDiscountRatio));
-  }
-
-  return rawDigitals.map((f) => ({
-    ...f,
-    price: digitalPrice,
-    compare_at_price: digitalCompareAt,
-  }));
+  return rawDigitals.map((f) => {
+    let cp = f.compare_at_price && f.compare_at_price > f.price ? f.compare_at_price : null;
+    if (!cp && hasParentSale && parentDiscountRatio > 0 && parentDiscountRatio < 1 && f.format === 'pdf') {
+      cp = Math.round(f.price / (1 - parentDiscountRatio));
+    }
+    return {
+      ...f,
+      compare_at_price: cp,
+    };
+  });
 });
 
 const hasDigitalCopy = computed(() => availableDigitalFormats.value.length > 0);
@@ -144,7 +136,7 @@ watch(
   (fmts) => {
     if (fmts && fmts.length > 0) {
       if (!fmts.some((f) => f.id === selectedFormatId.value)) {
-        const digital = fmts.find((f) => f.format === 'pdf' || f.format === 'epub');
+        const digital = fmts.find((f) => f.format === 'pdf' || f.format === 'epub' || f.format === 'zip');
         selectedFormatId.value = (digital || fmts[0]).id;
       }
     }
@@ -343,8 +335,7 @@ function handleAddToCart(): void {
 								<div class="space-y-1">
 									<div
 										class="flex justify-between items-center text-xs font-bold text-[#141E1A] uppercase">
-										<span>{{ fmt.format === 'hardcopy' ? 'Hardcopy' : fmt.format.toUpperCase()
-											}}</span>
+										<span>{{ fmt.label && fmt.label.trim() ? fmt.label.trim() : (fmt.format === 'hardcopy' ? 'Hardcopy' : fmt.format === 'zip' ? 'Audiobook' : fmt.format.toUpperCase()) }}</span>
 										<component :is="fmt.format === 'hardcopy' ? Truck : Download" :size="13"
 											:class="selectedFormatId === fmt.id ? 'text-[#C25E00]' : 'text-slate-400'" />
 									</div>

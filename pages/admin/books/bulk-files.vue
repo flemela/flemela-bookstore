@@ -21,13 +21,15 @@ definePageMeta({
 
 const { push: pushToast } = useToast();
 
-type Mode = 'pdf' | 'cover' | 'cover-links';
+type Mode = 'pdf' | 'cover' | 'cover-links' | 'audiobook';
 
 interface BookRef {
   id: string;
   name: string;
   pdfFormatId: string | null;
   pdfPrice: number | null;
+  audioFormatId: string | null;
+  audioPrice: number | null;
 }
 
 interface Job {
@@ -44,6 +46,7 @@ interface LogRow {
 
 const mode = ref<Mode>('pdf');
 const defaultPdfPrice = ref(100);
+const defaultAudioPrice = ref(100);
 const concurrency = 1;
 const gapMs = 400;
 const throttleWaits = [15000, 30000, 60000, 120000];
@@ -98,8 +101,16 @@ async function lookupBySku(sku: string): Promise<BookRef | null> {
   const res = await api<{ products: any[] }>('/api/admin/books', { query: { q: sku, limit: 5 } });
   const b = (res.products || []).find((p: any) => String(p.sku || '').toUpperCase() === sku);
   const pdf = b ? (b.formats || []).find((f: any) => f.format === 'pdf') : null;
+  const audio = b ? (b.formats || []).find((f: any) => f.format === 'zip') : null;
   const found = b
-    ? { id: b.id, name: b.name, pdfFormatId: pdf?.id || null, pdfPrice: pdf ? Number(pdf.price) : null }
+    ? {
+        id: b.id,
+        name: b.name,
+        pdfFormatId: pdf?.id || null,
+        pdfPrice: pdf ? Number(pdf.price) : null,
+        audioFormatId: audio?.id || null,
+        audioPrice: audio ? Number(audio.price) : null,
+      }
     : null;
   lookupCache.set(sku, found);
   return found;
@@ -108,7 +119,11 @@ async function lookupBySku(sku: string): Promise<BookRef | null> {
 function onFilesChosen(e: Event): void {
   const input = e.target as HTMLInputElement;
   const files = [...(input.files || [])];
-  const wanted = mode.value === 'pdf' ? /\.pdf$/i : /\.(jpe?g|png|webp)$/i;
+  const wanted = mode.value === 'pdf'
+    ? /\.pdf$/i
+    : mode.value === 'audiobook'
+      ? /\.zip$/i
+      : /\.(jpe?g|png|webp)$/i;
   jobs.value = files
     .filter((f) => wanted.test(f.name))
     .map((f) => ({ sku: (SKU_RE.exec(f.name)?.[1] || '').toUpperCase(), file: f }))
@@ -119,7 +134,11 @@ function onFilesChosen(e: Event): void {
 }
 
 function acceptFiles(files: File[]): void {
-  const wanted = mode.value === 'pdf' ? /\.pdf$/i : /\.(jpe?g|png|webp)$/i;
+  const wanted = mode.value === 'pdf'
+    ? /\.pdf$/i
+    : mode.value === 'audiobook'
+      ? /\.zip$/i
+      : /\.(jpe?g|png|webp)$/i;
   jobs.value = files
     .filter((f) => wanted.test(f.name))
     .map((f) => ({ sku: (SKU_RE.exec(f.name)?.[1] || '').toUpperCase(), file: f }))
@@ -296,6 +315,39 @@ async function attachPdf(book: BookRef, file: File): Promise<string> {
   return slot.key;
 }
 
+async function attachAudiobook(book: BookRef, file: File): Promise<string> {
+  const slot = await api<{ uploadUrl: string; key: string; fileUrl?: string }>('/api/admin/books/upload-url', {
+    method: 'POST',
+    body: { filename: file.name, format: 'zip', contentType: 'application/zip', sizeBytes: file.size },
+  });
+  await putToR2(slot.uploadUrl, file, 'application/zip');
+
+  // Name = filename minus SKU prefix and .zip extension
+  const baseLabel = file.name
+    .replace(/\.zip$/i, '')
+    .replace(/^SR-B\d+\s*[-–—:|]?\s*/i, '')
+    .trim() || file.name.replace(/\.zip$/i, '').trim();
+
+  const fileFields = {
+    file_url: slot.fileUrl || slot.key,
+    file_public_id: slot.key,
+    file_size_bytes: file.size,
+    label: baseLabel,
+  };
+  if (book.audioFormatId) {
+    await api(`/api/admin/books/${book.id}/formats/${book.audioFormatId}`, {
+      method: 'PATCH',
+      body: { price: book.audioPrice ?? defaultAudioPrice.value, ...fileFields },
+    });
+  } else {
+    await api(`/api/admin/books/${book.id}/formats`, {
+      method: 'POST',
+      body: { format: 'zip', price: defaultAudioPrice.value, ...fileFields },
+    });
+  }
+  return slot.key;
+}
+
 async function setCover(book: BookRef, imageUrl: string, publicId: string): Promise<void> {
   await api(`/api/admin/books/${book.id}`, {
     method: 'PATCH',
@@ -337,6 +389,7 @@ async function runJob(job: Job, done: Set<string>): Promise<void> {
       }
       let detail = '';
       if (mode.value === 'pdf') detail = await attachPdf(book, job.file!);
+      else if (mode.value === 'audiobook') detail = await attachAudiobook(book, job.file!);
       else if (mode.value === 'cover') detail = await attachCoverFile(book, job.file!);
       else {
         await setCover(book, job.imageUrl!, 'cover_img');
@@ -461,11 +514,11 @@ function downloadLog(): void {
 				<div class="pb-4 border-b border-paper-border">
 					<span class="text-[10px] font-mono uppercase tracking-widest text-gold-600 font-bold block">Catalog
 						Files</span>
-					<h1 class="font-display text-2xl font-bold text-forest-950">Bulk eBook &amp; Cover Upload</h1>
+					<h1 class="font-display text-2xl font-bold text-forest-950">Bulk eBook, Audiobook &amp; Cover Upload</h1>
 					<p class="text-xs text-ink-muted mt-1">
-						Attach PDFs or covers to books that are already in the store via Cloudflare R2. Name each file
+						Attach PDFs, audiobook ZIPs or covers to books that are already in the store via Cloudflare R2. Name each file
 						by SKU, e.g.
-						<code>SR-B2534.pdf</code> or <code>SR-B2534.jpg</code>.
+						<code>SR-B2534.pdf</code> or <code>SR-B2534.zip</code> or <code>SR-B2534.jpg</code>.
 					</p>
 				</div>
 
@@ -476,6 +529,7 @@ function downloadLog(): void {
 					<div class="flex flex-wrap gap-2 text-xs">
 						<label v-for="m in [
               { v: 'pdf', t: 'PDF eBooks (.pdf)' },
+              { v: 'audiobook', t: 'Audiobooks (.zip)' },
               { v: 'cover', t: 'Cover images (.jpg / .png)' },
               { v: 'cover-links', t: 'Cover links (CSV: SKU, image URL)' },
             ]" :key="m.v" class="px-3 py-2 rounded-xl border cursor-pointer"
@@ -490,6 +544,11 @@ function downloadLog(): void {
 						<input v-model.number="defaultPdfPrice" type="number" min="1"
 							class="w-24 px-2 py-1 border border-paper-border rounded-lg font-mono" />
 					</div>
+					<div v-if="mode === 'audiobook'" class="flex items-center gap-2 text-xs text-ink-muted">
+						Audiobook price for books that don't have one yet (KSh). ZIP display name comes from its filename:
+						<input v-model.number="defaultAudioPrice" type="number" min="1"
+							class="w-24 px-2 py-1 border border-paper-border rounded-lg font-mono" />
+					</div>
 				</div>
 
 				<!-- 2. Files -->
@@ -502,7 +561,7 @@ function downloadLog(): void {
 							@dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false"
 							@drop.prevent="onDrop">
 							<p class="text-xs font-bold text-forest-950">
-								Drag the {{ mode === 'pdf' ? 'PDFs' : 'cover images' }} here from File Explorer
+								Drag the {{ mode === 'pdf' ? 'PDFs' : mode === 'audiobook' ? 'ZIP audiobooks' : 'cover images' }} here from File Explorer
 							</p>
 							<p class="text-[11px] text-ink-muted mt-1">
 								Open the folder, press Ctrl+A to select everything, then drag it onto this box.
@@ -523,7 +582,7 @@ function downloadLog(): void {
 							<label
 								class="bg-white border border-paper-border text-forest-950 text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer">
 								…or select files
-								<input type="file" class="hidden" multiple :accept="mode === 'pdf' ? '.pdf' : 'image/*'"
+								<input type="file" class="hidden" multiple :accept="mode === 'pdf' ? '.pdf' : mode === 'audiobook' ? '.zip' : 'image/*'"
 									:disabled="running" @change="onFilesChosen" />
 							</label>
 						</div>

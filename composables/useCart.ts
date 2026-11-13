@@ -21,7 +21,7 @@ export function useCart() {
   const hasDigitalItems = computed(() => {
     return items.value.some(
       (item) =>
-        item.deliveryMethod === 'digital' || item.format === 'pdf' || item.format === 'epub'
+        item.deliveryMethod === 'digital' || item.format === 'pdf' || item.format === 'epub' || item.format === 'zip'
     );
   });
 
