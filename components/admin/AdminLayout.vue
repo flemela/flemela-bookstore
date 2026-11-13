@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Inbox,
   BookOpen,
-  PlusCircle,
   FileSpreadsheet,
   UploadCloud,
   Images,
@@ -98,12 +97,6 @@ const navSections: NavSection[] = [
           !p.includes('new') &&
           !p.includes('import') &&
           !p.includes('bulk-files'),
-      },
-      {
-        label: 'Add New Book',
-        to: '/admin/books/new',
-        icon: PlusCircle,
-        activeMatch: (p) => p.includes('/admin/books/new'),
       },
       {
         label: 'Curated Shelves',

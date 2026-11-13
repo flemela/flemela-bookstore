@@ -21,7 +21,7 @@ definePageMeta({
 });
 
 const { push: pushToast } = useToast();
-const { data: stats, refresh, status } = await useFetch<AdminDashboardData>('/api/admin/dashboard');
+const { data: stats, error, refresh, status } = await useFetch<AdminDashboardData>('/api/admin/dashboard');
 
 const confirmingOrderId = ref<string | null>(null);
 
@@ -84,6 +84,13 @@ async function handleConfirmPayment(orderId: string): Promise<void> {
             <span>Add Book</span>
           </NuxtLink>
         </div>
+      </div>
+
+      <!-- Telemetry Error Banner -->
+      <div v-if="error"
+        class="flex items-start gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 text-xs">
+        <span class="font-bold uppercase">Telemetry unavailable:</span>
+        <span>{{ error.statusMessage || error.message || 'The dashboard API could not be reached. Check that you are signed in and the backend is running.' }}</span>
       </div>
 
       <!-- KPI Metrics Grid (4 Elevated Cards) -->

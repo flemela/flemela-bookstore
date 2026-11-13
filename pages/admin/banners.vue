@@ -15,7 +15,7 @@ import {
   Save,
   FileText,
   PanelLeft,
-  Flame,
+  PanelRight,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import HeroNotesEditor, { type StoreHeroNotes } from '~/components/admin/HeroNotesEditor.vue';
@@ -57,16 +57,11 @@ interface StoreHeroLeftBanner {
   link: string | null;
 }
 
-interface StoreHeroTopSellers {
-  is_active: boolean;
-  title: string;
-}
-
 const { push: pushToast } = useToast();
 const { data: banners, refresh: refreshBanners, status: bannersStatus } = await useFetch<StoreBanner[]>('/api/admin/banners');
 
-// 5-Way Tab Switcher: ticker | banners | left-flank | top-sellers | notes
-const activeTab = ref<'ticker' | 'banners' | 'left-flank' | 'top-sellers' | 'notes'>('ticker');
+// 5-Way Tab Switcher: ticker | banners | left-flank | right-flank | notes
+const activeTab = ref<'ticker' | 'banners' | 'left-flank' | 'right-flank' | 'notes'>('ticker');
 
 // -----------------------------------------------------------------------------
 // 1. Ticker State
@@ -219,57 +214,89 @@ async function handleSaveLeftBanner(): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// 3. Hero Top Sellers Flank State (Hide / Show Toggle)
+// 3. Hero Right Flank Banner State (Direct Cloudflare R2 Upload)
 // -----------------------------------------------------------------------------
-const topSellersConfig = ref<StoreHeroTopSellers>({
-  is_active: true,
-  title: 'Top Selling Books',
+const rightBanner = ref<StoreHeroLeftBanner>({
+  is_active: false,
+  title: 'Special Promotion',
+  image_url: '',
+  link: '#catalog-results',
 });
-const isSavingTopSellers = ref(false);
+const isSavingRightBanner = ref(false);
+const isUploadingRightImage = ref(false);
 
-const topSellersDisplayTitle = computed(() => {
-  return topSellersConfig.value.is_active
-    ? topSellersConfig.value.title
-    : 'Panel Hidden from Storefront';
-});
-
-const topSellersDescriptionText = computed(() => {
-  return topSellersConfig.value.is_active
-    ? 'Renders on desktop right flank (352px/368px).'
-    : 'Center hero carousel spans the full remaining width.';
-});
-
-async function loadTopSellersConfig(): Promise<void> {
+async function loadRightBanner(): Promise<void> {
   try {
-    const data = await $fetch<StoreHeroTopSellers>('/api/admin/hero-top-sellers');
+    const data = await $fetch<StoreHeroLeftBanner>('/api/admin/hero-right-banner');
     if (data) {
-      topSellersConfig.value = data;
+      rightBanner.value = data;
     }
   } catch {}
 }
 
-async function handleSaveTopSellers(): Promise<void> {
-  isSavingTopSellers.value = true;
+async function handleUploadRightImage(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  isUploadingRightImage.value = true;
   try {
-    const res = await $fetch<StoreHeroTopSellers>('/api/admin/hero-top-sellers', {
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const mime = file.type || (ext === 'png' ? 'image/png' : 'image/jpeg');
+
+    const slot = await $fetch<{ uploadUrl: string; publicUrl: string; key: string }>(
+      '/api/admin/upload-signature',
+      {
+        method: 'POST',
+        body: {
+          target: 'banners',
+          filename: file.name,
+          contentType: mime,
+        },
+      }
+    );
+
+    const putRes = await fetch(slot.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': mime },
+      body: file,
+    });
+
+    if (!putRes.ok) {
+      throw new Error(`Cloudflare R2 storage upload rejected with HTTP ${putRes.status}`);
+    }
+
+    rightBanner.value.image_url = slot.publicUrl;
+    pushToast({ message: 'Right flank poster uploaded directly to Cloudflare R2!', variant: 'success' });
+  } catch (err: any) {
+    pushToast({ message: err.data?.message || err.message || 'Image upload failed', variant: 'error' });
+  } finally {
+    isUploadingRightImage.value = false;
+    target.value = '';
+  }
+}
+
+async function handleSaveRightBanner(): Promise<void> {
+  isSavingRightBanner.value = true;
+  try {
+    const res = await $fetch<StoreHeroLeftBanner>('/api/admin/hero-right-banner', {
       method: 'PUT',
       body: {
-        is_active: topSellersConfig.value.is_active,
-        title: topSellersConfig.value.title.trim() || 'Top Selling Books',
+        is_active: rightBanner.value.is_active,
+        title: rightBanner.value.title.trim() || 'Special Promotion',
+        image_url: rightBanner.value.image_url.trim(),
+        link: rightBanner.value.link?.trim() || null,
       },
     });
-    topSellersConfig.value = res;
-    pushToast({
-      message: `Hero Top Sellers panel ${res.is_active ? 'enabled' : 'hidden'}!`,
-      variant: 'success',
-    });
+    rightBanner.value = res;
+    pushToast({ message: 'Hero Right Flank poster updated!', variant: 'success' });
   } catch (err: any) {
     pushToast({
-      message: err.data?.message || err.message || 'Failed to save Top Sellers configuration',
+      message: err.data?.statusMessage || err.statusMessage || 'Failed to save right banner',
       variant: 'error',
     });
   } finally {
-    isSavingTopSellers.value = false;
+    isSavingRightBanner.value = false;
   }
 }
 
@@ -528,7 +555,7 @@ async function moveBanner(index: number, direction: 'up' | 'down'): Promise<void
 onMounted(() => {
   loadTicker();
   loadLeftBanner();
-  loadTopSellersConfig();
+  loadRightBanner();
   loadHeroNotes();
 });
 </script>
@@ -547,8 +574,7 @@ onMounted(() => {
 						Promotions &amp; Announcements
 					</h1>
 					<p class="text-xs text-ink-muted mt-0.5">
-						Configure the gold announcement ribbon, hero carousel slides, left flank poster, and right-side
-						panels.
+						Configure the gold announcement ribbon, hero carousel slides, and the left &amp; right flank posters.
 					</p>
 				</div>
 
@@ -579,13 +605,13 @@ onMounted(() => {
 						<span>Left Flank</span>
 					</button>
 
-					<!-- Top Sellers Flank Tab -->
+					<!-- Right Flank Tab -->
 					<button type="button"
 						class="px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
-						:class="activeTab === 'top-sellers' ? 'bg-[#052219] text-[#FCF6BA] shadow-xs' : 'text-forest-950 hover:bg-white/50'"
-						@click="activeTab = 'top-sellers'">
-						<Flame :size="13" />
-						<span>Top Sellers Flank</span>
+						:class="activeTab === 'right-flank' ? 'bg-[#052219] text-[#FCF6BA] shadow-xs' : 'text-forest-950 hover:bg-white/50'"
+						@click="activeTab = 'right-flank'">
+						<PanelRight :size="13" />
+						<span>Right Flank</span>
 					</button>
 
 					<button type="button"
@@ -915,78 +941,110 @@ onMounted(() => {
 					</div>
 				</div>
 			</div>
-			<!-- TAB 4: HERO TOP SELLERS FLANK (Toggle Workspace) -->
-			<div v-else-if="activeTab === 'top-sellers'" class="space-y-6 animate-in fade-in duration-200">
+			<!-- TAB 4: HERO RIGHT FLANK POSTER -->
+			<div v-else-if="activeTab === 'right-flank'" class="space-y-6 animate-in fade-in duration-200">
 				<div class="bg-paper-surface rounded-2xl border border-paper-border shadow-soft p-6 sm:p-7 space-y-6">
 					<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-paper-border">
 						<div>
 							<h3 class="font-display font-bold text-base text-forest-950">
-								Hero Right Flank: Top Selling Books
+								Hero Right Flank Promotional Poster
 							</h3>
 							<p class="text-xs text-ink-muted mt-0.5">
-								Displays the 4 top-selling books on desktop (1fr right flank). When disabled, the hero
-								carousel automatically takes the available width.
+								Occupies 1fr on the right flank of desktop screens. Automatically hidden on mobile
+								devices.
 							</p>
 						</div>
 
 						<label
 							class="flex items-center gap-2 cursor-pointer select-none px-3.5 py-1.5 rounded-xl bg-paper-cream border border-paper-border">
-							<input v-model="topSellersConfig.is_active" type="checkbox"
+							<input v-model="rightBanner.is_active" type="checkbox"
 								class="rounded border-paper-border text-forest-950 focus:ring-forest-900" />
-							<span class="text-xs font-bold text-forest-950">
-								{{ topSellersConfig.is_active ? 'Panel Enabled' : 'Panel Hidden' }}
-							</span>
+							<span class="text-xs font-bold text-forest-950">Enable Right Flank</span>
 						</label>
 					</div>
 
 					<div class="grid sm:grid-cols-12 gap-6 items-start">
 						<div class="sm:col-span-7 space-y-4">
 							<div class="space-y-1.5">
-								<label class="text-xs font-bold text-forest-950">Panel Header Title</label>
-								<input v-model="topSellersConfig.title" type="text" placeholder="Top Selling Books"
+								<label class="text-xs font-bold text-forest-950">Campaign Title / Alt Text</label>
+								<input v-model="rightBanner.title" type="text"
+									placeholder="e.g. Special Release / Collectors Hardcover"
 									class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm font-semibold outline-none focus:border-forest-900 text-forest-950" />
 							</div>
 
-							<div
-								class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs text-[#5F6964]">
-								<strong class="text-[#141E1A] block">Automatic Content Source:</strong>
-								<p>
-									This panel queries the 4 highest-demand titles from your catalogue carrying the
-									<strong>BESTSELLER</strong> badge. If fewer than 4 exist, it seamlessly backfills
-									with verified store bestsellers.
-								</p>
+							<div class="space-y-1.5">
+								<label class="text-xs font-bold text-forest-950">Destination URL Link</label>
+								<input v-model="rightBanner.link" type="text"
+									placeholder="e.g. /book/atomic-habits or #flash-sale"
+									class="w-full px-3.5 py-2.5 bg-paper-canvas/50 border border-paper-border rounded-xl text-xs sm:text-sm font-mono outline-none focus:border-forest-900 text-forest-950" />
+							</div>
+
+							<div class="space-y-1.5 pt-1">
+								<div class="flex justify-between items-baseline">
+									<label class="text-xs font-bold text-forest-950">Poster Image (Cloudflare R2 Direct
+										Upload)</label>
+									<span class="text-[10px] text-gold-600 font-mono font-bold uppercase">
+										Aspect: ~3:4 Portrait Poster
+									</span>
+								</div>
+
+								<div class="flex gap-2 items-center">
+									<input v-model="rightBanner.image_url" type="text" placeholder="https://..."
+										class="flex-1 px-3 py-2 border border-paper-border rounded-xl text-xs outline-none focus:border-forest-900 font-mono" />
+									<label
+										class="bg-paper-cream border border-paper-border hover:bg-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold text-forest-950 flex items-center gap-1.5 cursor-pointer flex-shrink-0 transition-colors shadow-2xs">
+										<RefreshCw v-if="isUploadingRightImage" :size="13" class="animate-spin" />
+										<Upload v-else :size="13" />
+										<span>{{ isUploadingRightImage ? 'Uploading...' : 'Upload' }}</span>
+										<input type="file" accept="image/*" class="hidden"
+											:disabled="isUploadingRightImage" @change="handleUploadRightImage" />
+									</label>
+								</div>
 							</div>
 
 							<div class="pt-4 border-t border-paper-border flex justify-end">
 								<button type="button"
 									class="bg-forest-950 hover:bg-forest-900 text-paper font-bold text-xs uppercase tracking-wider px-6 py-2.5 rounded-xl shadow-medium flex items-center gap-2 cursor-pointer disabled:opacity-50 transition-all active:scale-[0.98]"
-									:disabled="isSavingTopSellers" @click="handleSaveTopSellers">
-									<RefreshCw v-if="isSavingTopSellers" :size="14" class="animate-spin" />
+									:disabled="isSavingRightBanner" @click="handleSaveRightBanner">
+									<RefreshCw v-if="isSavingRightBanner" :size="14" class="animate-spin" />
 									<Save v-else :size="14" class="text-gold-300" />
-									<span>{{ isSavingTopSellers ? 'Saving...' : 'Save Top Sellers Settings' }}</span>
+									<span>{{ isSavingRightBanner ? 'Saving...' : 'Save Right Flank' }}</span>
 								</button>
 							</div>
 						</div>
 
-						<!-- Preview Card -->
+						<!-- Poster Preview -->
 						<div class="sm:col-span-5 space-y-2">
 							<span class="text-[10px] uppercase font-mono font-bold text-ink-muted tracking-wider block">
-								Storefront Layout Status
+								Live Poster Preview (Desktop 1fr)
 							</span>
 
-							<div class="rounded-2xl border p-5 space-y-3 text-center transition-colors"
-								:class="topSellersConfig.is_active ? 'bg-white border-slate-200 shadow-soft' : 'bg-slate-100 border-dashed border-slate-300'">
-								<div class="w-10 h-10 rounded-xl mx-auto flex items-center justify-center"
-									:class="topSellersConfig.is_active ? 'bg-orange-100 text-[#E8750D]' : 'bg-slate-200 text-slate-400'">
-									<Flame :size="20" class="fill-current" />
+							<div
+								class="relative w-full aspect-[3/4] max-h-[352px] rounded-2xl overflow-hidden border border-white/[0.12] bg-forest-950 flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.14)]">
+								<img v-if="rightBanner.image_url" :src="rightBanner.image_url" :alt="rightBanner.title"
+									class="w-full h-full object-cover" />
+								<div v-else class="text-center p-4 text-white/50 space-y-1">
+									<Images :size="32" class="mx-auto opacity-40" />
+									<p class="text-xs">No image uploaded</p>
 								</div>
-								<div>
-									<h4 class="font-bold text-xs text-[#141E1A]">
-										{{ topSellersDisplayTitle }}
-									</h4>
-									<p class="text-[11px] text-[#5F6964] mt-0.5">
-										{{ topSellersDescriptionText }}
+
+								<div
+									class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/5 pointer-events-none" />
+
+								<div class="absolute top-3.5 left-3.5 z-10">
+									<span
+										class="backdrop-blur-md bg-black/45 text-white/95 border border-white/20 text-[9px] font-mono font-bold uppercase px-3 py-1 rounded-full shadow-xs tracking-wider">
+										Featured Spotlight
+									</span>
+								</div>
+
+								<div class="absolute bottom-3 left-3 right-3 text-white space-y-1">
+									<p class="text-xs font-bold line-clamp-1 drop-shadow-sm leading-tight">
+										{{ rightBanner.title || 'Special Promotion' }}
 									</p>
+									<span class="text-[10px] font-mono text-gold-300 font-bold block">
+										Explore Collection →
+									</span>
 								</div>
 							</div>
 						</div>

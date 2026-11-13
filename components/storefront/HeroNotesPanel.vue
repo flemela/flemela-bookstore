@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 <template>
 	<aside v-if="notes && notes.is_active && notes.content_html"
-		class="w-full h-full rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-md p-4 sm:p-4.5 flex flex-col justify-between overflow-hidden transition-all duration-300 relative select-none"
+		class="w-full h-full rounded-2xl md:rounded-3xl shadow-md p-4 sm:p-4.5 flex flex-col justify-between overflow-hidden transition-all duration-300 relative select-none"
 		:style="{
       backgroundColor: notes.bg_color || '#FAF7F0',
       color: notes.text_color || '#141E1A',

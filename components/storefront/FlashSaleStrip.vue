@@ -1,23 +1,16 @@
 <!-- components/storefront/FlashSaleStrip.vue (The Sunrise Bookstore) -->
 <template>
 	<section v-if="books && books.length > 0" id="flash-sale"
-		class="relative py-4 sm:py-5 select-none transition-colors border-y overflow-hidden"
-		:style="bgColor ? { backgroundColor: bgColor } : {}" :class="[
-      isDark ? 'border-white/10' : 'border-slate-200',
-      !bgColor ? 'bg-transparent' : ''
-    ]" aria-label="Flash Sale Deals">
-		<!-- Subtle 30% - 15% - 0% Ambient Backdrop Scrim -->
-		<div class="absolute inset-0 pointer-events-none" :style="{
-        background: isDark
-          ? 'linear-gradient(to bottom, rgba(0, 0, 0, 0.30) 0%, rgba(0, 0, 0, 0.15) 50%, rgba(0, 0, 0, 0) 100%)'
-          : 'linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.02) 50%, rgba(0, 0, 0, 0) 100%)'
-      }" aria-hidden="true" />
+		class="relative py-4 sm:py-5 select-none overflow-hidden"
+		:style="{ backgroundColor: bgColor || '#FBF9F6' }" aria-label="Flash Sale Deals">
+		<!-- Solid brand accent bar -->
+		<div class="absolute top-0 left-0 right-0 h-[3px] bg-[#E8750D]" aria-hidden="true" />
 
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
 
 			<!-- TOP HEADER: Strict Monochrome Contrast (Pure White on Dark, Deep Ink on Light) -->
 			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 pb-2.5 border-b"
-				:class="isDark ? 'border-white/15' : 'border-slate-200'">
+				:class="isDark ? 'border-white/15' : 'border-slate-100'">
 				<div class="space-y-0.5">
 					<div class="flex items-center gap-1.5">
 						<span
@@ -68,13 +61,13 @@
 			<!-- CAROUSEL TRACK (Mobile: 2 fully in view + 1 overflowing on right edge; Desktop: 5 across) -->
 			<div class="relative group">
 				<button type="button"
-					class="absolute -left-2.5 sm:-left-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:border-[#E8750D] hover:bg-[#FFF7ED] border border-slate-300 shadow-md flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed"
+					class="absolute -left-2.5 sm:-left-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:bg-[#FFF7ED] shadow-md flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed"
 					:disabled="!canScrollLeft" aria-label="Scroll left to previous books" @click="scrollLeft">
 					<ChevronLeft :size="20" class="stroke-[2.5]" />
 				</button>
 
 				<button type="button"
-					class="absolute -right-2.5 sm:-right-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:border-[#E8750D] hover:bg-[#FFF7ED] border border-slate-300 shadow-md flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed"
+					class="absolute -right-2.5 sm:-right-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-slate-800 hover:text-[#E8750D] hover:bg-[#FFF7ED] shadow-md flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed"
 					:disabled="!canScrollRight" aria-label="Scroll right to next books" @click="scrollRight">
 					<ChevronRight :size="20" class="stroke-[2.5]" />
 				</button>

@@ -3,10 +3,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import HeroLeftBanner, { type StoreHeroLeftBanner } from './HeroLeftBanner.vue';
-import HeroTopSellersPanel from './HeroTopSellersPanel.vue';
+import HeroRightBanner, { type StoreHeroRightBanner } from './HeroRightBanner.vue';
 import HeroNotesPanel from './HeroNotesPanel.vue';
 import type { PublicBanner } from '~/server/api/banners/index.get';
-import type { Book } from '~/types';
 
 export interface CarouselSlide {
   id: string;
@@ -16,14 +15,6 @@ export interface CarouselSlide {
   title?: string;
   isRemote?: boolean;
 }
-
-interface Props {
-  topSellers?: Book[];
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  topSellers: () => [],
-});
 
 const emit = defineEmits<{
   search: [query: string, category?: string];
@@ -43,20 +34,13 @@ const hasActiveLeftFlank = computed(() => {
   return Boolean(heroLeftBanner.value && heroLeftBanner.value.is_active && heroLeftBanner.value.image_url);
 });
 
-// Top Sellers Visibility Toggle (respects store settings/metadata)
-const heroTopSellersEnabled = computed(() => {
-  if (storeMetadata.value?.hero_top_sellers && typeof storeMetadata.value.hero_top_sellers.is_active === 'boolean') {
-    return storeMetadata.value.hero_top_sellers.is_active;
-  }
-  if (storeMetadata.value?.settings && typeof storeMetadata.value.settings.hero_top_sellers === 'boolean') {
-    return storeMetadata.value.settings.hero_top_sellers;
-  }
-  return true;
+// Right Flank: configurable promotional poster (identical twin of the left flank)
+const heroRightBanner = computed<StoreHeroRightBanner | null>(() => {
+  return storeMetadata.value?.hero_right_banner || null;
 });
 
-// Right Flank State
-const hasTopSellers = computed(() => {
-  return heroTopSellersEnabled.value && Array.isArray(props.topSellers) && props.topSellers.length > 0;
+const hasActiveRightBanner = computed(() => {
+  return Boolean(heroRightBanner.value && heroRightBanner.value.is_active && heroRightBanner.value.image_url);
 });
 
 const heroNotes = computed(() => {
@@ -68,7 +52,7 @@ const hasActiveHeroNotes = computed(() => {
 });
 
 const hasActiveRightFlank = computed(() => {
-  return hasTopSellers.value || hasActiveHeroNotes.value;
+  return hasActiveRightBanner.value || hasActiveHeroNotes.value;
 });
 
 // Dynamic Desktop Grid Class (1fr : 2fr : 1fr)
@@ -289,7 +273,7 @@ onUnmounted(() => {
 
 			<!-- 2. CENTER STAGE: Hero Carousel (Apple Hairline Rim & 20% Height Reduction) -->
 			<section
-				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.16)] border border-white/[0.10] h-[176px] sm:h-[224px] md:h-[272px] lg:h-[352px] xl:h-[368px]"
+				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.16)] h-[176px] sm:h-[224px] md:h-[272px] lg:h-[352px] xl:h-[368px]"
 				:class="centerCarouselSpanClass" aria-roledescription="carousel"
 				aria-label="Promotions and Announcements" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave"
 				@focusin="handleMouseEnter" @focusout="handleMouseLeave">
@@ -329,13 +313,13 @@ onUnmounted(() => {
 					<div v-if="totalSlides > 1"
 						class="absolute inset-y-0 inset-x-2.5 sm:inset-x-3.5 z-20 flex items-center justify-between pointer-events-none">
 						<button type="button"
-							class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer border border-white/20"
+							class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer"
 							aria-label="Previous banner" @click.stop="prevSlide">
 							<ChevronLeft :size="18" />
 						</button>
 
 						<button type="button"
-							class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer border border-white/20"
+							class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer"
 							aria-label="Next banner" @click.stop="nextSlide">
 							<ChevronRight :size="18" />
 						</button>
@@ -343,7 +327,7 @@ onUnmounted(() => {
 
 					<!-- Pagination Indicators -->
 					<div v-if="totalSlides > 1"
-						class="absolute bottom-2.5 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/35 backdrop-blur-xs px-2.5 py-1 rounded-full border border-white/10 pointer-events-auto">
+						class="absolute bottom-2.5 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/35 backdrop-blur-xs px-2.5 py-1 rounded-full pointer-events-auto">
 						<button v-for="(_, idx) in totalSlides" :key="idx" type="button"
 							class="h-1.5 rounded-full cursor-pointer transition-all duration-300"
 							:class="idx === activeIndex ? 'w-5 bg-[#E8750D]' : 'w-1.5 bg-white/50 hover:bg-white/80'"
@@ -354,7 +338,7 @@ onUnmounted(() => {
 
 			<!-- 3. RIGHT FLANK: 4 Top Selling Books / Editorial Notes (Desktop 1fr, 20% reduced height, Hideable) -->
 			<div v-if="hasActiveRightFlank" class="hidden lg:flex lg:col-span-1 w-full lg:h-[352px] xl:h-[368px]">
-				<HeroTopSellersPanel v-if="hasTopSellers" :books="topSellers" />
+				<HeroRightBanner v-if="hasActiveRightBanner" :banner="heroRightBanner" />
 				<HeroNotesPanel v-else-if="hasActiveHeroNotes" :notes="heroNotes" />
 			</div>
 
