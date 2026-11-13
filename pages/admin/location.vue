@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   Calculator,
   ArrowLeft,
-  RotateCcw,
 } from 'lucide-vue-next';
 import AdminLayout from '~/components/admin/AdminLayout.vue';
 import LeafletPinPicker from '~/components/storefront/LeafletPinPicker.vue';
@@ -39,6 +38,35 @@ const DIAMOND_MALL_COORDS = {
   lng: 36.8167,
   address_text: 'Diamond Mall / Diamond Plaza, 4th Parklands Ave, Nairobi',
 };
+
+// Quick-set hub presets (coordinates sourced from the platform catalog seeds)
+const QUICK_HUBS = [
+  {
+    key: 'diamond-mall',
+    label: 'Diamond Mall',
+    name: 'The Sunrise Bookstore Main Hub (Diamond Mall)',
+    lat: -1.2612,
+    lng: 36.8167,
+    address_text: 'Diamond Mall / Diamond Plaza, 4th Parklands Ave, Nairobi',
+  },
+  {
+    key: 'sarit-centre',
+    label: 'Sarit Centre',
+    name: 'Flemela Bookstore Hub (Sarit Centre)',
+    lat: -1.2683,
+    lng: 36.8111,
+    address_text: 'Sarit Centre Lower Level, Westlands, Nairobi',
+  },
+];
+
+function applyQuickHub(hub: (typeof QUICK_HUBS)[number]): void {
+  form.name = hub.name;
+  form.lat = hub.lat;
+  form.lng = hub.lng;
+  form.address_text = hub.address_text;
+  mapRef.value?.setCenter(hub.lat, hub.lng, 16);
+  pushToast({ message: `Hub pinned to ${hub.label}. Save to persist the change.`, variant: 'info' });
+}
 
 const form = reactive<LocationConfig>({
   name: DIAMOND_MALL_COORDS.name,
@@ -82,21 +110,15 @@ onMounted(async () => {
       form.max_delivery_radius_km = Number(data.max_delivery_radius_km) || 15;
       mapRef.value?.setCenter(form.lat, form.lng, 15);
     } else {
-      resetToDiamondMall();
+      pushToast({ message: 'No hub configuration saved yet — using Diamond Mall defaults.', variant: 'info' });
     }
-  } catch {
-    resetToDiamondMall();
+  } catch (err: any) {
+    pushToast({
+      message: err?.data?.statusMessage || err?.statusMessage || 'Could not load the saved hub configuration. Showing Diamond Mall defaults.',
+      variant: 'error',
+    });
   }
 });
-
-function resetToDiamondMall(): void {
-  form.name = DIAMOND_MALL_COORDS.name;
-  form.lat = DIAMOND_MALL_COORDS.lat;
-  form.lng = DIAMOND_MALL_COORDS.lng;
-  form.address_text = DIAMOND_MALL_COORDS.address_text;
-  mapRef.value?.setCenter(form.lat, form.lng, 16);
-  pushToast({ message: 'Hub reset to Diamond Mall, Parklands default.', variant: 'info' });
-}
 
 function handleMapPinUpdate(coords: { lat: number; lng: number }): void {
   form.lat = coords.lat;
@@ -201,27 +223,31 @@ async function handleSave(): Promise<void> {
               </h2>
 
               <div class="flex items-center gap-2">
-                <!-- Reset to Diamond Mall Default -->
-                <button
-                  type="button"
-                  class="px-2.5 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1 transition-colors cursor-pointer border border-slate-200"
-                  title="Reset to Diamond Mall default coordinates"
-                  @click="resetToDiamondMall"
-                >
-                  <RotateCcw :size="12" />
-                  <span>Diamond Mall</span>
-                </button>
+                <!-- Quick Hub Presets -->
+                <div class="flex flex-wrap items-center gap-2">
+                  <button
+                    v-for="hub in QUICK_HUBS"
+                    :key="hub.key"
+                    type="button"
+                    class="px-2.5 py-1.5 rounded bg-slate-100 hover:bg-forest-950 hover:text-paper text-[11px] font-bold text-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
+                    :title="`Pin hub to ${hub.label}`"
+                    @click="applyQuickHub(hub)"
+                  >
+                    <MapPin :size="12" />
+                    <span>{{ hub.label }}</span>
+                  </button>
 
-                <!-- Set to Current Location -->
-                <button
-                  type="button"
-                  class="px-3 py-1.5 rounded bg-[#FFF7ED] hover:bg-[#FFEDD5] text-xs font-bold text-[#C25E00] flex items-center gap-1.5 transition-colors cursor-pointer border border-[#E8750D]/30"
-                  :disabled="isLocating"
-                  @click="handleSetCurrentLocation"
-                >
-                  <Navigation :size="13" class="text-[#E8750D]" />
-                  <span>{{ isLocating ? 'Locating...' : 'Set Current Location' }}</span>
-                </button>
+                  <!-- Set to Current Location -->
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded bg-[#FFF7ED] hover:bg-[#FFEDD5] text-xs font-bold text-[#C25E00] flex items-center gap-1.5 transition-colors cursor-pointer border border-[#E8750D]/30"
+                    :disabled="isLocating"
+                    @click="handleSetCurrentLocation"
+                  >
+                    <Navigation :size="13" class="text-[#E8750D]" />
+                    <span>{{ isLocating ? 'Locating...' : 'GPS Pin' }}</span>
+                  </button>
+                </div>
               </div>
             </div>
 

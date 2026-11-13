@@ -228,7 +228,7 @@ function handleAddToCart(event: Event): void {
 
 <template>
   <article
-    class="w-full h-[156px] sm:h-[168px] flex flex-row items-stretch gap-2.5 bg-white text-[#141E1A] rounded-2xl border border-slate-100 p-2 group select-none text-left transition-all duration-200 hover:shadow-card hover:-translate-y-0.5 overflow-hidden">
+    class="shelf-card w-full h-[156px] sm:h-[168px] flex flex-row items-stretch gap-2.5 bg-white text-[#141E1A] rounded-2xl border border-slate-100 p-2 group select-none text-left transition-all duration-200 hover:shadow-card hover:-translate-y-0.5 overflow-hidden">
 
     <!-- Cover (2:3, full height of card) -->
     <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`"
@@ -271,25 +271,25 @@ function handleAddToCart(event: Event): void {
       </div>
     </NuxtLink>
 
-    <!-- Meta + price column -->
-    <div class="flex flex-col min-w-0 flex-1 justify-between py-0.5">
-      <div class="min-w-0 space-y-0.5">
+    <!-- Meta + price column (designed baseline rhythm) -->
+    <div class="flex flex-col min-w-0 flex-1 py-0.5">
+      <div class="min-w-0 flex flex-col gap-0.5">
         <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
-          <h3 class="font-display text-[11px] sm:text-[12px] font-bold text-[#141E1A] group-hover:text-[#E8750D] transition-colors line-clamp-2 leading-tight"
+          <h3 class="shelf-title font-display text-[11px] sm:text-[12px] font-bold text-[#141E1A] group-hover:text-[#E8750D] transition-colors line-clamp-2 leading-tight"
             :title="book.name">
             {{ book.name }}
           </h3>
         </NuxtLink>
-        <p class="text-[9px] sm:text-[9.5px] text-slate-500 italic truncate leading-tight">
-          {{ displayAuthor }}
+        <p class="shelf-author text-[9px] sm:text-[9.5px] text-slate-500 italic truncate leading-tight">
+          {{ displayAuthor || '·' }}
         </p>
-        <p v-if="formatCaption" class="text-[7.5px] sm:text-[8px] font-mono uppercase tracking-wider text-slate-400 leading-tight">
-          {{ formatCaption }}
+        <p class="shelf-caption text-[7.5px] sm:text-[8px] font-mono uppercase tracking-wider text-slate-400 leading-tight">
+          {{ formatCaption || '·' }}
         </p>
       </div>
 
-      <div class="flex items-end justify-between gap-1.5 pt-1">
-        <div class="flex flex-col leading-none min-w-0">
+      <div class="mt-auto flex items-end gap-1.5 pt-1">
+        <div class="flex flex-col leading-none min-w-0 flex-1">
           <span v-if="originalPrice && originalPrice > currentPrice"
             class="text-[8.5px] sm:text-[9px] text-slate-400 line-through font-mono truncate">
             {{ formatCurrency(originalPrice) }}
@@ -314,3 +314,26 @@ function handleAddToCart(event: Event): void {
     </div>
   </article>
 </template>
+
+<style scoped>
+/* C: container query — drop the caption line and tighten when the card is squeezed narrow */
+.shelf-card {
+  container-type: inline-size;
+  container-name: shelfcard;
+}
+
+/* Reserved 2-line title block keeps every author row on the same baseline across the rail */
+.shelf-title {
+  min-height: 2.6em;
+}
+
+@container shelfcard (max-width: 150px) {
+  .shelf-caption {
+    display: none;
+  }
+  .shelf-title {
+    min-height: 2.4em;
+    font-size: 10px;
+  }
+}
+</style>

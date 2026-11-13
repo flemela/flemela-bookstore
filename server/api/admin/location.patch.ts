@@ -11,7 +11,7 @@ const LocationSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
   address_text: z.string().max(500).nullable().optional(),
-  base_distance_km: z.number().nonnegative().default(2),
+  base_distance_km: z.number().min(0).max(50).default(2),
   base_delivery_fee: z.number().nonnegative().default(100),
   fee_per_km: z.number().nonnegative().default(25),
   max_delivery_radius_km: z.number().positive().max(100).default(15),
@@ -28,10 +28,20 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  const token = getCookie(event, 'flemela_admin_session') || event.context.authToken;
+
+  if (!token) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized admin session',
+    });
+  }
+
   try {
     return await sokoClient('/store/location', {
       method: 'PATCH',
       body: parsed.data,
+      token,
     });
   } catch (err: any) {
     throw createError({

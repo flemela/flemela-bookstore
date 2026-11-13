@@ -9,7 +9,7 @@ const { toasts, dismiss } = useToast();
 <template>
   <Teleport to="body">
     <div
-      class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 pointer-events-none max-w-sm w-full px-4 sm:px-0"
+      class="fixed top-16 sm:top-[4.5rem] right-4 sm:right-5 z-50 flex flex-col gap-2.5 pointer-events-none max-w-sm w-full px-4 sm:px-0"
       aria-live="polite"
     >
       <TransitionGroup name="toast-list">
@@ -31,7 +31,7 @@ const { toasts, dismiss } = useToast();
 }
 .toast-list-enter-from {
   opacity: 0;
-  transform: translateY(12px) scale(0.95);
+  transform: translateY(-12px) scale(0.95);
 }
 .toast-list-leave-to {
   opacity: 0;

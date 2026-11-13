@@ -12,6 +12,7 @@ import {
 import PromoTickerStrip from '~/components/storefront/PromoTickerStrip.vue';
 import StoreNavbar from '~/components/storefront/StoreNavbar.vue';
 import Breadcrumbs from '~/components/storefront/Breadcrumbs.vue';
+import ShelfBookCard from '~/components/storefront/ShelfBookCard.vue';
 import CartDrawer from '~/components/storefront/CartDrawer.vue';
 import QuantityStepper from '~/components/storefront/QuantityStepper.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
@@ -26,6 +27,20 @@ const slug = computed(() => route.params.slug as string);
 const { data: book, error } = await useFetch<Book>(`/api/products/${slug.value}`);
 const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
 const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
+
+// "You May Also Like" rail — same category, current title excluded
+const { data: suggestionsRes } = await useFetch<{ products?: Book[]; total?: number }>('/api/products', {
+  query: {
+    category: book.value?.category_name || undefined,
+    limit: 8,
+    sort: 'first_added',
+  },
+});
+
+const suggestions = computed<Book[]>(() => {
+  const list = suggestionsRes.value?.products ?? [];
+  return list.filter((b) => b && b.id !== book.value?.id).slice(0, 6);
+});
 
 const { addItem } = useCart();
 const { push: pushToast } = useToast();
@@ -389,6 +404,25 @@ function handleAddToCart(): void {
 						v-html="book.description" />
 				</div>
 			</div>
+			<!-- You May Also Like -->
+			<section v-if="suggestions.length" class="space-y-3 pt-2" aria-label="Recommended books">
+				<div class="flex items-center justify-between gap-3">
+					<h2 class="font-display text-base sm:text-lg font-bold text-[#141E1A] leading-tight">
+						You May Also Like
+					</h2>
+					<NuxtLink to="/#catalog-results"
+						class="text-[11px] font-mono font-bold uppercase tracking-wider text-[#E8750D] hover:underline shrink-0">
+						View all
+					</NuxtLink>
+				</div>
+
+				<div class="flex gap-2.5 sm:gap-3 overflow-x-auto scroll-smooth no-scrollbar pb-1 snap-x snap-mandatory -mx-4 px-4 sm:-mx-6 sm:px-6" style="touch-action: pan-y;">
+					<div v-for="suggestion in suggestions" :key="suggestion.id"
+						class="w-[min(78vw,248px)] sm:w-[calc((100%-0.75rem)/2)] md:w-[calc((100%-1.5rem)/3)] flex-shrink-0 snap-start">
+						<ShelfBookCard :book="suggestion" class="h-full" />
+					</div>
+				</div>
+			</section>
 		</main>
 
 		<CartDrawer />

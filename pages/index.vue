@@ -331,7 +331,7 @@ onUnmounted(() => {
 		<!-- FLASH SALE STRIP (Layout held constant; dynamic title, bg-color & hide toggle respected) -->
 		<FlashSaleStrip v-if="flashSaleBooks.length > 0 && flashSaleSection?.is_active !== false"
 			:books="flashSaleBooks" :title="flashSaleSection?.title || 'FLASH SALE DEALS'"
-			:bg-color="flashSaleSection?.bg_color || ''" badge-label="LIMITED TIME OFFERS"
+			:bg-color="flashSaleSection?.bg_color || ''"
 			@request-seed="handleRequestSeed" />
 
 		<!-- Categories Bento Grid -->
@@ -370,10 +370,9 @@ onUnmounted(() => {
 			</div>
 		</div>
 
-		<!-- DEALS OF THE WEEK (Layout held constant; dynamic title, subtitle, bg-color & hide toggle respected) -->
+		<!-- DEALS OF THE WEEK (Dynamic title, bg-color & hide toggle respected) -->
 		<DealsWeek v-if="dealsWeekSection?.is_active !== false" :books="bestsellersOfWeek"
 			:title="dealsWeekSection?.title || 'DEALS OF THE WEEK'"
-			:subtitle="dealsWeekSection?.subtitle || 'Handpicked titles at special discounts — instant digital download or physical delivery.'"
 			:bg-color="dealsWeekSection?.bg_color || ''" @request-seed="handleRequestSeed" />
 
 		<!-- Complete Bookstore Catalogue Archive -->

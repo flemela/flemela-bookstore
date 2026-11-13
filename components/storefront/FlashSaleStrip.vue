@@ -12,23 +12,10 @@
 			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 pb-2.5 border-b"
 				:class="isDark ? 'border-white/15' : 'border-slate-100'">
 				<div class="space-y-0.5">
-					<div class="flex items-center gap-1.5">
-						<span
-							class="text-[9.5px] sm:text-[10px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5"
-							:class="isDark ? 'text-white' : 'text-[#141E1A]'">
-							<Zap :size="11" class="fill-current" :class="isDark ? 'text-white' : 'text-[#141E1A]'" />
-							{{ badgeLabel }}
-						</span>
-					</div>
-
-					<h2 class="font-poster text-2xl sm:text-3xl lg:text-4xl font-extrabold uppercase tracking-wide leading-none drop-shadow-xs"
+					<h2 class="font-poster text-2xl sm:text-3xl lg:text-4xl font-extrabold uppercase tracking-wide leading-none"
 						:class="isDark ? 'text-white' : 'text-[#141E1A]'">
 						{{ title }}
 					</h2>
-
-					<p class="text-[11px] sm:text-xs line-clamp-1" :class="isDark ? 'text-white/80' : 'text-slate-600'">
-						Limited-time price cuts on bestselling literature and digital editions.
-					</p>
 				</div>
 
 				<!-- Live Countdown Clock: High Contrast Monochrome -->
@@ -76,7 +63,7 @@
 					class="flex gap-2.5 sm:gap-3 lg:gap-3.5 overflow-x-auto scroll-smooth no-scrollbar py-1 snap-x snap-mandatory"
 					style="touch-action: pan-y;" @scroll="checkScrollButtons">
 					<div v-for="book in books" :key="book.id"
-						class="w-[min(78vw,250px)] sm:w-[calc((100%-0.75rem)/2)] lg:w-[calc((100%-3.75rem)/5)] flex-shrink-0 snap-start flex">
+						class="w-[min(78vw,250px)] sm:w-[calc((100%-0.75rem)/2)] lg:w-[calc((100%-2.625rem)/4)] flex-shrink-0 snap-start flex">
 						<ShelfBookCard :book="book" class="h-full"
 							@request-seed="(t, a) => $emit('request-seed', t, a)" />
 					</div>
@@ -89,20 +76,18 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
-import { ChevronLeft, ChevronRight, Zap, Clock } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-vue-next';
 import ShelfBookCard from '~/components/storefront/ShelfBookCard.vue';
 import type { Book } from '~/types';
 
 interface Props {
   books: Book[];
   title?: string;
-  badgeLabel?: string;
   bgColor?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   title: 'FLASH SALE DEALS',
-  badgeLabel: 'LIMITED TIME OFFERS',
   bgColor: '',
 });
 

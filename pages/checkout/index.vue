@@ -39,6 +39,18 @@ const { push: pushToast } = useToast();
 const { data: storeMetadata } = await useFetch<any>('/api/stores/current');
 const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
 
+// Live hub + delivery fee config (falls back to Diamond Mall defaults server-side)
+const { data: hubConfig } = await useFetch<{
+  name: string;
+  lat: number;
+  lng: number;
+  address_text: string | null;
+  base_distance_km: number;
+  base_delivery_fee: number;
+  fee_per_km: number;
+  max_delivery_radius_km: number;
+}>('/api/location');
+
 const breadcrumbItems = [
   { label: 'Home', to: '/' },
   { label: 'Reading Cart', to: '/#catalog-results' },
@@ -75,15 +87,20 @@ function copyTillNumber(): void {
   setTimeout(() => (isTillCopied.value = false), 2200);
 }
 
-// Canonical Hub: Diamond Mall, Parklands, Nairobi
-const HUB_COORDS = {
-  lat: -1.2612,
-  lng: 36.8167,
-  baseKm: 2.0,
-  baseFee: 100,
-  feePerKm: 25,
-  maxRadiusKm: 15,
-};
+// Live Hub Config with safe fallbacks (fetch may resolve to null on hard outage)
+const HUB_COORDS = computed(() => {
+  const h = hubConfig.value;
+  return {
+    lat: Number(h?.lat ?? -1.2612),
+    lng: Number(h?.lng ?? 36.8167),
+    baseKm: Number(h?.base_distance_km ?? 2.0),
+    baseFee: Number(h?.base_delivery_fee ?? 100),
+    feePerKm: Number(h?.fee_per_km ?? 25),
+    maxRadiusKm: Number(h?.max_delivery_radius_km ?? 15),
+    name: h?.name ?? 'Diamond Mall Hub',
+    address: h?.address_text ?? 'Diamond Mall / Diamond Plaza, 4th Parklands Ave, Nairobi',
+  };
+});
 
 // Customer GPS Pin State
 const customerLat = ref<number | null>(null);
@@ -115,7 +132,7 @@ function computeHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lo
 
 const fullDeliveryAddress = computed(() => {
   if (!hasPhysicalItems.value) return 'Instant digital delivery (eBook)';
-  if (deliveryType.value === 'pickup') return 'Store pickup — Diamond Mall Hub, Parklands, Nairobi';
+  if (deliveryType.value === 'pickup') return `Store pickup — ${HUB_COORDS.value.name}`;
 
   const parts = [
     estate.value.trim(),
@@ -172,14 +189,15 @@ function handleMapPinUpdate(coords: { lat: number; lng: number }): void {
   customerLng.value = coords.lng;
   if (!estate.value) estate.value = 'Pinned map location';
 
-  const distance = computeHaversineDistanceKm(HUB_COORDS.lat, HUB_COORDS.lng, coords.lat, coords.lng);
-  if (distance > HUB_COORDS.maxRadiusKm) {
+  const hub = HUB_COORDS.value;
+  const distance = computeHaversineDistanceKm(hub.lat, hub.lng, coords.lat, coords.lng);
+  if (distance > hub.maxRadiusKm) {
     deliveryFeeStatus.value = 'needs_merchant_confirmation';
     deliveryFee.value = 0;
   } else {
     deliveryFeeStatus.value = 'known';
-    const billableKm = Math.max(0, distance - HUB_COORDS.baseKm);
-    deliveryFee.value = Math.round(HUB_COORDS.baseFee + billableKm * HUB_COORDS.feePerKm);
+    const billableKm = Math.max(0, distance - hub.baseKm);
+    deliveryFee.value = Math.round(hub.baseFee + billableKm * hub.feePerKm);
   }
 }
 
@@ -416,7 +434,7 @@ async function handlePlaceOrder(): Promise<void> {
 								<div class="flex items-center justify-between gap-2 pb-1">
 									<label class="text-[11px] font-semibold text-[#5F6964] flex items-center gap-1.5">
 										<MapPin :size="12" class="text-[#E8750D]" />
-										<span>Drop-off Pin (Calculated from Diamond Mall Hub):</span>
+										<span>Drop-off Pin (calculated from {{ HUB_COORDS.name }}):</span>
 									</label>
 
 									<button type="button"
@@ -461,8 +479,7 @@ async function handlePlaceOrder(): Promise<void> {
 						<div v-else
 							class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 text-xs text-[#5F6964] space-y-1">
 							<span class="font-bold text-[#141E1A] block">Pickup Hub:</span>
-							<p>The Sunrise Bookstore Main Counter, Diamond Mall / Diamond Plaza, 4th Parklands Ave,
-								Nairobi.</p>
+							<p>{{ HUB_COORDS.name }}{{ HUB_COORDS.address ? ` — ${HUB_COORDS.address}` : '' }}</p>
 							<span class="text-[11px] text-emerald-800 font-semibold block pt-1">
 								âœ“ Ready for collection within 2 hours of payment confirmation.
 							</span>

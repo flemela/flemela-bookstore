@@ -33,8 +33,10 @@ const isMobileOpen = ref(false);
 const searchInput = ref('');
 const isCategoryDropdownOpen = ref(false);
 const isSearchDropdownOpen = ref(false);
+const isSearchExpanded = ref(false);
 const selectedIndex = ref(-1);
 const searchContainerRef = ref<HTMLElement | null>(null);
+const searchInputRef = ref<HTMLInputElement | null>(null);
 
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 let closeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -115,6 +117,7 @@ function submitSearch(): void {
     emit('search', searchInput.value.trim());
     isSearchDropdownOpen.value = false;
     isMobileOpen.value = false;
+    closeSearchStrip();
   }
 }
 
@@ -141,7 +144,19 @@ function handleKeydown(e: KeyboardEvent): void {
     }
   } else if (e.key === 'Escape') {
     isSearchDropdownOpen.value = false;
+    closeSearchStrip();
   }
+}
+
+function toggleSearchStrip(): void {
+  isSearchExpanded.value = !isSearchExpanded.value;
+  if (isSearchExpanded.value) {
+    setTimeout(() => searchInputRef.value?.focus(), 140);
+  }
+}
+
+function closeSearchStrip(): void {
+  isSearchExpanded.value = false;
 }
 
 function clearSearch(): void {
@@ -326,6 +341,17 @@ onUnmounted(() => {
 
       <!-- Right Action Icons -->
       <div class="flex items-center gap-3 sm:gap-4 text-[#052219]">
+        <button
+          type="button"
+          class="p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+          :class="isSearchExpanded ? 'text-[#E8750D] bg-orange-50' : 'text-[#052219] hover:text-[#E8750D] hover:bg-slate-100'"
+          :aria-label="isSearchExpanded ? 'Close search' : 'Open search'"
+          :aria-expanded="isSearchExpanded"
+          @click="toggleSearchStrip"
+        >
+          <component :is="isSearchExpanded ? X : Search" :size="19" />
+        </button>
+
         <a
           :href="helpWhatsAppUrl"
           target="_blank"
@@ -354,9 +380,9 @@ onUnmounted(() => {
     </div>
 
     <!-- Row 2: Search Bar Strip with Instant Recommendations Dropdown -->
-    <div
+    <div v-show="isSearchExpanded"
       ref="searchContainerRef"
-      class="w-full px-4 sm:px-6 py-2.5 sm:py-3 transition-all relative overflow-visible bg-slate-50/70 border-t border-slate-100"
+      class="search-strip w-full px-4 sm:px-6 py-2 relative overflow-visible bg-slate-50/70 border-t border-slate-100"
     >
       <form
         class="max-w-3xl mx-auto flex items-center gap-2 relative z-20"
@@ -368,6 +394,7 @@ onUnmounted(() => {
           <Search :size="16" class="text-slate-400 flex-shrink-0" />
 
           <input
+            ref="searchInputRef"
             v-model="searchInput"
             type="text"
             placeholder="Search books by title, author, or keyword (typo tolerant)..."
@@ -526,6 +553,19 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.search-strip {
+  animation: searchStripIn 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes searchStripIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-strip { animation: none; }
+}
+
 .nav-link-item {
   position: relative;
   display: inline-block;

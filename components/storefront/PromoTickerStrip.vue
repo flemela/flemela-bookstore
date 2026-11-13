@@ -149,16 +149,16 @@ onUnmounted(() => {
     <!-- Subtle Ambient Top Sheen -->
     <div class="absolute inset-0 bg-gradient-to-b from-white/15 via-transparent to-black/10 pointer-events-none" />
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-9 sm:h-10 flex items-center justify-between gap-3 relative z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-7 sm:h-8 flex items-center justify-between gap-3 relative z-10">
       <!-- Left Manual Chevron Button -->
       <button
         v-if="activeMessages.length > 1"
         type="button"
-        class="w-6 h-6 rounded-full bg-black/15 hover:bg-black/30 text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0 active:scale-95"
+        class="w-5 h-5 rounded-full bg-black/15 hover:bg-black/30 text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0 active:scale-95"
         aria-label="Previous announcement"
         @click="prevMessage"
       >
-        <ChevronLeft :size="14" />
+        <ChevronLeft :size="12" />
       </button>
 
       <!-- Center Rotating Message -->
@@ -173,7 +173,7 @@ onUnmounted(() => {
             <Sparkles :size="13" class="text-white flex-shrink-0 animate-pulse" />
 
             <!-- Text Content: White font-bold on gradient -->
-            <span class="font-sans font-bold text-[11px] sm:text-xs tracking-wide text-white truncate drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]">
+            <span class="font-sans font-bold text-[10px] sm:text-[11px] tracking-wide text-white truncate drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]">
               {{ activeMessages[activeIndex]?.text }}
             </span>
 
@@ -201,11 +201,11 @@ onUnmounted(() => {
         <button
           v-if="activeMessages.length > 1"
           type="button"
-          class="w-6 h-6 rounded-full bg-black/15 hover:bg-black/30 text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0 active:scale-95"
+          class="w-5 h-5 rounded-full bg-black/15 hover:bg-black/30 text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0 active:scale-95"
           aria-label="Next announcement"
           @click="nextMessage"
         >
-          <ChevronRight :size="14" />
+          <ChevronRight :size="12" />
         </button>
       </div>
     </div>
