@@ -274,6 +274,24 @@ function handleAddToCart(event: Event): void {
 			<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`"
 				class="block relative w-full aspect-[2/3] rounded-xl overflow-hidden bg-[#141E1A] shadow-[0_2px_10px_rgba(0,0,0,0.12)]"
 				:aria-label="`View details for ${book.name}`" @click="handleCardClick">
+				<!-- Badge on image -->
+				<span v-if="badgeInfo"
+					class="absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-1 text-[8px] font-mono font-bold uppercase tracking-wider text-[#FFD29D] bg-[#141E1A]/95 px-1.5 py-0.5 rounded shadow-xs border border-white/10">
+					<component :is="badgeInfo.icon" :size="8" />
+					{{ badgeInfo.label }}
+				</span>
+
+				<!-- Red Discount Medallion on image -->
+				<div v-if="discountPercentage > 0"
+					class="absolute top-1.5 right-1.5 z-10 w-8 h-8 flex items-center justify-center pointer-events-none drop-shadow-[0_2px_5px_rgba(220,38,38,0.5)]"
+					aria-hidden="true">
+					<svg viewBox="0 0 100 100" class="w-full h-full text-red-600 fill-current">
+						<polygon points="98,50 89.2,57.8 94.3,68.4 83.3,72.2 83.9,83.9 72.2,83.3 68.4,94.3 57.8,89.2 50,98 42.2,89.2 31.6,94.3 27.8,83.3 16.1,83.9 16.7,72.2 5.7,68.4 10.8,57.8 2,50 10.8,42.2 5.7,31.6 16.7,27.8 16.1,16.1 27.8,16.7 31.6,5.7 42.2,10.8 50,2 57.8,10.8 68.4,5.7 72.2,16.7 83.9,16.1 83.3,27.8 94.3,31.6 89.2,42.2" />
+					</svg>
+					<span class="absolute inset-0 flex items-center justify-center font-black font-mono text-[8.5px] text-white tracking-tighter drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+						−{{ discountPercentage }}%
+					</span>
+				</div>
 				<div v-if="imageFailed || !coverImage"
 					class="absolute inset-0 flex flex-col justify-between p-2.5 bg-gradient-to-br from-[#141E1A] to-[#242D28] text-white text-left select-none">
 					<div class="space-y-0.5">
@@ -295,12 +313,6 @@ function handleAddToCart(event: Event): void {
 
 			<!-- Badge + title + author -->
 			<div class="pt-2 flex flex-col gap-0.5 min-w-0">
-				<span v-if="badgeInfo"
-					class="self-start inline-flex items-center gap-1 text-[8px] font-mono font-bold uppercase tracking-wider text-[#FFD29D] bg-[#141E1A] px-1.5 py-0.5 rounded">
-					<component :is="badgeInfo.icon" :size="8" />
-					{{ badgeInfo.label }}
-				</span>
-
 				<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
 					<h3 class="font-display text-[12px] sm:text-[13px] font-bold text-[#141E1A] group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug"
 						:title="book.name">
@@ -327,17 +339,13 @@ function handleAddToCart(event: Event): void {
 				<span class="text-[13px] sm:text-[14px] font-black font-mono leading-tight text-[#141E1A] tracking-tight">
 					{{ formatCurrency(currentPrice) }}
 				</span>
-				<span v-if="discountPercentage > 0"
-					class="text-[8.5px] sm:text-[9px] font-mono font-bold text-white bg-red-600 px-1 py-0.5 rounded">
-					−{{ discountPercentage }}%
-				</span>
 			</div>
 
 			<button type="button"
 				class="w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-95"
 				:class="isRecentlyAdded
           ? 'bg-emerald-600 text-white'
-          : 'bg-[#141E1A] hover:bg-[#E8750D] text-white'"
+          : 'bg-[#E8750D] hover:bg-[#D85F06] text-white'"
 				:title="isRecentlyAdded ? 'Added to cart' : (book.isSeed ? 'Request book' : 'Add to cart')"
 				:aria-label="isRecentlyAdded ? 'Added to cart' : (book.isSeed ? 'Request book' : 'Add to cart')"
 				@click="handleAddToCart">
@@ -355,6 +363,24 @@ function handleAddToCart(event: Event): void {
 				<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`"
 					class="block w-full h-full cursor-pointer" :aria-label="`View details for ${book.name}`"
 					@click="handleCardClick">
+					<!-- Badge on image -->
+					<span v-if="badgeInfo"
+						class="absolute top-2 left-2 z-10 inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider text-[#FFD29D] bg-[#141E1A]/95 px-2 py-0.5 rounded shadow-xs border border-white/10">
+						<component :is="badgeInfo.icon" :size="9" />
+						{{ badgeInfo.label }}
+					</span>
+
+					<!-- Red Discount Medallion on image -->
+					<div v-if="discountPercentage > 0"
+						class="absolute top-2 right-2 z-10 w-10 h-10 flex items-center justify-center pointer-events-none drop-shadow-[0_3px_8px_rgba(220,38,38,0.5)]"
+						aria-hidden="true">
+						<svg viewBox="0 0 100 100" class="w-full h-full text-red-600 fill-current">
+							<polygon points="98,50 89.2,57.8 94.3,68.4 83.3,72.2 83.9,83.9 72.2,83.3 68.4,94.3 57.8,89.2 50,98 42.2,89.2 31.6,94.3 27.8,83.3 16.1,83.9 16.7,72.2 5.7,68.4 10.8,57.8 2,50 10.8,42.2 5.7,31.6 16.7,27.8 16.1,16.1 27.8,16.7 31.6,5.7 42.2,10.8 50,2 57.8,10.8 68.4,5.7 72.2,16.7 83.9,16.1 83.3,27.8 94.3,31.6 89.2,42.2" />
+						</svg>
+						<span class="absolute inset-0 flex items-center justify-center font-black font-mono text-[10.5px] text-white tracking-tighter drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
+							−{{ discountPercentage }}%
+						</span>
+					</div>
 					<div v-if="imageFailed || !coverImage"
 						class="absolute inset-0 flex flex-col justify-between p-3 bg-gradient-to-br from-[#141E1A] to-[#242D28] text-white text-left select-none">
 						<div class="space-y-1">
@@ -374,12 +400,6 @@ function handleAddToCart(event: Event): void {
 						@error="handleImageError" />
 				</NuxtLink>
 			</div>
-
-			<span v-if="badgeInfo"
-				class="self-start inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider text-[#FFD29D] bg-[#141E1A] px-2 py-0.5 rounded">
-				<component :is="badgeInfo.icon" :size="9" />
-				{{ badgeInfo.label }}
-			</span>
 
 			<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block mt-1" @click="handleCardClick">
 				<h3 class="font-display text-sm sm:text-[15px] font-bold text-[#141E1A] group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug"
@@ -433,17 +453,13 @@ function handleAddToCart(event: Event): void {
 				<span class="text-lg font-black font-mono leading-tight text-[#141E1A] tracking-tight">
 					{{ formatCurrency(currentPrice) }}
 				</span>
-				<span v-if="discountPercentage > 0"
-					class="text-[9px] font-mono font-bold text-white bg-red-600 px-1 py-0.5 rounded">
-					SAVE {{ discountPercentage }}%
-				</span>
 			</div>
 
 			<button type="button"
 				class="w-full flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs sm:text-sm py-2.5 transition-all duration-200 cursor-pointer active:scale-[0.98]"
 				:class="isRecentlyAdded
           ? 'bg-emerald-600 text-white'
-          : 'bg-[#141E1A] hover:bg-[#E8750D] text-white'"
+          : 'bg-[#E8750D] hover:bg-[#D85F06] text-white'"
 				@click="handleAddToCart">
 				<Check v-if="isRecentlyAdded" :size="16" class="stroke-[3]" />
 				<ShoppingCart v-else :size="15" />

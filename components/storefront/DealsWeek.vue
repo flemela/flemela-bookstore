@@ -54,8 +54,8 @@
 					class="flex gap-2.5 sm:gap-3 lg:gap-3.5 overflow-x-auto scroll-smooth no-scrollbar py-1 snap-x snap-mandatory"
 					style="touch-action: pan-y;" @scroll="checkScrollButtons">
 					<div v-for="book in books" :key="book.id"
-						class="w-[calc((100%-1rem)/2.35)] sm:w-[calc((100%-1.25rem)/3.25)] lg:w-[calc((100%-0.875rem*4)/5)] flex-shrink-0 snap-start flex">
-						<BookCard :book="book" :compact="true" class="h-full"
+						class="w-[min(78vw,250px)] sm:w-[calc((100%-0.75rem)/2)] lg:w-[calc((100%-3.75rem)/5)] flex-shrink-0 snap-start flex">
+						<ShelfBookCard :book="book" class="h-full"
 							@request-seed="(t, a) => $emit('request-seed', t, a)" />
 					</div>
 				</div>
@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-vue-next';
-import BookCard from './BookCard.vue';
+import ShelfBookCard from './ShelfBookCard.vue';
 
 interface Props {
   books: any[];

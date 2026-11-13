@@ -1,0 +1,316 @@
+<!-- components/storefront/ShelfBookCard.vue -->
+<script setup lang="ts">
+// =============================================================================
+// Enterprise shelf card — flat media-object density card for curated rails.
+// Fixed 156–168px height, cover + meta columns, badge & discount medallion on
+// the image. Reuses the same cart/pricing pipeline as BookCard.
+// =============================================================================
+import { ref, computed, watch } from 'vue';
+import { Plus, Check, Zap, Flame, Tag, Clock, Star } from 'lucide-vue-next';
+import { useCart } from '~/composables/useCart';
+import { useToast } from '~/composables/useToast';
+import type { Book, ProductFormat, BookFormatType } from '~/types';
+
+interface Props {
+  book: Book;
+}
+
+const props = defineProps<Props>();
+
+const emit = defineEmits<{
+  requestSeed: [title: string, author?: string];
+}>();
+
+const { addItem } = useCart();
+const { push: pushToast } = useToast();
+
+const imageFailed = ref(false);
+const isRecentlyAdded = ref(false);
+let addedTimer: ReturnType<typeof setTimeout> | undefined;
+
+const availableDigitalFormats = computed<ProductFormat[]>(() => {
+  if (!props.book?.formats || props.book.formats.length === 0) return [];
+  return props.book.formats.filter((f) => {
+    const isDigital = f.format === 'pdf' || f.format === 'epub';
+    if (!isDigital) return false;
+    if (props.book.isSeed) return true;
+    return Boolean(
+      (f.file_url && f.file_url.trim().length > 0) ||
+      (f.file_public_id && f.file_public_id.trim().length > 0)
+    );
+  });
+});
+
+const hasDigitalCopy = computed(() => availableDigitalFormats.value.length > 0);
+
+const hardcopyFormat = computed<ProductFormat | null>(() => {
+  const existing = props.book?.formats?.find((f) => f.format === 'hardcopy');
+  if (existing) return existing;
+  if (hasDigitalCopy.value || props.book.price) {
+    return {
+      id: `synthetic-hardcopy-${props.book.id}`,
+      product_id: props.book.id,
+      format: 'hardcopy' as BookFormatType,
+      price: props.book.price || 999,
+      compare_at_price: props.book.compare_at_price || null,
+      file_url: null,
+      file_public_id: null,
+      file_size_bytes: null,
+      stock: props.book.stock ?? 10,
+      created_at: props.book.created_at || '',
+      updated_at: props.book.updated_at || '',
+    };
+  }
+  return null;
+});
+
+const availableFormats = computed<ProductFormat[]>(() => {
+  const list: ProductFormat[] = [];
+  if (hardcopyFormat.value) list.push(hardcopyFormat.value);
+  list.push(...availableDigitalFormats.value);
+  return list;
+});
+
+const formatCaption = computed<string>(() => {
+  const captions: string[] = [];
+  for (const fmt of availableFormats.value) {
+    const label = fmt.format === 'hardcopy' ? 'Hardcopy' : 'eBook';
+    if (!captions.includes(label)) captions.push(label);
+  }
+  return captions.join(' + ');
+});
+
+// Cheapest available format — shelf cards sell the entry point
+const activeFormat = computed<ProductFormat | undefined>(() => {
+  const list = availableFormats.value;
+  if (!list.length) return undefined;
+  return [...list].sort((a, b) => a.price - b.price)[0];
+});
+
+watch(
+  availableFormats,
+  () => {
+    imageFailed.value = false;
+  },
+  { immediate: true }
+);
+
+const pricing = computed(() => {
+  const pBook = props.book.price ?? 0;
+  const cpBook = props.book.compare_at_price ?? null;
+  const hasParentSale = Boolean(cpBook && cpBook > pBook && pBook > 0);
+  const parentDiscountRatio = hasParentSale && cpBook ? (cpBook - pBook) / cpBook : 0;
+
+  const fmt = activeFormat.value;
+  let p = fmt ? fmt.price : pBook;
+  let cp: number | null = null;
+
+  if (fmt) {
+    if (fmt.compare_at_price && fmt.compare_at_price > fmt.price) {
+      cp = fmt.compare_at_price;
+    } else if (fmt.format === 'hardcopy') {
+      cp = cpBook;
+    } else if (hasParentSale && parentDiscountRatio > 0 && parentDiscountRatio < 1) {
+      cp = Math.round(fmt.price / (1 - parentDiscountRatio));
+    }
+  } else {
+    cp = cpBook;
+  }
+
+  if (cp !== null && cp > 0 && p > 0 && cp !== p) {
+    const minP = Math.min(p, cp);
+    const maxP = Math.max(p, cp);
+    const percentDown = Math.round(((maxP - minP) / maxP) * 100);
+    return { currentPrice: minP, originalPrice: maxP, discountPercentage: percentDown > 0 ? percentDown : 0 };
+  }
+  return { currentPrice: p, originalPrice: null, discountPercentage: 0 };
+});
+
+const currentPrice = computed<number>(() => pricing.value.currentPrice);
+const originalPrice = computed<number | null>(() => pricing.value.originalPrice);
+const discountPercentage = computed<number>(() => pricing.value.discountPercentage);
+
+const coverImage = computed(() => {
+  if (!props.book) return null;
+  const rawImg: unknown = props.book.images?.[0];
+  if (typeof rawImg === 'string' && rawImg.trim().length > 5) return rawImg.trim();
+  if (rawImg && typeof rawImg === 'object' && 'image_url' in rawImg) {
+    const url = (rawImg as { image_url?: string }).image_url;
+    if (typeof url === 'string' && url.trim().length > 5) return url.trim();
+  }
+  const fallback = (props.book as any).cover_image_url;
+  if (typeof fallback === 'string' && fallback.trim().length > 5) return fallback.trim();
+  return null;
+});
+
+const displayAuthor = computed(() => {
+  if (!props.book.author) return 'Original Edition';
+  return props.book.author.startsWith('By ') ? props.book.author : `By ${props.book.author}`;
+});
+
+type BadgeInfo = { icon: typeof Zap; label: string } | null;
+
+function getBadgeInfo(badgeStr?: string | null): BadgeInfo {
+  if (!badgeStr) return null;
+  switch (badgeStr) {
+    case 'FLASH_SALE':
+      return { icon: Zap, label: 'FLASH' };
+    case 'BESTSELLER':
+      return { icon: Flame, label: 'BESTSELLER' };
+    case 'NO1_PICK':
+      return { icon: Star, label: '#1 PICK' };
+    case 'DEAL_OF_WEEK':
+      return { icon: Tag, label: 'DEAL' };
+    case 'LIMITED_TIME':
+      return { icon: Clock, label: 'LIMITED' };
+    default:
+      return { icon: Tag, label: badgeStr.replace(/_/g, ' ') };
+  }
+}
+
+const badgeInfo = computed(() => getBadgeInfo(props.book.badge));
+
+function handleImageError(): void {
+  imageFailed.value = true;
+}
+
+function formatCurrency(val: number): string {
+  return `KSh ${val.toLocaleString('en-KE')}`;
+}
+
+function handleCardClick(event: Event): void {
+  if (props.book.isSeed) {
+    event.preventDefault();
+    emit('requestSeed', props.book.name, props.book.author || undefined);
+  }
+}
+
+function handleAddToCart(event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (props.book.isSeed) {
+    emit('requestSeed', props.book.name, props.book.author || undefined);
+    return;
+  }
+
+  const fmt = activeFormat.value;
+  const isPhysical = fmt?.format === 'hardcopy';
+  const formatType: BookFormatType = fmt ? fmt.format : 'hardcopy';
+  const isSynthetic = !fmt || fmt.id.startsWith('synthetic-');
+  const validFormatId = isSynthetic ? '' : fmt.id;
+
+  addItem({
+    productId: props.book.id,
+    formatId: validFormatId,
+    title: props.book.name,
+    format: formatType,
+    price: currentPrice.value,
+    compare_at_price: originalPrice.value,
+    quantity: 1,
+    deliveryMethod: isPhysical ? 'delivery' : 'digital',
+    coverUrl: coverImage.value,
+    author: props.book.author,
+  });
+
+  isRecentlyAdded.value = true;
+  if (addedTimer) clearTimeout(addedTimer);
+  addedTimer = setTimeout(() => {
+    isRecentlyAdded.value = false;
+  }, 1400);
+
+  pushToast({
+    message: `Added "${props.book.name}" to cart`,
+    variant: 'success',
+  });
+}
+</script>
+
+<template>
+  <article
+    class="w-full h-[156px] sm:h-[168px] flex flex-row items-stretch gap-2.5 bg-white text-[#141E1A] rounded-2xl border border-slate-100 p-2 group select-none text-left transition-all duration-200 hover:shadow-card hover:-translate-y-0.5 overflow-hidden">
+
+    <!-- Cover (2:3, full height of card) -->
+    <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`"
+      class="relative shrink-0 h-full aspect-[2/3] rounded-xl overflow-hidden bg-[#141E1A] shadow-[0_2px_10px_rgba(0,0,0,0.12)]"
+      :aria-label="`View details for ${book.name}`" @click="handleCardClick">
+
+      <div v-if="imageFailed || !coverImage"
+        class="absolute inset-0 flex flex-col justify-between p-2 bg-gradient-to-br from-[#141E1A] to-[#242D28] text-white text-left select-none">
+        <div class="space-y-0.5">
+          <span class="text-[7px] font-mono uppercase tracking-wider text-[#FFD29D] font-bold block truncate">
+            {{ book.category_name || 'Book' }}
+          </span>
+          <h4 class="font-display font-bold text-[9px] leading-tight line-clamp-3 text-white">
+            {{ book.name }}
+          </h4>
+        </div>
+      </div>
+      <img v-else :src="coverImage" :alt="`Cover for ${book.name}`"
+        class="absolute inset-0 w-full h-full object-cover object-top" loading="lazy" width="112" height="168"
+        referrerpolicy="no-referrer" @error="handleImageError" />
+
+      <!-- Badge on image -->
+      <span v-if="badgeInfo"
+        class="absolute top-1 left-1 z-10 inline-flex items-center gap-0.5 text-[6.5px] font-mono font-bold uppercase tracking-wider text-[#FFD29D] bg-[#141E1A]/95 px-1 py-0.5 rounded shadow-xs border border-white/10 leading-none">
+        <component :is="badgeInfo.icon" :size="7" />
+        {{ badgeInfo.label }}
+      </span>
+
+      <!-- Discount medallion on image -->
+      <div v-if="discountPercentage > 0"
+        class="absolute bottom-1 right-1 z-10 w-7 h-7 flex items-center justify-center pointer-events-none drop-shadow-[0_2px_4px_rgba(220,38,38,0.5)]"
+        aria-hidden="true">
+        <svg viewBox="0 0 100 100" class="w-full h-full text-red-600 fill-current">
+          <polygon
+            points="98,50 89.2,57.8 94.3,68.4 83.3,72.2 83.9,83.9 72.2,83.3 68.4,94.3 57.8,89.2 50,98 42.2,89.2 31.6,94.3 27.8,83.3 16.1,83.9 16.7,72.2 5.7,68.4 10.8,57.8 2,50 10.8,42.2 5.7,31.6 16.7,27.8 16.1,16.1 27.8,16.7 31.6,5.7 42.2,10.8 50,2 57.8,10.8 68.4,5.7 72.2,16.7 83.9,16.1 83.3,27.8 94.3,31.6 89.2,42.2" />
+        </svg>
+        <span class="absolute inset-0 flex items-center justify-center font-black font-mono text-[7.5px] text-white tracking-tighter drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] leading-none">
+          −{{ discountPercentage }}%
+        </span>
+      </div>
+    </NuxtLink>
+
+    <!-- Meta + price column -->
+    <div class="flex flex-col min-w-0 flex-1 justify-between py-0.5">
+      <div class="min-w-0 space-y-0.5">
+        <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
+          <h3 class="font-display text-[11px] sm:text-[12px] font-bold text-[#141E1A] group-hover:text-[#E8750D] transition-colors line-clamp-2 leading-tight"
+            :title="book.name">
+            {{ book.name }}
+          </h3>
+        </NuxtLink>
+        <p class="text-[9px] sm:text-[9.5px] text-slate-500 italic truncate leading-tight">
+          {{ displayAuthor }}
+        </p>
+        <p v-if="formatCaption" class="text-[7.5px] sm:text-[8px] font-mono uppercase tracking-wider text-slate-400 leading-tight">
+          {{ formatCaption }}
+        </p>
+      </div>
+
+      <div class="flex items-end justify-between gap-1.5 pt-1">
+        <div class="flex flex-col leading-none min-w-0">
+          <span v-if="originalPrice && originalPrice > currentPrice"
+            class="text-[8.5px] sm:text-[9px] text-slate-400 line-through font-mono truncate">
+            {{ formatCurrency(originalPrice) }}
+          </span>
+          <span class="text-[13px] sm:text-[14px] font-black font-mono text-[#141E1A] tracking-tight truncate">
+            {{ formatCurrency(currentPrice) }}
+          </span>
+        </div>
+
+        <button type="button"
+          class="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-95"
+          :class="isRecentlyAdded
+            ? 'bg-emerald-600 text-white'
+            : 'bg-[#E8750D] hover:bg-[#D85F06] text-white'"
+          :title="isRecentlyAdded ? 'Added to cart' : (book.isSeed ? 'Request book' : 'Add to cart')"
+          :aria-label="isRecentlyAdded ? 'Added to cart' : (book.isSeed ? 'Request book' : 'Add to cart')"
+          @click="handleAddToCart">
+          <Check v-if="isRecentlyAdded" :size="15" class="stroke-[3]" />
+          <Plus v-else :size="16" class="stroke-[2.5]" />
+        </button>
+      </div>
+    </div>
+  </article>
+</template>
