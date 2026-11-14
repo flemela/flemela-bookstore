@@ -8,8 +8,8 @@ const whatsappUrl = buildWhatsAppLink(
 </script>
 
 <template>
-  <footer class="bg-theme-dark text-white pt-14 pb-10 px-4 border-t border-white/10 mt-auto">
-    <div class="max-w-6xl mx-auto space-y-10">
+  <footer class="bg-theme-dark text-white pt-12 sm:pt-14 pb-8 sm:pb-10 border-t border-white/10 mt-auto">
+    <div class="container-page space-y-8 sm:space-y-10">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-xs text-white/70">
         <!-- Column 1: Need Help? -->
         <div class="space-y-3">

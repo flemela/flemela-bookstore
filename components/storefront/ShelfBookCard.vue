@@ -2,7 +2,7 @@
 <script setup lang="ts">
 // =============================================================================
 // Enterprise shelf card — flat media-object density card for curated rails.
-// Fixed 156–168px height, cover + meta columns, badge & discount medallion on
+// Fixed fluid 146–158px height, cover + meta columns, badge & discount medallion on
 // the image. Reuses the same cart/pricing pipeline as BookCard.
 // =============================================================================
 import { ref, computed, watch } from 'vue';
@@ -235,7 +235,7 @@ function handleAddToCart(event: Event): void {
 
 <template>
   <article
-    class="shelf-card w-full h-[156px] sm:h-[168px] flex flex-row items-stretch gap-2.5 bg-white text-[#141E1A] rounded-2xl border border-slate-100 p-2 group select-none text-left transition-all duration-200 hover:shadow-card hover:-translate-y-0.5 overflow-hidden">
+    class="shelf-card w-full h-[150px] sm:h-[158px] md:h-[148px] lg:h-[146px] xl:h-[150px] flex flex-row items-stretch gap-2 md:gap-2.5 bg-white text-[#141E1A] rounded-2xl border border-slate-100 p-1.5 md:p-2 group select-none text-left card-lift hover:shadow-card overflow-hidden">
 
     <!-- Cover (2:3, full height of card) -->
     <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`"
@@ -254,7 +254,7 @@ function handleAddToCart(event: Event): void {
         </div>
       </div>
       <img v-else :src="coverImage" :alt="`Cover for ${book.name}`"
-        class="absolute inset-0 w-full h-full object-cover object-top" loading="lazy" width="112" height="168"
+        class="absolute inset-0 w-full h-full object-cover object-top" loading="lazy" width="104" height="156"
         referrerpolicy="no-referrer" @error="handleImageError" />
 
       <!-- Badge on image -->

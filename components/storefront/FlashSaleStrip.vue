@@ -6,13 +6,13 @@
 		<!-- Solid brand accent bar -->
 		<div class="absolute top-0 left-0 right-0 h-[3px] bg-[#E8750D]" aria-hidden="true" />
 
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+		<div class="container-page relative z-10">
 
 			<!-- TOP HEADER: Strict Monochrome Contrast (Pure White on Dark, Deep Ink on Light) -->
 			<div class="flex flex-row items-center justify-between gap-2 sm:gap-2.5 mb-3 sm:mb-3.5 pb-2.5 border-b"
 				:class="isDark ? 'border-white/15' : 'border-slate-100'">
 				<div class="space-y-0.5">
-					<h2 class="font-poster text-xl sm:text-2xl lg:text-4xl font-extrabold uppercase tracking-wide leading-none"
+					<h2 class="font-poster heading-section font-extrabold uppercase tracking-wide"
 						:class="isDark ? 'text-white' : 'text-[#141E1A]'">
 						{{ title }}
 					</h2>
@@ -63,7 +63,7 @@
 					class="flex gap-2.5 sm:gap-3 lg:gap-3.5 overflow-x-auto scroll-smooth no-scrollbar py-1 snap-x snap-mandatory"
 					style="touch-action: pan-y;" @scroll="checkScrollButtons">
 					<div v-for="book in books" :key="book.id"
-						class="w-[min(78vw,250px)] sm:w-[calc((100%-2.625rem)/4)] flex-shrink-0 snap-start flex">
+						class="w-[min(70vw,232px)] sm:w-[calc((100%-2.25rem)/4)] md:w-[calc((100%-3rem)/5)] flex-shrink-0 snap-start flex">
 						<ShelfBookCard :book="book" class="h-full"
 							@request-seed="(t, a) => $emit('request-seed', t, a)" />
 					</div>
@@ -124,8 +124,8 @@ function scrollLeft(): void {
   if (!scrollContainer.value) return;
   const firstChild = scrollContainer.value.firstElementChild as HTMLElement | null;
   const cardWidth = firstChild ? firstChild.clientWidth : 150;
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
-  const count = isDesktop ? 4 : 2;
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+  const count = isDesktop ? 5 : 2;
   const scrollDistance = (cardWidth + 12) * count;
   scrollContainer.value.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
 }
@@ -134,8 +134,8 @@ function scrollRight(): void {
   if (!scrollContainer.value) return;
   const firstChild = scrollContainer.value.firstElementChild as HTMLElement | null;
   const cardWidth = firstChild ? firstChild.clientWidth : 150;
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
-  const count = isDesktop ? 4 : 2;
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+  const count = isDesktop ? 5 : 2;
   const scrollDistance = (cardWidth + 12) * count;
   scrollContainer.value.scrollBy({ left: scrollDistance, behavior: 'smooth' });
 }

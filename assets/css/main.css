@@ -1,6 +1,6 @@
 /* =============================================================================
-   flemela/assets/css/main.css
-   The Sunrise Bookstore — Full-Stack Design System & 3D Physical Book Shader
+   ebookreads/assets/css/main.css
+   EbookReads — 70/20/10 Design System (White Canvas / Charcoal / Crimson)
    ============================================================================= */
 
 /* 1. Unified Typography Imports */
@@ -11,32 +11,52 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 3. Global CSS Custom Properties */
+/* 3. Global CSS Custom Properties (Strict 70/20/10 System) */
 :root {
-  /* Brand Chromatic Palette */
-  --theme-dark: #052219;
-  --theme-forest: #0C3A2B;
-  --theme-mint: #2EE59D;
-  --theme-turquoise: #2CD4BF;
-  --theme-orange: #FF8A00;
-  --theme-coral: #F05A36;
-  --theme-coral-hover: #D84315;
-  --theme-sage: #8FA89B;
-
-  /* Neutral & Canvas Layers */
-  --theme-sand: #F7F2E7;
+  /* -------------------------------------------------------------------------
+     70% White Canvas & Surfaces
+     ------------------------------------------------------------------------- */
   --theme-canvas: #FFFFFF;
   --theme-surface: #FFFFFF;
-  --theme-cream: #F4EFE6;
+  --theme-surface-subtle: #F8F9FA;
+  --theme-surface-muted: #F1F3F5;
+  --theme-border: #E5E7EB;
+  --theme-border-strong: #D1D5DB;
 
-  /* Typography Ink Tones */
-  --theme-ink: #141E1A;
-  --theme-ink-muted: #5F6964;
-  --theme-ink-subtle: #929B96;
+  /* Typography Ink */
+  --theme-ink: #14171A;
+  --theme-ink-muted: #656F7D;
+  --theme-ink-subtle: #9AA2AD;
 
-  /* Border Tints */
-  --theme-border: rgba(8, 37, 27, 0.08);
-  --theme-border-strong: rgba(8, 37, 27, 0.16);
+  /* -------------------------------------------------------------------------
+     20% Deep Charcoal Black (Structural Anchor)
+     ------------------------------------------------------------------------- */
+  --theme-dark-deep: #0B0C0E;
+  --theme-dark: #111315;
+  --theme-dark-surface: #1A1D20;
+  --theme-dark-border: rgba(255, 255, 255, 0.12);
+  --theme-dark-muted: #8E98A5;
+
+  /* -------------------------------------------------------------------------
+     10% Vibrant Crimson Red (High-Impact Accent)
+     ------------------------------------------------------------------------- */
+  --theme-accent: #E50914;
+  --theme-accent-hover: #CC0812;
+  --theme-accent-active: #B20710;
+  --theme-accent-soft: #FEF2F2;
+  --theme-accent-border: #FECACA;
+  --theme-accent-text: #FFFFFF;
+
+  /* Legacy Compatibility Mapping */
+  --theme-forest: var(--theme-dark-surface);
+  --theme-coral: var(--theme-accent);
+  --theme-coral-hover: var(--theme-accent-hover);
+  --theme-sand: var(--theme-surface-subtle);
+  --theme-cream: var(--theme-surface-subtle);
+  --theme-mint: var(--theme-accent);
+  --theme-turquoise: var(--theme-accent);
+  --theme-orange: var(--theme-accent);
+  --theme-sage: var(--theme-ink-subtle);
 }
 
 /* 4. Base Element Rules */
@@ -119,4 +139,105 @@ textarea:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--theme-ink);
   -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
   transition: background-color 5000s ease-in-out 0s;
+}
+/* =============================================================================
+   8. Enterprise Fluid Scaling System ("Sunrise Scale")
+   -----------------------------------------------------------------------------
+   One fluid rhythm for the whole storefront. Everything derives from three
+   primitives — container, gutter, section rhythm — plus a clamp()-based type
+   scale, so the UI grades smoothly from 320px phones through tablets (md =
+   desktop layout) to 4K displays without hard breakpoint jumps.
+
+   Breakpoint contract:
+     base  (<640px)   Mobile — single-column, 2-up rails, 44px touch targets
+     sm    (≥640px)   Large phones / small tablets — relaxed mobile
+     md    (≥768px)   TABLET = DESKTOP — full desktop layout is inherited here
+     lg    (≥1024px)  Desktop — wider rails, denser grids
+     xl    (≥1280px)  Wide desktop — max density
+     2xl   (≥1536px)  Ultra-wide — container caps out, gutters absorb excess
+   ============================================================================= */
+
+:root {
+  /* Layout primitives */
+  --container-page: 80rem;                    /* 1280px canonical page width      */
+  --container-wide: 90rem;                    /* 1440px for hero stages           */
+  --gutter: clamp(1rem, 0.5rem + 2.5vw, 2rem);/* fluid side padding               */
+  --section-y: clamp(1.75rem, 1rem + 3vw, 4rem); /* fluid section rhythm          */
+
+  /* Fluid type scale (minor-third-ish, clamped) */
+  --text-caption: clamp(0.625rem, 0.575rem + 0.25vw, 0.75rem);   /* 10 → 12px   */
+  --text-body:    clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);     /* 12 → 14px   */
+  --text-lead:    clamp(0.875rem, 0.8rem + 0.4vw, 1.0625rem);    /* 14 → 17px   */
+  --text-h3:      clamp(1rem, 0.9rem + 0.5vw, 1.25rem);          /* 16 → 20px   */
+  --text-h2:      clamp(1.625rem, 1.05rem + 2.6vw, 3rem);        /* 26 → 48px   */
+  --text-h1:      clamp(2rem, 1.15rem + 4vw, 3.5rem);            /* 32 → 56px   */
+
+  /* Fluid hero stage */
+  --hero-height: clamp(13.5rem, 10rem + 22vw, 21rem);            /* 216 → 336px */
+  --flank-width: clamp(9.25rem, 11.5vw, 12.25rem);               /* smartphone-like poster width */
+
+  /* Elevation + radius language */
+  --radius-card: 1rem;
+  --shadow-card: 0 4px 20px rgba(8, 37, 27, 0.05);
+  --shadow-card-hover: 0 12px 34px rgba(8, 37, 27, 0.12);
+}
+
+@layer components {
+  /* Canonical page container — replaces ad-hoc `max-w-7xl mx-auto px-4 sm:px-6 lg:px-8` */
+  .container-page {
+    width: 100%;
+    max-width: var(--container-page);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  .container-wide {
+    width: 100%;
+    max-width: var(--container-wide);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  /* Canonical section rhythm */
+  .section-block {
+    padding-block: var(--section-y);
+  }
+
+  /* Canonical section heading (Bebas poster face, fluid) */
+  .heading-section {
+    font-size: var(--text-h2);
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+  }
+
+  /* Canonical mono eyebrow label above headings */
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--text-caption);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /* Premium card lift — one transition language everywhere */
+  .card-lift {
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Keyboard parity for all interactive tiles */
+  .focus-ring:focus-visible {
+    outline: 2px solid #E8750D;
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-lift { transition: none; }
 }

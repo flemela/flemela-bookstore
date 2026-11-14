@@ -53,11 +53,11 @@ function handleCategoryClick(catName: string): void {
 
 <template>
   <section v-if="categories.length" id="categories-grid"
-    class="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6 select-none">
+    class="container-page section-block space-y-6 select-none">
     <!-- Section Heading -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-slate-100">
       <h2
-        class="font-poster text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
+        class="font-poster heading-section font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
         SHOP BY CATEGORY
       </h2>
 

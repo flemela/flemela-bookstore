@@ -4,8 +4,8 @@ import { Truck, BookOpen, Percent } from 'lucide-vue-next';
 </script>
 
 <template>
-  <section class="py-12 bg-white border-y border-theme-border px-4">
-    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+  <section class="py-10 sm:py-12 bg-white border-y border-theme-border">
+    <div class="container-page grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
       
       <!-- Benefit 1: Free Standard Delivery -->
       <div class="flex flex-col items-center space-y-2.5">

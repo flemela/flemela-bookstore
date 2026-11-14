@@ -232,7 +232,7 @@ onUnmounted(() => {
     class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-[0_4px_20px_rgba(5,34,25,0.05)] select-none"
   >
     <!-- Top Row: Brand & Navigation -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+    <div class="container-page h-14 md:h-16 flex items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <button
           type="button"

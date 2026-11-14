@@ -366,9 +366,9 @@ function handleAddToCart(event: Event): void {
 
 	<!-- FULL CARD (Main Catalog Archive) -->
 	<div v-else
-		class="w-full h-full bg-white text-[#141E1A] rounded-2xl p-3 shadow-card hover:shadow-xl hover:-translate-y-0.5 hover:border-[#E8750D]/50 transition-all duration-200 flex flex-col justify-between group select-none text-left border border-slate-100">
+		class="w-full h-full bg-white text-[#141E1A] rounded-2xl p-3 shadow-card card-lift hover:shadow-xl hover:border-[#E8750D]/50 flex flex-col justify-between group select-none text-left border border-slate-100">
 		<div class="flex flex-col flex-1">
-			<div class="relative mb-2.5 w-full aspect-[2/3] max-h-[225px] rounded-xl overflow-hidden bg-[#141E1A] shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
+			<div class="relative mb-2.5 w-full aspect-[2/3] rounded-xl overflow-hidden bg-[#141E1A] shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
 				<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`"
 					class="block w-full h-full cursor-pointer" :aria-label="`View details for ${book.name}`"
 					@click="handleCardClick">

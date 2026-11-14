@@ -358,7 +358,7 @@ onUnmounted(() => {
 		<BentoCategories @select="handleCategorySelect" />
 
 		<!-- Visual Bridge Banner -->
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+		<div class="container-page w-full">
 			<div
 				class="rounded-2xl bg-gradient-to-r from-[#052219] via-[#0C3A2B] to-[#124E38] p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 text-white shadow-md border border-[#2EE59D]/30 relative overflow-hidden">
 				<div class="flex items-center gap-3 relative z-10">
@@ -397,7 +397,7 @@ onUnmounted(() => {
 
 		<!-- Complete Bookstore Catalogue Archive -->
 		<section id="catalog-results"
-			class="pt-10 sm:pt-14 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6">
+			class="container-page pt-8 sm:pt-12 lg:pt-14 pb-12 sm:pb-16 w-full space-y-5 sm:space-y-6">
 			<div class="flex flex-row items-end justify-between gap-3 sm:gap-4 pb-4 border-b border-slate-200">
 				<div class="space-y-1.5 min-w-0">
 					<div class="flex items-center gap-2">
@@ -411,7 +411,7 @@ onUnmounted(() => {
 						</span>
 					</div>
 					<h2
-						class="font-poster text-2xl sm:text-4xl lg:text-5xl font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
+						class="font-poster heading-section font-extrabold uppercase text-[#141E1A] tracking-wide leading-none">
 						{{ catalogueHeading }}
 					</h2>
 					<!-- Reading progress — fills as the shopper scrolls through the archive -->
@@ -518,7 +518,7 @@ onUnmounted(() => {
 
 			<!-- SKELETON LOADING GRID -->
 			<div v-if="booksStatus === 'pending'"
-				class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full">
+				class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 w-full">
 				<div v-for="n in 8" :key="`skel-catalog-${n}`"
 					class="w-full bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-card flex flex-col justify-between space-y-3">
 					<div class="aspect-[1/1.37] rounded-lg bg-slate-200 animate-pulse" />
@@ -538,7 +538,7 @@ onUnmounted(() => {
 
 			<!-- REAL BOOKS GRID -->
 			<div v-else-if="displayBooks.length > 0"
-				class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 w-full animate-in fade-in duration-300">
+				class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 w-full animate-in fade-in duration-300">
 				<BookCard v-for="book in displayBooks" :key="book.id" :book="book" class="h-full"
 					@request-seed="handleRequestSeed" />
 			</div>

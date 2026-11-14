@@ -55,31 +55,28 @@ const hasActiveRightFlank = computed(() => {
   return hasActiveRightBanner.value || hasActiveHeroNotes.value;
 });
 
-// Dynamic Desktop Grid Class (1fr : 2fr : 1fr)
+// Smartphone-width flanks: a fixed fluid column (portrait 9:19-ish poster)
+// flanks a fluid center stage — the proportion holds from tablet → ultra-wide.
 const gridLayoutClass = computed(() => {
-  if (hasActiveLeftFlank.value || hasActiveRightFlank.value) {
-    return 'grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4.5 items-stretch';
-  }
-  return '';
+  const layout = [
+    'grid grid-cols-1 items-stretch gap-3 md:gap-4',
+    hasActiveLeftFlank.value && hasActiveRightFlank.value
+      ? 'md:grid-cols-[var(--flank-width)_minmax(0,1fr)_var(--flank-width)]'
+      : hasActiveLeftFlank.value
+        ? 'md:grid-cols-[var(--flank-width)_minmax(0,1fr)]'
+        : hasActiveRightFlank.value
+          ? 'md:grid-cols-[minmax(0,1fr)_var(--flank-width)]'
+          : '',
+  ].filter(Boolean).join(' ');
+  return layout;
 });
 
-// Center Carousel Column Span
-const centerCarouselSpanClass = computed(() => {
-  if (hasActiveLeftFlank.value && hasActiveRightFlank.value) {
-    return 'md:col-span-2 w-full';
-  }
-  if (hasActiveLeftFlank.value || hasActiveRightFlank.value) {
-    return 'md:col-span-3 w-full';
-  }
-  return 'w-full';
-});
+// Center Carousel Column placement (auto-placed into the minmax(0,1fr) track)
+const centerCarouselSpanClass = computed(() => 'w-full min-w-0');
 
-// Outer Wrapper Margins
+// Outer Wrapper — canonical wide container with fluid gutters
 const outerWrapperPaddingClass = computed(() => {
-  if (hasActiveLeftFlank.value || hasActiveRightFlank.value) {
-    return 'px-3 sm:px-6 lg:px-8 max-w-[1560px] mx-auto';
-  }
-  return 'px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto';
+  return hasActiveLeftFlank.value || hasActiveRightFlank.value ? 'container-wide' : 'container-page';
 });
 
 // Clean visual fallback banners
@@ -267,13 +264,13 @@ onUnmounted(() => {
 		<div class="w-full" :class="gridLayoutClass">
 
 			<!-- 1. LEFT FLANK: Promotional Poster (Desktop 1fr, 20% reduced height) -->
-			<div v-if="hasActiveLeftFlank" class="hidden md:flex md:col-span-1 w-full md:h-[272px] lg:h-[352px] xl:h-[368px]">
+			<div v-if="hasActiveLeftFlank" class="hidden md:block w-full h-[var(--hero-height)]">
 				<HeroLeftBanner :banner="heroLeftBanner" />
 			</div>
 
 			<!-- 2. CENTER STAGE: Hero Carousel (Apple Hairline Rim & 20% Height Reduction) -->
 			<section
-				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.16)] h-[176px] sm:h-[224px] md:h-[272px] lg:h-[352px] xl:h-[368px]"
+				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.16)] h-[176px] sm:h-[224px] md:h-[var(--hero-height)]"
 				:class="centerCarouselSpanClass" aria-roledescription="carousel"
 				aria-label="Promotions and Announcements" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave"
 				@focusin="handleMouseEnter" @focusout="handleMouseLeave">
@@ -337,7 +334,7 @@ onUnmounted(() => {
 			</section>
 
 			<!-- 3. RIGHT FLANK: 4 Top Selling Books / Editorial Notes (Desktop 1fr, 20% reduced height, Hideable) -->
-			<div v-if="hasActiveRightFlank" class="hidden md:flex md:col-span-1 w-full md:h-[272px] lg:h-[352px] xl:h-[368px]">
+			<div v-if="hasActiveRightFlank" class="hidden md:block w-full h-[var(--hero-height)]">
 				<HeroRightBanner v-if="hasActiveRightBanner" :banner="heroRightBanner" />
 				<HeroNotesPanel v-else-if="hasActiveHeroNotes" :notes="heroNotes" />
 			</div>

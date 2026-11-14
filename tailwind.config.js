@@ -61,6 +61,20 @@ export default {
         },
       },
 
+      fontSize: {
+        'fluid-caption': ['var(--text-caption)', { lineHeight: '1.4' }],
+        'fluid-body': ['var(--text-body)', { lineHeight: '1.55' }],
+        'fluid-lead': ['var(--text-lead)', { lineHeight: '1.5' }],
+        'fluid-h3': ['var(--text-h3)', { lineHeight: '1.25' }],
+        'fluid-h2': ['var(--text-h2)', { lineHeight: '0.98' }],
+        'fluid-h1': ['var(--text-h1)', { lineHeight: '0.98' }],
+      },
+
+      maxWidth: {
+        page: '80rem',
+        wide: '90rem',
+      },
+
       fontFamily: {
         poster: ['"Bebas Neue"', 'Oswald', 'sans-serif'],
         sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],

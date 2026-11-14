@@ -149,7 +149,7 @@ onUnmounted(() => {
     <!-- Subtle Ambient Top Sheen -->
     <div class="absolute inset-0 bg-gradient-to-b from-white/15 via-transparent to-black/10 pointer-events-none" />
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-7 sm:h-8 flex items-center justify-between gap-3 relative z-10">
+    <div class="container-page h-7 sm:h-8 flex items-center justify-between gap-3 relative z-10">
       <!-- Left Manual Chevron Button -->
       <button
         v-if="activeMessages.length > 1"
