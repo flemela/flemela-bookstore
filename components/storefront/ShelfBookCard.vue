@@ -295,8 +295,8 @@ function handleAddToCart(event: Event): void {
         </p>
       </div>
 
-      <div class="mt-auto flex items-end gap-1.5 pt-1">
-        <div class="flex flex-col leading-none min-w-0 flex-1">
+      <div class="mt-auto flex flex-col items-stretch gap-1 pt-1">
+        <div class="flex flex-col leading-none min-w-0">
           <span v-if="originalPrice && originalPrice > currentPrice"
             class="text-[8.5px] sm:text-[9px] text-slate-400 line-through font-mono truncate">
             {{ formatCurrency(originalPrice) }}
@@ -307,15 +307,15 @@ function handleAddToCart(event: Event): void {
         </div>
 
         <button type="button"
-          class="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-95"
+          class="self-end w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-95"
           :class="isRecentlyAdded
             ? 'bg-emerald-600 text-white'
             : 'bg-[#E8750D] hover:bg-[#D85F06] text-white'"
           :title="isRecentlyAdded ? 'Added to cart' : (book.isSeed ? 'Request book' : 'Add to cart')"
           :aria-label="isRecentlyAdded ? 'Added to cart' : (book.isSeed ? 'Request book' : 'Add to cart')"
           @click="handleAddToCart">
-          <Check v-if="isRecentlyAdded" :size="15" class="stroke-[3]" />
-          <Plus v-else :size="16" class="stroke-[2.5]" />
+          <Check v-if="isRecentlyAdded" :size="13" class="stroke-[3]" />
+          <Plus v-else :size="14" class="stroke-[2.5]" />
         </button>
       </div>
     </div>
