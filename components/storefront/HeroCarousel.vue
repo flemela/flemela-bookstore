@@ -237,13 +237,11 @@ function handleTouchEnd(): void {
   resumeAutoplay();
 }
 
-// Continuous fill: whole-rail fraction = (completed slides + elapsed fraction of current) / total
+// Per-slide fill: 0 → 100% across the current image only, resets on slide change
 const progressBarWidth = computed(() => {
-  const total = totalSlides.value;
-  if (total <= 1) return 0;
-  // Before the first autoplay frame (or under prefers-reduced-motion) show discrete full segments
-  const fraction = hasAutoplayRun.value ? autoplayProgress.value : 1;
-  return ((activeIndex.value + fraction) / total) * 100;
+  if (totalSlides.value <= 1) return 0;
+  // Before the first autoplay frame (or under prefers-reduced-motion) show a full static track
+  return (hasAutoplayRun.value ? autoplayProgress.value : 1) * 100;
 });
 
 const trackTransformStyle = computed(() => {
@@ -357,7 +355,7 @@ onUnmounted(() => {
 
 					<!-- Autoplay progress: fills toward the active slide (visible on mobile where arrows are hidden) -->
 					<div v-if="totalSlides > 1"
-						class="absolute bottom-0 left-0 right-0 z-20 h-[3px] bg-black/30"
+						class="absolute bottom-0 left-0 right-0 z-20 h-[2px] bg-black/25"
 						aria-hidden="true">
 						<div class="h-full bg-[#E8750D]" :style="{ width: `${progressBarWidth}%` }" />
 					</div>

@@ -38,9 +38,12 @@ function handleBannerClick(): void {
 			class="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
 			loading="eager" />
 
-		<!-- Ambient Scrim: Deep bottom gradient protecting typography -->
-		<div
-			class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/5 pointer-events-none transition-opacity duration-300 group-hover:from-black/95" />
+		<!-- Cloudy vignette: soft radial fog hugging only the text block; image stays clean elsewhere -->
+		<div class="absolute inset-x-0 bottom-0 h-[46%] pointer-events-none"
+			style="background:
+				radial-gradient(130% 95% at 50% 108%, rgba(5,12,9,0.82) 0%, rgba(5,12,9,0.55) 34%, rgba(5,12,9,0.18) 62%, rgba(5,12,9,0) 82%),
+				radial-gradient(72% 62% at 24% 112%, rgba(10,20,15,0.5) 0%, rgba(10,20,15,0) 70%),
+				radial-gradient(72% 62% at 76% 112%, rgba(10,20,15,0.5) 0%, rgba(10,20,15,0) 70%);" />
 
 		<!-- Top Spotlight Tag: Apple Frosted Glass Pill -->
 		<div class="absolute top-3.5 left-3.5 z-10">
