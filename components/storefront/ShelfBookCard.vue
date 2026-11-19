@@ -181,10 +181,6 @@ function handleImageError(): void {
   imageFailed.value = true;
 }
 
-function formatCurrency(val: number): string {
-  return `KSh ${val.toLocaleString('en-KE')}`;
-}
-
 function handleCardClick(event: Event): void {
   if (props.book.isSeed) {
     event.preventDefault();
@@ -279,8 +275,8 @@ function handleAddToCart(event: Event): void {
     </NuxtLink>
 
     <!-- Meta + price column (designed baseline rhythm) -->
-    <div class="flex flex-col min-w-0 flex-1 py-0.5">
-      <div class="min-w-0 flex flex-col gap-0.5">
+    <div class="flex flex-col min-w-0 flex-1 py-0.5 justify-between gap-1.5 sm:gap-1">
+      <div class="min-w-0 flex flex-col gap-1 sm:gap-0.5">
         <NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block" @click="handleCardClick">
           <h3 class="shelf-title font-display text-[11px] sm:text-[12px] font-bold text-[#141E1A] group-hover:text-[#E8750D] transition-colors line-clamp-2 leading-tight"
             :title="book.name">
@@ -295,14 +291,16 @@ function handleAddToCart(event: Event): void {
         </p>
       </div>
 
-      <div class="mt-auto flex flex-col items-stretch gap-1 pt-1">
+      <div class="flex flex-col items-stretch gap-1.5 sm:gap-1 pt-0.5">
         <div class="flex flex-col leading-none min-w-0">
           <span v-if="originalPrice && originalPrice > currentPrice"
-            class="text-[8.5px] sm:text-[9px] text-slate-400 line-through font-mono truncate">
-            {{ formatCurrency(originalPrice) }}
+            class="flex items-baseline gap-1 text-red-600 line-through decoration-red-400 decoration-[1.5px] font-mono truncate leading-none">
+            <span class="text-[6.5px] sm:text-[7px] font-bold uppercase tracking-wide">KSh</span>
+            <span class="text-[9px] sm:text-[10px] font-bold">{{ originalPrice.toLocaleString('en-KE') }}</span>
           </span>
-          <span class="text-[13px] sm:text-[14px] font-black font-mono text-[#141E1A] tracking-tight truncate">
-            {{ formatCurrency(currentPrice) }}
+          <span class="flex items-baseline gap-1 font-mono text-[#141E1A] truncate leading-none">
+            <span class="text-[7px] sm:text-[8px] font-bold text-slate-500 uppercase tracking-wide">KSh</span>
+            <span class="text-[17px] sm:text-[19px] font-black tracking-tight">{{ currentPrice.toLocaleString('en-KE') }}</span>
           </span>
         </div>
 

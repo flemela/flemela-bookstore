@@ -59,7 +59,7 @@ const hasActiveRightFlank = computed(() => {
 // flanks a fluid center stage — the proportion holds from tablet → ultra-wide.
 const gridLayoutClass = computed(() => {
   const layout = [
-    'grid grid-cols-1 items-stretch gap-3 md:gap-4',
+    'grid grid-cols-1 items-stretch gap-1.5 sm:gap-2 md:gap-2.5',
     hasActiveLeftFlank.value && hasActiveRightFlank.value
       ? 'md:grid-cols-[var(--flank-width)_minmax(0,1fr)_var(--flank-width)]'
       : hasActiveLeftFlank.value
@@ -74,10 +74,8 @@ const gridLayoutClass = computed(() => {
 // Center Carousel Column placement (auto-placed into the minmax(0,1fr) track)
 const centerCarouselSpanClass = computed(() => 'w-full min-w-0');
 
-// Outer Wrapper — canonical wide container with fluid gutters
-const outerWrapperPaddingClass = computed(() => {
-  return hasActiveLeftFlank.value || hasActiveRightFlank.value ? 'container-wide' : 'container-page';
-});
+// Outer Wrapper — premium near-edge stage (minimal side breathing room)
+const outerWrapperPaddingClass = computed(() => 'container-stage');
 
 // Clean visual fallback banners
 const defaultSlides: CarouselSlide[] = [
@@ -122,7 +120,29 @@ const totalSlides = computed(() => activeSlides.value.length);
 
 const activeIndex = ref(0);
 const isPaused = ref(false);
-let autoplayTimer: ReturnType<typeof setInterval> | undefined;
+
+// Autoplay progress — rAF-driven continuous fill, synced frame-for-frame to the slide timer.
+// Freeze on hover/touch/focus; resume from the exact frozen position.
+const SLIDE_DURATION = 5000;
+const autoplayProgress = ref(0);   // 0 → 1 fraction of the current slide's dwell time
+const hasAutoplayRun = ref(false);
+let rafId: number | undefined;
+let slideStartedAt = 0;
+
+function tickProgress(): void {
+  if (typeof window === 'undefined') return;
+  hasAutoplayRun.value = true;
+  const now = performance.now();
+  const elapsed = now - slideStartedAt;
+  if (elapsed >= SLIDE_DURATION) {
+    activeIndex.value = (activeIndex.value + 1) % totalSlides.value;
+    slideStartedAt = now;
+    autoplayProgress.value = 0;
+  } else {
+    autoplayProgress.value = elapsed / SLIDE_DURATION;
+  }
+  rafId = window.requestAnimationFrame(tickProgress);
+}
 
 const touchStartX = ref(0);
 const currentTouchX = ref(0);
@@ -131,17 +151,17 @@ const dragOffset = ref(0);
 
 function startAutoplay(): void {
   stopAutoplay();
+  if (typeof window === 'undefined') return;
   if (totalSlides.value > 1 && !isPaused.value) {
-    autoplayTimer = setInterval(() => {
-      nextSlide();
-    }, 5000);
+    slideStartedAt = performance.now() - autoplayProgress.value * SLIDE_DURATION;
+    rafId = window.requestAnimationFrame(tickProgress);
   }
 }
 
 function stopAutoplay(): void {
-  if (autoplayTimer) {
-    clearInterval(autoplayTimer);
-    autoplayTimer = undefined;
+  if (rafId !== undefined) {
+    cancelAnimationFrame(rafId);
+    rafId = undefined;
   }
 }
 
@@ -155,18 +175,21 @@ function resumeAutoplay(): void {
 function nextSlide(): void {
   if (totalSlides.value <= 1) return;
   activeIndex.value = (activeIndex.value + 1) % totalSlides.value;
+  autoplayProgress.value = 0;
   resumeAutoplay();
 }
 
 function prevSlide(): void {
   if (totalSlides.value <= 1) return;
   activeIndex.value = (activeIndex.value - 1 + totalSlides.value) % totalSlides.value;
+  autoplayProgress.value = 0;
   resumeAutoplay();
 }
 
 function goToSlide(index: number): void {
   if (index === activeIndex.value || totalSlides.value <= 1) return;
   activeIndex.value = index;
+  autoplayProgress.value = 0;
   resumeAutoplay();
 }
 
@@ -210,8 +233,18 @@ function handleTouchEnd(): void {
     prevSlide();
   }
   dragOffset.value = 0;
+  autoplayProgress.value = 0;
   resumeAutoplay();
 }
+
+// Continuous fill: whole-rail fraction = (completed slides + elapsed fraction of current) / total
+const progressBarWidth = computed(() => {
+  const total = totalSlides.value;
+  if (total <= 1) return 0;
+  // Before the first autoplay frame (or under prefers-reduced-motion) show discrete full segments
+  const fraction = hasAutoplayRun.value ? autoplayProgress.value : 1;
+  return ((activeIndex.value + fraction) / total) * 100;
+});
 
 const trackTransformStyle = computed(() => {
   if (isSwiping.value) {
@@ -222,7 +255,7 @@ const trackTransformStyle = computed(() => {
   }
   return {
     transform: `translate3d(-${activeIndex.value * 100}%, 0, 0)`,
-    transition: 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1)',
+    transition: 'transform 700ms cubic-bezier(0.32, 0.72, 0, 1)',
   };
 });
 
@@ -308,7 +341,7 @@ onUnmounted(() => {
 
 					<!-- Navigation Arrows -->
 					<div v-if="totalSlides > 1"
-						class="absolute inset-y-0 inset-x-2.5 sm:inset-x-3.5 z-20 flex items-center justify-between pointer-events-none">
+						class="absolute inset-y-0 inset-x-2.5 sm:inset-x-3.5 z-20 hidden sm:flex items-center justify-between pointer-events-none">
 						<button type="button"
 							class="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer"
 							aria-label="Previous banner" @click.stop="prevSlide">
@@ -320,6 +353,13 @@ onUnmounted(() => {
 							aria-label="Next banner" @click.stop="nextSlide">
 							<ChevronRight :size="18" />
 						</button>
+					</div>
+
+					<!-- Autoplay progress: fills toward the active slide (visible on mobile where arrows are hidden) -->
+					<div v-if="totalSlides > 1"
+						class="absolute bottom-0 left-0 right-0 z-20 h-[3px] bg-black/30"
+						aria-hidden="true">
+						<div class="h-full bg-[#E8750D]" :style="{ width: `${progressBarWidth}%` }" />
 					</div>
 
 					<!-- Pagination Indicators -->

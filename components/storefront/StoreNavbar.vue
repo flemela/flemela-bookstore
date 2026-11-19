@@ -232,22 +232,22 @@ onUnmounted(() => {
     class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-[0_4px_20px_rgba(5,34,25,0.05)] select-none"
   >
     <!-- Top Row: Brand & Navigation -->
-    <div class="container-page h-14 md:h-16 flex items-center justify-between gap-3">
+    <div class="container-page h-12 md:h-14 flex items-center justify-between gap-2 sm:gap-3">
       <div class="flex items-center gap-3">
         <button
           type="button"
-          class="md:hidden p-1.5 text-[#052219] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+          class="md:hidden p-1 text-[#052219] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
           aria-label="Toggle navigation menu"
           @click="isMobileOpen = !isMobileOpen"
         >
           <component :is="isMobileOpen ? X : Menu" :size="20" />
         </button>
 
-        <NuxtLink to="/" class="flex items-center group py-1" aria-label="The Sunrise Bookstore Home">
+        <NuxtLink to="/" class="flex items-center group py-0.5" aria-label="The Sunrise Bookstore Home">
           <img
             src="/images/logo.png"
             alt="The Sunrise Bookstore"
-            class="h-8 sm:h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            class="h-7 sm:h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
             loading="eager"
             width="120"
             height="40"
@@ -340,10 +340,10 @@ onUnmounted(() => {
       </nav>
 
       <!-- Right Action Icons -->
-      <div class="flex items-center gap-3 sm:gap-4 text-[#052219]">
+      <div class="flex items-center gap-1.5 sm:gap-3 text-[#052219]">
         <button
           type="button"
-          class="p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+          class="p-1 sm:p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center"
           :class="isSearchExpanded ? 'text-[#E8750D] bg-orange-50' : 'text-[#052219] hover:text-[#E8750D] hover:bg-slate-100'"
           :aria-label="isSearchExpanded ? 'Close search' : 'Open search'"
           :aria-expanded="isSearchExpanded"
@@ -356,7 +356,7 @@ onUnmounted(() => {
           :href="helpWhatsAppUrl"
           target="_blank"
           rel="noopener noreferrer"
-          class="p-1.5 text-[#25D366] hover:text-[#1eb855] hover:bg-emerald-50 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+          class="p-1 sm:p-1.5 text-[#25D366] hover:text-[#1eb855] hover:bg-emerald-50 rounded-lg transition-all cursor-pointer flex items-center justify-center"
           title="Chat with The Sunrise Bookstore on WhatsApp"
         >
           <WhatsAppIcon class="w-5 h-5 transition-transform hover:scale-110" />
@@ -364,7 +364,7 @@ onUnmounted(() => {
 
         <button
           type="button"
-          class="relative p-1.5 text-[#052219] hover:text-[#E8750D] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+          class="relative p-1 sm:p-1.5 text-[#052219] hover:text-[#E8750D] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
           aria-label="Open Shopping Cart"
           @click="openDrawer"
         >
@@ -382,14 +382,14 @@ onUnmounted(() => {
     <!-- Row 2: Search Bar Strip with Instant Recommendations Dropdown -->
     <div v-show="isSearchExpanded"
       ref="searchContainerRef"
-      class="search-strip w-full px-4 sm:px-6 py-2 relative overflow-visible bg-slate-50/70 border-t border-slate-100"
+      class="search-strip w-full px-3 sm:px-5 py-1.5 sm:py-2 relative overflow-visible bg-slate-50/70 border-t border-slate-100"
     >
       <form
         class="max-w-3xl mx-auto flex items-center gap-2 relative z-20"
         @submit.prevent="submitSearch"
       >
         <div
-          class="flex-1 flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white border border-slate-200 transition-all shadow-xs focus-within:border-[#E8750D] focus-within:ring-1 focus-within:ring-[#E8750D]/20 relative"
+          class="flex-1 flex items-center gap-2 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-white border border-slate-200 transition-all shadow-xs focus-within:border-[#E8750D] focus-within:ring-1 focus-within:ring-[#E8750D]/20 relative"
         >
           <Search :size="16" class="text-slate-400 flex-shrink-0" />
 
@@ -417,7 +417,7 @@ onUnmounted(() => {
 
         <button
           type="submit"
-          class="bg-[#E8750D] hover:bg-[#D45B05] text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider px-5 sm:px-6 py-2.5 rounded-full transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md active:scale-95 flex-shrink-0 flex items-center gap-1.5"
+          class="bg-[#E8750D] hover:bg-[#D45B05] text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider px-4 sm:px-6 py-2 sm:py-2.5 rounded-full transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md active:scale-95 flex-shrink-0 flex items-center gap-1.5"
         >
           <Search :size="13" class="hidden sm:inline" />
           <span>Search</span>
@@ -504,7 +504,7 @@ onUnmounted(() => {
     <!-- Mobile Drawer Menu -->
     <div
       v-if="isMobileOpen"
-      class="md:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto"
+      class="md:hidden bg-white border-t border-slate-200 px-5 py-3 space-y-3 shadow-xl max-h-[85vh] overflow-y-auto"
     >
       <div class="flex flex-col gap-2.5 text-xs font-bold tracking-wide">
         <button

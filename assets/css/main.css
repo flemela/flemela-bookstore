@@ -161,6 +161,7 @@ textarea:-webkit-autofill:focus {
   /* Layout primitives */
   --container-page: 80rem;                    /* 1280px canonical page width      */
   --container-wide: 90rem;                    /* 1440px for hero stages           */
+  --container-stage: 100rem;                  /* 1600px near-edge hero stage        */
   --gutter: clamp(1rem, 0.5rem + 2.5vw, 2rem);/* fluid side padding               */
   --section-y: clamp(1.75rem, 1rem + 3vw, 4rem); /* fluid section rhythm          */
 
@@ -196,6 +197,14 @@ textarea:-webkit-autofill:focus {
     max-width: var(--container-wide);
     margin-inline: auto;
     padding-inline: var(--gutter);
+  }
+
+  /* Premium near-edge hero stage — minimal side breathing room */
+  .container-stage {
+    width: 100%;
+    max-width: var(--container-stage);
+    margin-inline: auto;
+    padding-inline: clamp(0.5rem, 0.25rem + 1.25vw, 1.5rem);
   }
 
   /* Canonical section rhythm */
@@ -241,4 +250,32 @@ textarea:-webkit-autofill:focus {
 
 @media (prefers-reduced-motion: reduce) {
   .card-lift { transition: none; }
+}
+
+/* Enterprise horizontal rail — thin scroll affordance on desktop, hidden on touch */
+.rail-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(8, 37, 27, 0.32) transparent;
+}
+.rail-scroll::-webkit-scrollbar {
+  height: 6px;
+  display: block;
+}
+.rail-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rail-scroll::-webkit-scrollbar-thumb {
+  background: rgba(8, 37, 27, 0.28);
+  border-radius: 999px;
+}
+.rail-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(8, 37, 27, 0.45);
+}
+@media (hover: none), (pointer: coarse) {
+  .rail-scroll {
+    scrollbar-width: none;
+  }
+  .rail-scroll::-webkit-scrollbar {
+    display: none;
+  }
 }

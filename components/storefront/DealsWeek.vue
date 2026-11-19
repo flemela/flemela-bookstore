@@ -40,8 +40,8 @@
 				</button>
 
 				<div ref="scrollContainer"
-					class="flex gap-2.5 sm:gap-3 lg:gap-3.5 overflow-x-auto scroll-smooth no-scrollbar py-1 snap-x snap-proximity overscroll-x-contain [-webkit-overflow-scrolling:touch] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E8750D]/60 rounded-lg"
-					tabindex="0" role="region" aria-label="Scrollable book list" style="touch-action: pan-y;" @scroll="checkScrollButtons">
+					class="flex gap-2.5 sm:gap-3 lg:gap-3.5 overflow-x-auto rail-scroll py-1.5 snap-x snap-proximity overscroll-x-contain [-webkit-overflow-scrolling:touch] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#E8750D]/60 rounded-lg"
+					tabindex="0" role="region" aria-label="Scrollable book list — use arrow keys or mouse wheel" style="touch-action: pan-x pan-y;" @scroll="checkScrollButtons" @wheel="onRailWheel" @keydown="onRailKeydown">
 					<div v-for="book in books" :key="book.id"
 						class="w-[min(70vw,232px)] sm:w-[calc((100%-2.25rem)/4)] md:w-[calc((100%-3rem)/5)] flex-shrink-0 snap-start flex">
 						<ShelfBookCard :book="book" class="h-full"
@@ -118,6 +118,42 @@ function scrollRight(): void {
   const count = isDesktop ? 5 : 2;
   const scrollDistance = (cardWidth + 12) * count;
   scrollContainer.value.scrollBy({ left: scrollDistance, behavior: 'smooth' });
+}
+
+
+function onRailWheel(event: WheelEvent): void {
+  const el = scrollContainer.value;
+  if (!el) return;
+  if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+  const maxScroll = el.scrollWidth - el.clientWidth;
+  const next = el.scrollLeft + event.deltaY;
+  const canConsume =
+    (event.deltaY > 0 && el.scrollLeft < maxScroll - 1) ||
+    (event.deltaY < 0 && el.scrollLeft > 1);
+  if (!canConsume) return; // let the page scroll when the rail is at its edge
+  event.preventDefault();
+  el.scrollTo({ left: next, behavior: 'auto' });
+  checkScrollButtons();
+}
+
+function onRailKeydown(event: KeyboardEvent): void {
+  const el = scrollContainer.value;
+  if (!el) return;
+  const firstChild = el.firstElementChild as HTMLElement | null;
+  const step = firstChild ? firstChild.clientWidth + 12 : 220;
+  if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    el.scrollBy({ left: step, behavior: 'smooth' });
+  } else if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    el.scrollBy({ left: -step, behavior: 'smooth' });
+  } else if (event.key === 'Home') {
+    event.preventDefault();
+    el.scrollTo({ left: 0, behavior: 'smooth' });
+  } else if (event.key === 'End') {
+    event.preventDefault();
+    el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+  }
 }
 
 watch(

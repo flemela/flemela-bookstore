@@ -14,7 +14,7 @@ import CartDrawer from '~/components/storefront/CartDrawer.vue';
 import ToastContainer from '~/components/ui/ToastContainer.vue';
 import BookRequestModal from '~/components/storefront/BookRequestModal.vue';
 import Pagination from '~/components/ui/Pagination.vue';
-import { ChevronDown, Check, Sparkles, Filter, X, Zap, ArrowUpDown } from 'lucide-vue-next';
+import { ChevronDown, Check, Filter, X, Zap, ArrowUpDown } from 'lucide-vue-next';
 import { MONTHLY_TOP_SEEDS, DEALS_SEEDS, mergeWithSeeds } from '~/data/seeds';
 import type { Book } from '~/types';
 
@@ -356,39 +356,6 @@ onUnmounted(() => {
 
 		<!-- Categories Bento Grid -->
 		<BentoCategories @select="handleCategorySelect" />
-
-		<!-- Visual Bridge Banner -->
-		<div class="container-page w-full">
-			<div
-				class="rounded-2xl bg-gradient-to-r from-[#052219] via-[#0C3A2B] to-[#124E38] p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 text-white shadow-md border border-[#2EE59D]/30 relative overflow-hidden">
-				<div class="flex items-center gap-3 relative z-10">
-					<div
-						class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-[#2EE59D] flex-shrink-0">
-						<Sparkles :size="20" class="animate-pulse" />
-					</div>
-					<div>
-						<div class="flex items-center gap-2">
-							<span
-								class="text-[9.5px] font-mono font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#2EE59D] text-[#052219]">
-								Live Storefront Shelf
-							</span>
-							<span class="text-xs text-white/80 font-mono hidden sm:inline">• Free Nairobi Delivery above
-								KSh 2,500</span>
-						</div>
-						<h3 class="font-display font-bold text-sm sm:text-base text-white mt-0.5">
-							Original Print Editions &amp; Instant Cloudflare R2 eBooks
-						</h3>
-					</div>
-				</div>
-
-				<button type="button"
-					class="bg-[#E8750D] hover:bg-[#D45B05] text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0 active:scale-95"
-					@click="scrollToSection('catalog-results')">
-					<span>Explore All Books</span>
-					<span>↓</span>
-				</button>
-			</div>
-		</div>
 
 		<!-- DEALS OF THE WEEK (Dynamic title, bg-color & hide toggle respected) -->
 		<DealsWeek v-if="dealsWeekSection?.is_active !== false" :books="bestsellersOfWeek"
