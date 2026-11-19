@@ -45,14 +45,6 @@ function handleBannerClick(): void {
 				radial-gradient(72% 62% at 24% 112%, rgba(10,20,15,0.5) 0%, rgba(10,20,15,0) 70%),
 				radial-gradient(72% 62% at 76% 112%, rgba(10,20,15,0.5) 0%, rgba(10,20,15,0) 70%);" />
 
-		<!-- Top Spotlight Tag: Apple Frosted Glass Pill -->
-		<div class="absolute top-3.5 left-3.5 z-10">
-			<span
-				class="backdrop-blur-md bg-black/45 text-white/95 text-[9px] font-mono font-bold uppercase px-3 py-1 rounded-full shadow-xs tracking-wider">
-				Featured Spotlight
-			</span>
-		</div>
-
 		<!-- Bottom Campaign Title & Action -->
 		<div class="relative z-10 p-4 sm:p-5 text-white space-y-1.5">
 			<h3
