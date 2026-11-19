@@ -168,13 +168,13 @@ textarea:-webkit-autofill:focus {
   --text-caption: clamp(0.625rem, 0.575rem + 0.25vw, 0.75rem);   /* 10 → 12px   */
   --text-body:    clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);     /* 12 → 14px   */
   --text-lead:    clamp(0.875rem, 0.8rem + 0.4vw, 1.0625rem);    /* 14 → 17px   */
-  --text-h3:      clamp(1rem, 0.9rem + 0.5vw, 1.25rem);          /* 16 → 20px   */
-  --text-h2:      clamp(1.625rem, 1.05rem + 2.6vw, 3rem);        /* 26 → 48px   */
-  --text-h1:      clamp(2rem, 1.15rem + 4vw, 3.5rem);            /* 32 → 56px   */
+  --text-h3:      clamp(0.9375rem, 0.875rem + 0.4vw, 1.125rem);  /* 15 → 18px   */
+  --text-h2:      clamp(1.375rem, 0.95rem + 1.6vw, 2.125rem);    /* 22 → 34px   */
+  --text-h1:      clamp(1.625rem, 1.05rem + 2.6vw, 2.5rem);      /* 26 → 40px   */
 
   /* Fluid hero stage */
-  --hero-height: clamp(13.5rem, 10rem + 22vw, 21rem);            /* 216 → 336px */
-  --flank-width: clamp(9.25rem, 11.5vw, 12.25rem);               /* smartphone-like poster width */
+  --hero-height: clamp(10.5rem, 8rem + 13vw, 15rem);             /* 168 → 240px premium low stage */
+  --flank-width: clamp(11.5rem, 15vw, 16rem);                    /* enterprise merchandise rails   */
 
   /* Elevation + radius language */
   --radius-card: 1rem;
@@ -205,9 +205,10 @@ textarea:-webkit-autofill:focus {
 
   /* Canonical section heading (Bebas poster face, fluid) */
   .heading-section {
-    font-size: var(--text-h2);
-    line-height: 0.95;
+    font-size: clamp(1.0625rem, 0.75rem + 2vw, 2.125rem); /* 17px phone → 34px desktop */
+    line-height: 1;
     letter-spacing: 0.02em;
+    text-wrap: balance;
   }
 
   /* Canonical mono eyebrow label above headings */

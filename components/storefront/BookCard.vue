@@ -366,27 +366,27 @@ function handleAddToCart(event: Event): void {
 
 	<!-- FULL CARD (Main Catalog Archive) -->
 	<div v-else
-		class="w-full h-full bg-white text-[#141E1A] rounded-2xl p-3 shadow-card card-lift hover:shadow-xl hover:border-[#E8750D]/50 flex flex-col justify-between group select-none text-left border border-slate-100">
+		class="w-full h-full bg-white text-[#141E1A] rounded-2xl p-2.5 shadow-card card-lift hover:shadow-xl hover:border-[#E8750D]/50 flex flex-col justify-between group select-none text-left border border-slate-100">
 		<div class="flex flex-col flex-1">
-			<div class="relative mb-2.5 w-full aspect-[2/3] rounded-xl overflow-hidden bg-[#141E1A] shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
+			<div class="relative mb-2 w-full aspect-[2/3] rounded-xl overflow-hidden bg-[#141E1A] shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
 				<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`"
 					class="block w-full h-full cursor-pointer" :aria-label="`View details for ${book.name}`"
 					@click="handleCardClick">
 					<!-- Badge on image -->
 					<span v-if="badgeInfo"
-						class="absolute top-2 left-2 z-10 inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider text-[#FFD29D] bg-[#141E1A]/95 px-2 py-0.5 rounded shadow-xs border border-white/10">
-						<component :is="badgeInfo.icon" :size="9" />
+						class="absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-1 text-[8px] font-mono font-bold uppercase tracking-wider text-[#FFD29D] bg-[#141E1A]/95 px-1.5 py-0.5 rounded shadow-xs border border-white/10">
+						<component :is="badgeInfo.icon" :size="8" />
 						{{ badgeInfo.label }}
 					</span>
 
 					<!-- Red Discount Medallion on image -->
 					<div v-if="discountPercentage > 0"
-						class="absolute top-2 right-2 z-10 w-10 h-10 flex items-center justify-center pointer-events-none drop-shadow-[0_3px_8px_rgba(220,38,38,0.5)]"
+						class="absolute top-1.5 right-1.5 z-10 w-9 h-9 flex items-center justify-center pointer-events-none drop-shadow-[0_3px_8px_rgba(220,38,38,0.5)]"
 						aria-hidden="true">
 						<svg viewBox="0 0 100 100" class="w-full h-full text-red-600 fill-current">
 							<polygon points="98,50 89.2,57.8 94.3,68.4 83.3,72.2 83.9,83.9 72.2,83.3 68.4,94.3 57.8,89.2 50,98 42.2,89.2 31.6,94.3 27.8,83.3 16.1,83.9 16.7,72.2 5.7,68.4 10.8,57.8 2,50 10.8,42.2 5.7,31.6 16.7,27.8 16.1,16.1 27.8,16.7 31.6,5.7 42.2,10.8 50,2 57.8,10.8 68.4,5.7 72.2,16.7 83.9,16.1 83.3,27.8 94.3,31.6 89.2,42.2" />
 						</svg>
-						<span class="absolute inset-0 flex items-center justify-center font-black font-mono text-[10.5px] text-white tracking-tighter drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
+						<span class="absolute inset-0 flex items-center justify-center font-black font-mono text-[9.5px] text-white tracking-tighter drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
 							−{{ discountPercentage }}%
 						</span>
 					</div>
@@ -411,41 +411,41 @@ function handleAddToCart(event: Event): void {
 			</div>
 
 			<NuxtLink :to="book.isSeed ? '#' : `/book/${book.slug}`" class="block mt-1" @click="handleCardClick">
-				<h3 class="font-display text-sm sm:text-[15px] font-bold text-[#141E1A] group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug"
+				<h3 class="font-display text-[12px] sm:text-[12.5px] font-bold text-[#141E1A] group-hover:text-[#E8750D] transition-colors line-clamp-1 leading-snug"
 					:title="book.name">
 					{{ book.name }}
 				</h3>
 			</NuxtLink>
 
-			<p class="text-[11px] sm:text-xs text-slate-500 truncate mt-0.5">
+			<p class="text-[10px] sm:text-[10.5px] text-slate-500 truncate mt-0.5 leading-tight">
 				{{ displayAuthor }}
 			</p>
-			<p v-if="formatCaption" class="text-[9px] font-mono uppercase tracking-wider text-slate-400 mt-0.5 leading-tight">
+			<p v-if="formatCaption" class="text-[8px] sm:text-[8.5px] font-mono uppercase tracking-wider text-slate-400 mt-0.5 leading-tight">
 				{{ formatCaption }}
 			</p>
 
 			<!-- Format Selection -->
-			<div class="mt-2 space-y-1" role="radiogroup" aria-label="Reading format selection">
+			<div class="mt-1.5 space-y-1" role="radiogroup" aria-label="Reading format selection">
 				<template v-if="availableFormats.length > 1">
 					<button v-for="fmt in availableFormats" :key="fmt.id" type="button" role="radio"
 						:aria-checked="activeFormat?.id === fmt.id"
-						class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-sans transition-all cursor-pointer select-none leading-tight border"
+						class="w-full flex items-center justify-between px-2 py-1 rounded-lg text-[10.5px] font-sans transition-all cursor-pointer select-none leading-tight border"
 						:class="
               activeFormat?.id === fmt.id
                 ? 'border-[#E8750D] bg-[#FFF7ED] text-[#C25E00] font-extrabold'
                 : 'border-slate-200 bg-slate-50/80 text-slate-700 hover:border-orange-300 hover:bg-orange-50/40 font-bold'
             " @click="selectFormat(fmt.id, $event)">
 						<span class="truncate pr-1">{{ getFormatDisplayLabel(fmt) }}</span>
-						<span class="font-mono font-black text-xs flex-shrink-0"
+						<span class="font-mono font-black text-[10.5px] flex-shrink-0"
 							:class="activeFormat?.id === fmt.id ? 'text-[#B84A00]' : 'text-slate-700'">
 							{{ formatCurrency(fmt.price) }}
 						</span>
 					</button>
 				</template>
 				<div v-else-if="activeFormat"
-					class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-[#E8750D] bg-[#FFF7ED] text-xs font-sans font-extrabold text-[#C25E00]">
+					class="w-full flex items-center justify-between px-2 py-1 rounded-lg border border-[#E8750D] text-[10.5px] bg-[#FFF7ED] text-xs font-sans font-extrabold text-[#C25E00]">
 					<span class="truncate pr-1">{{ getFormatDisplayLabel(activeFormat) }}</span>
-					<span class="font-mono font-black text-xs flex-shrink-0 text-[#B84A00]">
+					<span class="font-mono font-black text-[10.5px] flex-shrink-0 text-[#B84A00]">
 						{{ formatCurrency(activeFormat.price) }}
 					</span>
 				</div>
@@ -453,25 +453,25 @@ function handleAddToCart(event: Event): void {
 		</div>
 
 		<!-- Bottom Action Row -->
-		<div class="pt-2.5 mt-2 border-t border-slate-100 flex flex-col gap-1.5">
+		<div class="pt-2 mt-1.5 border-t border-slate-100 flex flex-col gap-1">
 			<div class="flex items-baseline gap-1.5 flex-wrap">
 				<span v-if="originalPrice && originalPrice > currentPrice"
-					class="text-xs text-slate-400 line-through font-mono font-bold leading-none">
+					class="text-[10px] sm:text-[10.5px] text-slate-400 line-through font-mono font-bold leading-none">
 					{{ formatCurrency(originalPrice) }}
 				</span>
-				<span class="text-lg font-black font-mono leading-tight text-[#141E1A] tracking-tight">
+				<span class="text-[15px] sm:text-base font-black font-mono leading-tight text-[#141E1A] tracking-tight">
 					{{ formatCurrency(currentPrice) }}
 				</span>
 			</div>
 
 			<button type="button"
-				class="w-full flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs sm:text-sm py-2.5 transition-all duration-200 cursor-pointer active:scale-[0.98]"
+				class="w-full flex items-center justify-center gap-1.5 rounded-xl font-bold text-[11px] sm:text-xs py-2 transition-all duration-200 cursor-pointer active:scale-[0.98]"
 				:class="isRecentlyAdded
           ? 'bg-emerald-600 text-white'
           : 'bg-[#E8750D] hover:bg-[#D85F06] text-white'"
 				@click="handleAddToCart">
-				<Check v-if="isRecentlyAdded" :size="16" class="stroke-[3]" />
-				<ShoppingCart v-else :size="15" />
+				<Check v-if="isRecentlyAdded" :size="14" class="stroke-[3]" />
+				<ShoppingCart v-else :size="13" />
 				<span>{{ isRecentlyAdded ? 'Added to Cart ✓' : (book.isSeed ? 'Request Book' : 'Add to Cart') }}</span>
 			</button>
 		</div>

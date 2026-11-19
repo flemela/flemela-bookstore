@@ -55,7 +55,7 @@ const hasActiveRightFlank = computed(() => {
   return hasActiveRightBanner.value || hasActiveHeroNotes.value;
 });
 
-// Smartphone-width flanks: a fixed fluid column (portrait 9:19-ish poster)
+// Enterprise-width flanks: fixed fluid merchandise rails (portrait poster)
 // flanks a fluid center stage — the proportion holds from tablet → ultra-wide.
 const gridLayoutClass = computed(() => {
   const layout = [
@@ -259,18 +259,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<div class="w-full py-2 sm:py-3 flex justify-center bg-transparent transition-all duration-300"
+	<div class="w-full py-0 sm:py-3 flex justify-center bg-transparent transition-all duration-300 max-md:px-0"
 		:class="outerWrapperPaddingClass">
 		<div class="w-full" :class="gridLayoutClass">
 
-			<!-- 1. LEFT FLANK: Promotional Poster (Desktop 1fr, 20% reduced height) -->
+			<!-- 1. LEFT FLANK: Promotional Poster (enterprise rail, low premium stage) -->
 			<div v-if="hasActiveLeftFlank" class="hidden md:block w-full h-[var(--hero-height)]">
 				<HeroLeftBanner :banner="heroLeftBanner" />
 			</div>
 
-			<!-- 2. CENTER STAGE: Hero Carousel (Apple Hairline Rim & 20% Height Reduction) -->
+			<!-- 2. CENTER STAGE: Hero Carousel (low premium stage) -->
 			<section
-				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-2xl md:rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.16)] h-[176px] sm:h-[224px] md:h-[var(--hero-height)]"
+				class="relative select-none bg-theme-dark text-white overflow-hidden rounded-none sm:rounded-2xl md:rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.16)] h-[172px] sm:h-[190px] md:h-[var(--hero-height)]"
 				:class="centerCarouselSpanClass" aria-roledescription="carousel"
 				aria-label="Promotions and Announcements" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave"
 				@focusin="handleMouseEnter" @focusout="handleMouseLeave">
@@ -310,13 +310,13 @@ onUnmounted(() => {
 					<div v-if="totalSlides > 1"
 						class="absolute inset-y-0 inset-x-2.5 sm:inset-x-3.5 z-20 flex items-center justify-between pointer-events-none">
 						<button type="button"
-							class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer"
+							class="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer"
 							aria-label="Previous banner" @click.stop="prevSlide">
 							<ChevronLeft :size="18" />
 						</button>
 
 						<button type="button"
-							class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer"
+							class="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center pointer-events-auto backdrop-blur-xs transition-all shadow-md active:scale-90 cursor-pointer"
 							aria-label="Next banner" @click.stop="nextSlide">
 							<ChevronRight :size="18" />
 						</button>
@@ -333,7 +333,7 @@ onUnmounted(() => {
 				</div>
 			</section>
 
-			<!-- 3. RIGHT FLANK: 4 Top Selling Books / Editorial Notes (Desktop 1fr, 20% reduced height, Hideable) -->
+			<!-- 3. RIGHT FLANK: Promotional Poster / Editorial Notes (enterprise rail, Hideable) -->
 			<div v-if="hasActiveRightFlank" class="hidden md:block w-full h-[var(--hero-height)]">
 				<HeroRightBanner v-if="hasActiveRightBanner" :banner="heroRightBanner" />
 				<HeroNotesPanel v-else-if="hasActiveHeroNotes" :notes="heroNotes" />

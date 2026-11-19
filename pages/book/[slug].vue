@@ -32,14 +32,14 @@ const tickerItems = computed(() => storeMetadata.value?.promo_ticker || []);
 const { data: suggestionsRes } = await useFetch<{ products?: Book[]; total?: number }>('/api/products', {
   query: {
     category: book.value?.category_name || undefined,
-    limit: 8,
+    limit: 12,
     sort: 'first_added',
   },
 });
 
 const suggestions = computed<Book[]>(() => {
   const list = suggestionsRes.value?.products ?? [];
-  return list.filter((b) => b && b.id !== book.value?.id).slice(0, 6);
+  return list.filter((b) => b && b.id !== book.value?.id).slice(0, 10);
 });
 
 const { addItem } = useCart();
@@ -407,7 +407,7 @@ function handleAddToCart(): void {
 					</NuxtLink>
 				</div>
 
-				<div class="flex gap-2.5 sm:gap-3 overflow-x-auto scroll-smooth no-scrollbar pb-1 snap-x snap-mandatory -mx-4 px-4 sm:-mx-6 sm:px-6" style="touch-action: pan-y;">
+				<div class="flex gap-2.5 sm:gap-3 overflow-x-auto scroll-smooth no-scrollbar pb-1 snap-x snap-proximity overscroll-x-contain [-webkit-overflow-scrolling:touch] -mx-4 px-4 sm:-mx-6 sm:px-6 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E8750D]/60 rounded-lg" tabindex="0" role="region" aria-label="Recommended books, scrollable" style="touch-action: pan-y;">
 					<div v-for="suggestion in suggestions" :key="suggestion.id"
 						class="w-[min(78vw,248px)] sm:w-[calc((100%-0.75rem)/2)] md:w-[calc((100%-1.5rem)/3)] flex-shrink-0 snap-start">
 						<ShelfBookCard :book="suggestion" class="h-full" />

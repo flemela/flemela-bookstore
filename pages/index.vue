@@ -398,9 +398,9 @@ onUnmounted(() => {
 		<!-- Complete Bookstore Catalogue Archive -->
 		<section id="catalog-results"
 			class="container-page pt-8 sm:pt-12 lg:pt-14 pb-12 sm:pb-16 w-full space-y-5 sm:space-y-6">
-			<div class="flex flex-row items-end justify-between gap-3 sm:gap-4 pb-4 border-b border-slate-200">
+			<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-slate-200">
 				<div class="space-y-1.5 min-w-0">
-					<div class="flex items-center gap-2">
+					<div class="flex items-center gap-2 flex-wrap">
 						<span
 							class="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-widest text-[#E8750D] block whitespace-nowrap">
 							CATALOGUE ARCHIVE
@@ -415,16 +415,16 @@ onUnmounted(() => {
 						{{ catalogueHeading }}
 					</h2>
 					<!-- Reading progress — fills as the shopper scrolls through the archive -->
-					<div class="h-[3px] w-36 sm:w-48 lg:w-64 bg-slate-200 rounded-full overflow-hidden" aria-hidden="true">
+					<div class="h-[3px] w-full sm:w-48 lg:w-64 bg-slate-200 rounded-full overflow-hidden" aria-hidden="true">
 						<div class="h-full bg-[#E8750D] transition-[width] duration-150 ease-out" :style="{ width: `${catalogProgress}%` }" />
 					</div>
 				</div>
 
 				<!-- Filter Dropdown, Sort Dropdown & Search Status Indicator -->
-				<div class="flex items-center gap-2 flex-wrap shrink-0">
+				<div class="flex items-center gap-2 flex-wrap w-full sm:w-auto">
 					<div class="relative">
 						<button id="catalogue-category-trigger" type="button"
-							class="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-[10px] sm:text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
+							class="inline-flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-[10px] sm:text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
 							:class="{ 'border-[#E8750D] text-[#E8750D] bg-[#FFF7ED]': isCatalogueDropdownOpen }"
 							@click="isCatalogueDropdownOpen = !isCatalogueDropdownOpen">
 							<Filter :size="14" class="text-[#E8750D]" />
@@ -461,7 +461,7 @@ onUnmounted(() => {
 
 					<div class="relative">
 						<button id="catalogue-sort-trigger" type="button"
-							class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
+							class="inline-flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-2 px-4 py-2 sm:py-2.5 rounded-xl bg-slate-50 hover:bg-[#FFF7ED] border border-slate-300 hover:border-[#E8750D] text-xs font-bold text-slate-800 transition-all cursor-pointer shadow-2xs"
 							:class="{ 'border-[#E8750D] text-[#E8750D] bg-[#FFF7ED]': isSortDropdownOpen }"
 							@click="isSortDropdownOpen = !isSortDropdownOpen">
 							<ArrowUpDown :size="14" class="text-[#E8750D]" />
@@ -518,9 +518,9 @@ onUnmounted(() => {
 
 			<!-- SKELETON LOADING GRID -->
 			<div v-if="booksStatus === 'pending'"
-				class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 w-full">
+				class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4 w-full">
 				<div v-for="n in 8" :key="`skel-catalog-${n}`"
-					class="w-full bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-card flex flex-col justify-between space-y-3">
+					class="w-full bg-white rounded-xl p-3 sm:p-3.5 border border-slate-200 shadow-card flex flex-col justify-between space-y-3">
 					<div class="aspect-[1/1.37] rounded-lg bg-slate-200 animate-pulse" />
 					<div class="space-y-1.5 pt-1">
 						<div class="h-3.5 bg-slate-200 rounded w-5/6 animate-pulse" />
@@ -538,7 +538,7 @@ onUnmounted(() => {
 
 			<!-- REAL BOOKS GRID -->
 			<div v-else-if="displayBooks.length > 0"
-				class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 w-full animate-in fade-in duration-300">
+				class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4 w-full animate-in fade-in duration-300">
 				<BookCard v-for="book in displayBooks" :key="book.id" :book="book" class="h-full"
 					@request-seed="handleRequestSeed" />
 			</div>
